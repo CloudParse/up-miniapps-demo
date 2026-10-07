@@ -31,6 +31,14 @@ npm run dev
 
 Open http://localhost:21515
 
+## 4. Start Claude Code
+
+From the root of this project (the folder containing `SETUP.md`), so it loads `CLAUDE.md` and `AGENT.md`:
+
+```bash
+claude
+```
+
 ## Stop
 
 ```bash
