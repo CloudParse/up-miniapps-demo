@@ -47,7 +47,7 @@ docker compose down
 
 ## Full reset (if something is broken)
 
-Wipes the containers and their volumes (PostgreSQL, Redis, MinIO) and the local credentials, then start again from step 1.
+Wipes the containers and their volumes (PostgreSQL, Redis, RustFS) and the local credentials, then start again from step 1.
 
 ```bash
 docker compose down -v

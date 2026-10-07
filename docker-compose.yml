@@ -39,20 +39,19 @@ services:
       retries: 10
     restart: unless-stopped
 
-  minio:
-    # MinIO no longer publishes images on Docker Hub; this is the last pinned
-    # community build. Any S3-compatible server works for local development.
-    image: bitnamilegacy/minio:2025.7.23-debian-12-r5
+  rustfs:
+    # S3-compatible object storage (RustFS), the Hub's storage backend.
+    image: rustfs/rustfs:1.0.1
     environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-admin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-password123}
+      RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:-admin}
+      RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY:-password123}
     ports:
-      - "127.0.0.1:${MINIO_API_PORT:-21512}:9000"
-      - "127.0.0.1:${MINIO_CONSOLE_PORT:-21513}:9001"
+      - "127.0.0.1:${RUSTFS_API_PORT:-21512}:9000"
+      - "127.0.0.1:${RUSTFS_CONSOLE_PORT:-21513}:9001"
     volumes:
-      - minio-data:/bitnami/minio/data
+      - rustfs-data:/data
     healthcheck:
-      test: ["CMD", "curl", "-fs", "http://localhost:9000/minio/health/live"]
+      test: ["CMD", "curl", "-fs", "http://localhost:9000/health"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -68,7 +67,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      minio:
+      rustfs:
         condition: service_healthy
     environment:
       # Each variable overrides the key of the same name in the image's
@@ -77,10 +76,10 @@ services:
       SERVER_BASE_URL: http://localhost:${CLOUDPARSE_BACKEND_PORT:-21509}
       DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-postgres}?sslmode=disable
       REDIS_URL: redis://redis:6379/0
-      STORAGE_ENDPOINT: minio:9000
-      STORAGE_ACCESS_KEY: ${MINIO_ROOT_USER:-admin}
-      STORAGE_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-password123}
-      STORAGE_PUBLIC_URL: http://localhost:${MINIO_API_PORT:-21512}
+      STORAGE_ENDPOINT: rustfs:9000
+      STORAGE_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:-admin}
+      STORAGE_SECRET_KEY: ${RUSTFS_SECRET_KEY:-password123}
+      STORAGE_PUBLIC_URL: http://localhost:${RUSTFS_API_PORT:-21512}
       STORAGE_USE_SSL: "false"
       # Local sign-in without an SMS provider: any phone number, OTP code 999999.
       # Honoured only while ENVIRONMENT=development. NEVER enable outside local dev.
@@ -101,4 +100,4 @@ services:
 volumes:
   postgres-data:
   redis-data:
-  minio-data:
+  rustfs-data:
