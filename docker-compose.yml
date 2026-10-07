@@ -1,0 +1,104 @@
+# Local development environment for a mini-app: the CloudParse (Hub) backend and
+# the infrastructure it needs. Your own mini-app backend and frontend run on the
+# host (see up-miniapps-template-python-backend/AGENT.md and up-miniapps-react-template/AGENT.md), so they hot-reload.
+#
+#   scripts/generate-keys.sh && docker compose up
+#
+# Every port is published on 127.0.0.1 only and lives in the 21509-21515 block,
+# chosen to avoid the usual 5432 / 6379 / 8080 / 9000 clashes.
+name: up-miniapps-template
+
+services:
+  postgres:
+    image: postgres:16.4-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-21510}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7.4-alpine
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-21511}:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  minio:
+    # MinIO no longer publishes images on Docker Hub; this is the last pinned
+    # community build. Any S3-compatible server works for local development.
+    image: bitnamilegacy/minio:2025.7.23-debian-12-r5
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-password123}
+    ports:
+      - "127.0.0.1:${MINIO_API_PORT:-21512}:9000"
+      - "127.0.0.1:${MINIO_CONSOLE_PORT:-21513}:9001"
+    volumes:
+      - minio-data:/bitnami/minio/data
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  cloudparse-backend:
+    # The official Up backend (the "Hub"). Docker Hub only publishes commit-SHA
+    # tags for now and the image is amd64-only, hence the pinned platform.
+    image: cloudparse/up-backend:${UP_BACKEND_TAG:-4edec41f}
+    platform: linux/amd64
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      # Each variable overrides the key of the same name in the image's
+      # configs/config.toml (dotted key, upper-cased, dots -> underscores).
+      ENVIRONMENT: development
+      SERVER_BASE_URL: http://localhost:${CLOUDPARSE_BACKEND_PORT:-21509}
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-postgres}?sslmode=disable
+      REDIS_URL: redis://redis:6379/0
+      STORAGE_ENDPOINT: minio:9000
+      STORAGE_ACCESS_KEY: ${MINIO_ROOT_USER:-admin}
+      STORAGE_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-password123}
+      STORAGE_PUBLIC_URL: http://localhost:${MINIO_API_PORT:-21512}
+      STORAGE_USE_SSL: "false"
+      # Local sign-in without an SMS provider: any phone number, OTP code 999999.
+      # Honoured only while ENVIRONMENT=development. NEVER enable outside local dev.
+      TESTING_ALLOW_DEV_AUTH_BYPASS: "true"
+      # The image ships a placeholder SMS key; replace it so it is never used.
+      PRELUDE_API_KEY: unused-in-local-development
+    volumes:
+      - ./keys:/app/keys:ro
+    ports:
+      - "127.0.0.1:${CLOUDPARSE_BACKEND_PORT:-21509}:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:8080/swagger/index.html"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  redis-data:
+  minio-data:

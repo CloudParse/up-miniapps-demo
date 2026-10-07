@@ -1,0 +1,132 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "@fontsource-variable/outfit";
+
+@source "../**/*.{ts,tsx}";
+/* The SDK ships compiled components (BackButtonControl, ...) that use Tailwind
+   classes. Tailwind only generates CSS for classes it can see, so the SDK's
+   dist folder has to be scanned too, or those classes render unstyled. */
+@source "../../node_modules/@cloudparse/up-miniapps-sdk/dist";
+
+:root {
+  --brand-bg: #07080d;
+  --brand-card: #121620;
+  --brand-card-strong: #1b2130;
+  --brand-border: #262d3d;
+  --accent-primary: #7dd3fc;
+  --accent-secondary: #a78bfa;
+  --accent-success: #4ade80;
+  --accent-danger: #f87171;
+  --ink-bright: #f8fafc;
+  --ink-soft: #cbd5e1;
+  --ink-faint: #64748b;
+  --ink-on-accent: #0b0d12;
+}
+
+@theme inline {
+  --font-sans:
+    "Outfit Variable", "Outfit", "Avenir Next", "Trebuchet MS", sans-serif;
+  --color-brand-bg: var(--brand-bg);
+  --color-brand-card: var(--brand-card);
+  --color-brand-card-strong: var(--brand-card-strong);
+  --color-brand-border: var(--brand-border);
+  --color-accent-primary: var(--accent-primary);
+  --color-accent-secondary: var(--accent-secondary);
+  --color-accent-success: var(--accent-success);
+  --color-accent-danger: var(--accent-danger);
+  --color-ink-bright: var(--ink-bright);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+  --color-ink-on-accent: var(--ink-on-accent);
+  /* Token names the SDK's own components are written against. */
+  --color-ink-deep: var(--ink-on-accent);
+  --color-brand-panel: var(--brand-card);
+  --text-xs-plus: 0.8125rem;
+  --text-sm-plus: 0.9375rem;
+  --text-md-plus: 1.0625rem;
+  --text-xl-plus: 1.375rem;
+  --text-display: 2.5rem;
+  --blur-aurora: 90px;
+  --blur-aurora-wide: 100px;
+  --spacing-aurora: 26rem;
+  --spacing-aurora-wide: 28rem;
+  --animate-drift: drift 18s ease-in-out infinite alternate;
+  --animate-drift-slow: drift 26s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes drift {
+  from {
+    transform: translate3d(-6%, -4%, 0) scale(1);
+  }
+  to {
+    transform: translate3d(8%, 6%, 0) scale(1.15);
+  }
+}
+
+/* The SDK stylesheet declares its own system-ui `--font-sans` inside a Tailwind
+   layer. This unlayered redeclaration always wins, in dev and in the built
+   single-file bundle alike. */
+:root {
+  --font-sans:
+    "Outfit Variable", "Outfit", "Avenir Next", "Trebuchet MS", sans-serif;
+}
+
+@layer base {
+  /* `h-full` needs a real height chain from the document root. Never use
+     viewport units (`h-screen`, `100dvh`): inside the SDK phone simulator the
+     app lives in a scaled box, not the browser tab, and viewport units would
+     measure the wrong thing. */
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    background-color: var(--brand-bg);
+    color: var(--ink-bright);
+    color-scheme: dark;
+    font-family: var(--font-sans);
+    margin: 0;
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  button,
+  a,
+  [role="button"] {
+    -webkit-tap-highlight-color: transparent;
+    outline: none;
+  }
+}
+
+/* Plain CSS classes the SDK's shared components rely on (not Tailwind tokens). */
+.shadow-panel {
+  box-shadow:
+    0 8px 20px -6px rgba(0, 0, 0, 0.35),
+    0 2px 6px -2px rgba(0, 0, 0, 0.25);
+}
+
+.shadow-panel-sm {
+  box-shadow:
+    0 3px 10px -3px rgba(0, 0, 0, 0.35),
+    0 1px 3px -1px rgba(0, 0, 0, 0.25);
+}
+
+/* A mini-app is a touch-only WebView: scrollbars are never useful. */
+* {
+  scrollbar-width: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
