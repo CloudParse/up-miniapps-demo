@@ -42,6 +42,14 @@ claude
 ## Stop
 
 ```bash
-docker compose down        # keep data
-docker compose down -v     # wipe data (then re-run step 1's register script with FORCE=1)
+docker compose down
+```
+
+## Full reset (if something is broken)
+
+Wipes the containers and their volumes (PostgreSQL, Redis, MinIO) and the local credentials, then start again from step 1.
+
+```bash
+docker compose down -v
+rm -f up-miniapps-template-python-backend/.env
 ```
