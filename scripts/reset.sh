@@ -15,7 +15,8 @@
 #      the mini-app registered in the database that step 1 just wiped.
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# Physical path (-P): lsof reports process working directories without symlinks.
+ROOT="$(CDPATH= cd -- "$(dirname "$0")/.." && pwd -P)"
 COMPOSE_FILE="$ROOT/docker-compose.yml"
 BACKEND_DIR="$ROOT/up-miniapps-template-python-backend"
 FRONTEND_DIR="$ROOT/up-miniapps-react-template"
@@ -40,7 +41,7 @@ require lsof
 compose_port() { # <variable> <default>
   local value="${!1:-}"
   if [[ -z "$value" && -f "$ROOT/.env" ]]; then
-    value="$(sed -n "s/^[[:space:]]*$1[[:space:]]*=[[:space:]]*//p" "$ROOT/.env" | tail -n 1 | tr -d "\"' \r")"
+    value="$(sed -n "s/^[[:space:]]*$1[[:space:]]*=[[:space:]]*//p" "$ROOT/.env" | tail -n 1 | sed 's/[[:space:]]#.*//' | tr -d "\"' \r")"
   fi
   echo "${value:-$2}"
 }
@@ -54,8 +55,8 @@ PORTS=(
   21515 # Vite dev server (up-miniapps-react-template/vite.config.ts)
 )
 
-process_cwd() { # <pid>
-  lsof -a -p "$1" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p'
+process_cwd() { # <pid>; empty when the process exited in the meantime
+  lsof -a -p "$1" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p' || true
 }
 
 stop_port() { # <port>

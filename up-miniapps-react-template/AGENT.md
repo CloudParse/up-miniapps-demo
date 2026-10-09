@@ -44,7 +44,7 @@ Look signatures up in the SDK README or its `.d.ts`; never guess a method name.
 ## Resources: read these while you build
 
 - **Storybook** (live demos of every SDK component and capability): [SDK README, "Storybook" section](https://www.npmjs.com/package/@cloudparse/up-miniapps-sdk?activeTab=readme#storybook). It is part of the SDK repository (`npm run storybook`, `http://localhost:6006`); stories are grouped by area (`lifecycle`, `location`, `map`, `storage-network`, `ui-kit`, ...).
-- **Claude Code plugin / skill** (SDK reference, tested recipes, mandatory mini-app rules, `/new-miniapp` scaffold): [SDK README, "Claude Code plugin" section](https://www.npmjs.com/package/@cloudparse/up-miniapps-sdk?activeTab=readme#claude-code-plugin). Its `up-miniapp-builder` skill loads whenever you work on a mini-app and points at exact signatures. It ships inside the npm package: install it from `node_modules/@cloudparse/up-miniapps-sdk/claude-plugin` (step 4 of the root `SETUP.md`).
+- **Claude Code plugin / skill** (SDK reference, tested recipes, mandatory mini-app rules, `/new-miniapp` scaffold): [SDK README, "Claude Code plugin" section](https://www.npmjs.com/package/@cloudparse/up-miniapps-sdk?activeTab=readme#claude-code-plugin). Its `up-miniapp-builder` skill loads whenever you work on a mini-app and points at exact signatures. It ships inside the npm package: install it from `node_modules/@cloudparse/up-miniapps-sdk/claude-plugin` (step 4 of the root `SETUP.md`); reinstall it after every SDK upgrade.
 - **Showcase app**: a complete mini-app exercising every SDK capability, the best source of working examples.
 - All package versions: [npm versions page](https://www.npmjs.com/package/@cloudparse/up-miniapps-sdk?activeTab=versions).
 

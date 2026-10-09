@@ -1,6 +1,6 @@
 # SETUP
 
-Prerequisites: Docker, [uv](https://docs.astral.sh/uv/), Node.js >= 25.6.1, `curl`, `jq`, `openssl`.
+Prerequisites: Docker, [uv](https://docs.astral.sh/uv/), Node.js >= 25.6.1, `curl`, `jq`, `openssl`, `lsof`.
 
 ## 1. Environment (once)
 
@@ -33,14 +33,19 @@ Open http://localhost:21515
 
 ## 4. Claude Code plugin (once)
 
-The SDK ships a Claude Code plugin: the `up-miniapp-builder` skill (exact SDK signatures, tested recipes, mandatory mini-app rules) and the `/new-miniapp` command. Install it from the copy `npm install` just downloaded, from the root of this project:
+The SDK ships a Claude Code plugin: the `up-miniapp-builder` skill (exact SDK signatures, tested recipes, mandatory mini-app rules) and the `/new-miniapp` command. Install it from the copy `npm install` just downloaded, in a third terminal at the root of this project:
 
 ```bash
 claude plugin marketplace add ./up-miniapps-react-template/node_modules/@cloudparse/up-miniapps-sdk/claude-plugin
 claude plugin install up-miniapps-sdk@up-miniapps
 ```
 
-Claude Code loads the plugin straight from that `node_modules` folder: if you delete it (`scripts/reset.sh --all`), run `npm install` in `up-miniapps-react-template/` again before starting Claude Code.
+Claude Code keeps its own copy of the plugin. After upgrading the SDK (`npm update` or a new version in `package.json`), reinstall it so the skill matches the new SDK:
+
+```bash
+claude plugin uninstall up-miniapps-sdk@up-miniapps
+claude plugin install up-miniapps-sdk@up-miniapps
+```
 
 ## 5. Start Claude Code
 
@@ -64,4 +69,4 @@ Removes the containers and their volumes (PostgreSQL, Redis, RustFS), stops the 
 scripts/reset.sh
 ```
 
-`scripts/reset.sh --all` also deletes `keys/`, the installed dependencies (`.venv`, `node_modules`), the caches, the mini-app `dist/` and `.env`, for a state as fresh as a new clone.
+`scripts/reset.sh --all` also deletes `keys/`, the installed dependencies (`.venv`, `node_modules`), the caches, the mini-app `dist/` and `.env`, for a state as fresh as a new clone. The root `.env` (your port overrides) is kept.
