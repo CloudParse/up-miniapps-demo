@@ -31,7 +31,18 @@ npm run dev
 
 Open http://localhost:21515
 
-## 4. Start Claude Code
+## 4. Claude Code plugin (once)
+
+The SDK ships a Claude Code plugin: the `up-miniapp-builder` skill (exact SDK signatures, tested recipes, mandatory mini-app rules) and the `/new-miniapp` command. Install it from the copy `npm install` just downloaded, from the root of this project:
+
+```bash
+claude plugin marketplace add ./up-miniapps-react-template/node_modules/@cloudparse/up-miniapps-sdk/claude-plugin
+claude plugin install up-miniapps-sdk@up-miniapps
+```
+
+Claude Code loads the plugin straight from that `node_modules` folder: if you delete it (`scripts/reset.sh --all`), run `npm install` in `up-miniapps-react-template/` again before starting Claude Code.
+
+## 5. Start Claude Code
 
 From the root of this project (the folder containing `SETUP.md`), so it loads `CLAUDE.md` and `AGENT.md`:
 
