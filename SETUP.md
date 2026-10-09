@@ -47,9 +47,10 @@ docker compose down
 
 ## Full reset (if something is broken)
 
-Wipes the containers and their volumes (PostgreSQL, Redis, RustFS) and the local credentials, then start again from step 1.
+Removes the containers and their volumes (PostgreSQL, Redis, RustFS), stops the backend and the mini-app from steps 2 and 3 if they still run, and deletes the local credentials. Then start again from step 1.
 
 ```bash
-docker compose down -v
-rm -f up-miniapps-template-python-backend/.env
+scripts/reset.sh
 ```
+
+`scripts/reset.sh --all` also deletes `keys/`, the installed dependencies (`.venv`, `node_modules`), the caches, the mini-app `dist/` and `.env`, for a state as fresh as a new clone.
