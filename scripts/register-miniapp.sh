@@ -4,6 +4,7 @@
 #
 #   scripts/register-miniapp.sh            # app name "My Mini-App"
 #   APP_NAME="Weather" scripts/register-miniapp.sh
+#   CARD_STYLE=violet scripts/register-miniapp.sh  # home card gradient: navy (default), blush, night, mist, violet
 #   FORCE=1 scripts/register-miniapp.sh   # overwrite an existing up-miniapps-template-python-backend/.env
 #
 # Local development only: it relies on the dev sign-in bypass that docker-compose.yml
@@ -15,7 +16,13 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 HUB_URL="${HUB_URL:-http://localhost:21509/api/v1}"
 APP_NAME="${APP_NAME:-My Mini-App}"
 BACKEND_URL="${BACKEND_URL:-http://localhost:21514/api/v1}"
+CARD_STYLE="${CARD_STYLE:-navy}"
 ENV_FILE="$ROOT/up-miniapps-template-python-backend/.env"
+
+case "$CARD_STYLE" in
+  navy|blush|night|mist|violet) ;;
+  *) echo "CARD_STYLE must be one of: navy, blush, night, mist, violet (got \"$CARD_STYLE\")." >&2; exit 1 ;;
+esac
 
 if [[ -f "$ENV_FILE" && "${FORCE:-0}" != "1" ]]; then
   echo "up-miniapps-template-python-backend/.env already exists. Re-run with FORCE=1 to overwrite it." >&2
@@ -72,8 +79,8 @@ admin_token=$(login_admin)
 echo "2/4 Registering \"$APP_NAME\" on the Hub..."
 origin="$(echo "$BACKEND_URL" | sed -E 's#^(https?://[^/]+).*#\1#')"
 if ! application=$(post_json /admin/applications "$(jq -n --arg name "$APP_NAME" \
-  --arg url "$BACKEND_URL" --arg origin "$origin" \
-  '{name:$name, description:"Registered by scripts/register-miniapp.sh", httpBackendUrl:$url, allowedOrigins:[$origin], isDarkTheme:true}')" \
+  --arg url "$BACKEND_URL" --arg origin "$origin" --arg style "$CARD_STYLE" \
+  '{name:$name, description:"Registered by scripts/register-miniapp.sh", httpBackendUrl:$url, allowedOrigins:[$origin], isDarkTheme:true, cardStyle:$style}')" \
   "$admin_token"); then
   echo "Registration failed. Is \"$APP_NAME\" already registered? Pick another APP_NAME." >&2
   exit 1
