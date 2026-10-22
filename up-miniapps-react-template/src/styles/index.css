@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "@fontsource-variable/outfit";
+@import "@fontsource-variable/figtree";
+@import "@fontsource-variable/bricolage-grotesque";
 
 @source "../**/*.{ts,tsx}";
 /* The SDK ships compiled components (BackButtonControl, ...) that use Tailwind
@@ -25,7 +26,10 @@
 
 @theme inline {
   --font-sans:
-    "Outfit Variable", "Outfit", "Avenir Next", "Trebuchet MS", sans-serif;
+    "Figtree Variable", "Figtree", "Avenir Next", "Trebuchet MS", sans-serif;
+  --font-display:
+    "Bricolage Grotesque Variable", "Bricolage Grotesque", "Figtree Variable",
+    "Figtree", "Avenir Next", "Trebuchet MS", sans-serif;
   --color-brand-bg: var(--brand-bg);
   --color-brand-card: var(--brand-card);
   --color-brand-card-strong: var(--brand-card-strong);
@@ -63,12 +67,23 @@
   }
 }
 
-/* The SDK stylesheet declares its own system-ui `--font-sans` inside a Tailwind
-   layer. This unlayered redeclaration always wins, in dev and in the built
-   single-file bundle alike. */
+/* Fonts (mandatory-ui-fonts skill): Figtree for all UI copy (`--font-sans`),
+   Bricolage Grotesque for display text only (`--font-display`, the
+   `font-display` utility: screen titles, section titles, card headlines,
+   dialog titles, avatar initials). Interim: the SDK release this app pins
+   (0.15.0) ships no fonts and declares its own system-ui `--font-sans`
+   inside a Tailwind layer, so the app loads both faces itself (imports at
+   the top) and redeclares both tokens here, unlayered, which always wins in
+   dev and in the built single-file bundle alike. Once the app is on SDK
+   0.16.0+ (which ships the pair and both tokens), remove the two
+   `@fontsource-variable/*` packages, their imports and these token
+   declarations. */
 :root {
   --font-sans:
-    "Outfit Variable", "Outfit", "Avenir Next", "Trebuchet MS", sans-serif;
+    "Figtree Variable", "Figtree", "Avenir Next", "Trebuchet MS", sans-serif;
+  --font-display:
+    "Bricolage Grotesque Variable", "Bricolage Grotesque", "Figtree Variable",
+    "Figtree", "Avenir Next", "Trebuchet MS", sans-serif;
 }
 
 @layer base {

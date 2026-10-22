@@ -4,7 +4,7 @@ Read the root `AGENT.md` first (architecture, security rules, mandatory final re
 
 ## Stack
 
-React 19, TypeScript (strict), Vite, Tailwind CSS v4, Jotai, Biome, and the CloudParse SDK [`@cloudparse/up-miniapps-sdk`](https://www.npmjs.com/package/@cloudparse/up-miniapps-sdk). The font is Outfit (`@fontsource-variable/outfit`), the brand typeface of every Up surface.
+React 19, TypeScript (strict), Vite, Tailwind CSS v4, Jotai, Biome, and the CloudParse SDK [`@cloudparse/up-miniapps-sdk`](https://www.npmjs.com/package/@cloudparse/up-miniapps-sdk). Typography is the Up font pair: Figtree for all UI copy (`font-sans`, the default) and Bricolage Grotesque for display text only (`font-display`: screen titles, section titles, card headlines, dialog titles, avatar initials). Interim: SDK 0.15.0 ships no fonts, so the app loads both itself (`@fontsource-variable/figtree`, `@fontsource-variable/bricolage-grotesque`) and declares `--font-sans`/`--font-display` in `src/styles/index.css`; drop those packages and declarations once on an SDK release that ships the pair (0.16.0+).
 
 ```bash
 npm install
@@ -68,7 +68,7 @@ src/
 ├── hooks/              reusable hooks (useSdkEvent)
 ├── lib/                pure helpers (cn, errors, layout, store)
 ├── services/           network layer: apiService + one service per backend resource
-└── styles/index.css    Tailwind, theme tokens, font
+└── styles/index.css    Tailwind, theme tokens, fonts
 ```
 
 ### Adding a feature

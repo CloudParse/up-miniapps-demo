@@ -11,7 +11,9 @@ export function SplashScreen() {
         src={logoUrl}
       />
       <div className="text-center">
-        <p className="text-xl-plus font-semibold">{APP_CONFIG.appName}</p>
+        <p className="font-display text-xl-plus font-semibold">
+          {APP_CONFIG.appName}
+        </p>
         <p className="mt-1 text-sm-plus text-ink-faint">Starting up…</p>
       </div>
       <SkeletonBlock className="h-2 w-40" />

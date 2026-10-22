@@ -30,7 +30,9 @@ export function ErrorScreen({
         <WifiOff size={30} />
       </div>
       <div>
-        <p className="text-md-plus font-semibold">Something went wrong</p>
+        <p className="font-display text-md-plus font-semibold">
+          Something went wrong
+        </p>
         <p className="mt-2 max-w-sm text-sm-plus text-ink-soft">{message}</p>
       </div>
       <Button className="w-full max-w-xs" onClick={onRetry}>

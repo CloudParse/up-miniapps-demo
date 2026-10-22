@@ -16,7 +16,7 @@ export function TopBar({ insetTop, leading, title }: TopBarProps) {
       style={{ paddingTop: topBarPaddingTop(insetTop) }}
     >
       {leading}
-      <h2 className="min-w-0 flex-1 truncate text-sm-plus font-medium text-ink-soft">
+      <h2 className="min-w-0 flex-1 truncate font-display text-sm-plus font-semibold text-ink-soft">
         {title}
       </h2>
     </header>

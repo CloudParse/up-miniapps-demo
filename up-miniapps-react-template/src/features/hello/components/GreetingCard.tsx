@@ -13,7 +13,7 @@ export function GreetingCard({ endpoint, greeting }: GreetingCardProps) {
       <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-accent-primary/15 text-accent-primary">
         <Sparkles size={22} />
       </div>
-      <h1 className="bg-linear-to-r from-accent-primary to-accent-secondary bg-clip-text text-center text-display font-semibold leading-tight text-transparent">
+      <h1 className="font-display bg-linear-to-r from-accent-primary to-accent-secondary bg-clip-text text-center text-display font-semibold leading-tight text-transparent">
         {greeting.message}
       </h1>
       <EndpointBadge method="GET" path={endpoint} />

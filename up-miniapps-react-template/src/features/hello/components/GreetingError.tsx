@@ -13,7 +13,9 @@ export function GreetingError({ message, onRetry }: GreetingErrorProps) {
         <CloudOff size={22} />
       </div>
       <div>
-        <p className="text-md-plus font-semibold">Backend unreachable</p>
+        <p className="font-display text-md-plus font-semibold">
+          Backend unreachable
+        </p>
         <p className="mt-1 text-sm-plus text-ink-soft">{message}</p>
       </div>
       <Button onClick={onRetry} variant="secondary">
