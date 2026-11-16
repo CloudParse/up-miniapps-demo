@@ -1,6 +1,6 @@
 # SETUP
 
-Prerequisites: Docker, [uv](https://docs.astral.sh/uv/), Node.js >= 25.6.1, `curl`, `jq`, `openssl`, `lsof`.
+Prerequisites: Docker, [uv](https://docs.astral.sh/uv/), Node.js 26 LTS (>= 26), `curl`, `jq`, `openssl`, `lsof`.
 
 ## 1. Environment (once)
 
