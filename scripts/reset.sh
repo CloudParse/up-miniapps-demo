@@ -7,7 +7,7 @@
 #
 # What the default reset does:
 #   1. `docker compose down -v`: removes the containers and their volumes
-#      (PostgreSQL, Redis, RustFS), so the Hub starts with an empty database.
+#      (PostgreSQL, cache, RustFS), so the Hub starts with an empty database.
 #   2. Stops the processes of THIS checkout still listening on the template's
 #      ports (the mini-app backend on 21514, the Vite dev server on 21515).
 #      Anything else on those ports is reported and left alone.
@@ -48,7 +48,7 @@ compose_port() { # <variable> <default>
 PORTS=(
   "$(compose_port CLOUDPARSE_BACKEND_PORT 21509)"
   "$(compose_port POSTGRES_PORT 21510)"
-  "$(compose_port REDIS_PORT 21511)"
+  "$(compose_port CACHE_PORT 21511)"
   "$(compose_port RUSTFS_API_PORT 21512)"
   "$(compose_port RUSTFS_CONSOLE_PORT 21513)"
   21514 # mini-app backend (up-miniapps-template-python-backend/configs/config.toml)

@@ -18,14 +18,14 @@ Up shell (phone)
    ▼
 up-miniapps-react-template        up-miniapps-template-python-backend        CloudParse backend ("Hub")
 React + SDK  ──HTTP + user token──▶  FastAPI  ──machine-to-machine──▶  image cloudparse/up-backend
-                                                                       + PostgreSQL, Redis, RustFS
+                                                                       + PostgreSQL, Valkey, RustFS
 ```
 
 | Path | Role |
 | --- | --- |
 | `up-miniapps-react-template/` | Frontend, `up-miniapps-react-template`. React + Jotai + Tailwind on top of `@cloudparse/up-miniapps-sdk`. Instructions: `up-miniapps-react-template/AGENT.md`. |
 | `up-miniapps-template-python-backend/` | Mini-app backend, `up-miniapps-template-python-backend`. Python + FastAPI. Verifies the Hub's user tokens and serves your own data. Instructions: `up-miniapps-template-python-backend/AGENT.md`. |
-| `docker-compose.yml` | Local environment: `postgres`, `redis`, `rustfs` and `cloudparse-backend` (image `cloudparse/up-backend`). It does **not** run your own two projects: they run on your machine so they hot-reload. |
+| `docker-compose.yml` | Local environment: `postgres`, `cache` (Valkey, Redis-compatible), `rustfs` and `cloudparse-backend` (image `cloudparse/up-backend`). It does **not** run your own two projects: they run on your machine so they hot-reload. |
 | `scripts/` | `generate-keys.sh` (local signing keys), `register-miniapp.sh` (registers your mini-app on the local Hub) and `reset.sh` (wipes the local environment to start again). |
 
 The repository root is **not** an application: no code lives there, only the environment, the scripts and the documentation.
@@ -36,7 +36,7 @@ Sub-project specifics live in `up-miniapps-react-template/AGENT.md` and `up-mini
 
 ```bash
 scripts/generate-keys.sh                 # once: local ES256 key pair (gitignored)
-docker compose up -d --wait              # Hub + PostgreSQL + Redis + RustFS, waits until healthy
+docker compose up -d --wait              # Hub + PostgreSQL + Valkey + RustFS, waits until healthy
 scripts/register-miniapp.sh              # once: registers the app, writes up-miniapps-template-python-backend/.env
 
 cd up-miniapps-template-python-backend && uv sync && uv run --env-file .env python -m app    # http://localhost:21514/docs
@@ -45,7 +45,7 @@ cd up-miniapps-react-template && npm install && cp .env.template .env && npm run
 
 Something broken? `scripts/reset.sh` removes the containers and volumes, frees the ports and deletes the credentials; then start again from the first line.
 
-Host ports (all on `127.0.0.1`, block 21509-21515): Hub `21509`, PostgreSQL `21510`, Redis `21511`, RustFS API `21512`, RustFS console `21513`, backend `21514`, mini-app `21515`. Override the compose ones through a root `.env` (see `.env.template`). Before adding a port anywhere, check it does not clash with another project.
+Host ports (all on `127.0.0.1`, block 21509-21515): Hub `21509`, PostgreSQL `21510`, cache `21511` (`CACHE_PORT`), RustFS API `21512`, RustFS console `21513`, backend `21514`, mini-app `21515`. Override the compose ones through a root `.env` (see `.env.template`). Before adding a port anywhere, check it does not clash with another project.
 
 ## 4. General conventions
 

@@ -26,14 +26,15 @@ services:
       retries: 10
     restart: unless-stopped
 
-  redis:
-    image: redis:7.4-alpine
+  cache:
+    # Valkey, the open source Redis-compatible cache the platform runs (it cannot read Redis 7.4 data files: new volume).
+    image: valkey/valkey:9.1.3-alpine
     ports:
-      - "127.0.0.1:${REDIS_PORT:-21511}:6379"
+      - "127.0.0.1:${CACHE_PORT:-21511}:6379"
     volumes:
-      - redis-data:/data
+      - cache-valkey:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "valkey-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -65,7 +66,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
+      cache:
         condition: service_healthy
       rustfs:
         condition: service_healthy
@@ -75,7 +76,10 @@ services:
       ENVIRONMENT: development
       SERVER_BASE_URL: http://localhost:${CLOUDPARSE_BACKEND_PORT:-21509}
       DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-postgres}?sslmode=disable
-      REDIS_URL: redis://redis:6379/0
+      CACHE_URL: redis://cache:6379/0
+      # Read instead of CACHE_URL by Hub images built before up/backend c26a6cb (2026-11-16), such as the default tag
+      # below. Remove it once UP_BACKEND_TAG points to a newer image.
+      REDIS_URL: redis://cache:6379/0
       STORAGE_ENDPOINT: rustfs:9000
       STORAGE_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:-admin}
       STORAGE_SECRET_KEY: ${RUSTFS_SECRET_KEY:-password123}
@@ -99,5 +103,5 @@ services:
 
 volumes:
   postgres-data:
-  redis-data:
+  cache-valkey:
   rustfs-data:

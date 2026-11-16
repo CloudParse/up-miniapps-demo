@@ -63,7 +63,7 @@ docker compose down
 
 ## Full reset (if something is broken)
 
-Removes the containers and their volumes (PostgreSQL, Redis, RustFS), stops the backend and the mini-app from steps 2 and 3 if they still run, and deletes the local credentials. Then start again from step 1.
+Removes the containers and their volumes (PostgreSQL, cache, RustFS), stops the backend and the mini-app from steps 2 and 3 if they still run, and deletes the local credentials. Then start again from step 1.
 
 ```bash
 scripts/reset.sh
