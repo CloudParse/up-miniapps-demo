@@ -19,41 +19,62 @@ Where it lives:
 
 ## 2. Architecture
 
+The demo runs in a **Coder workspace** of the organisation (`docs/coder.md`). The backend and the frontend both run in the workspace. They use the organisation's DEV environment: its backend (the "Hub"), its PostgreSQL and its bucket.
+
+```text
+Browser ──Coder port URL (private)──▶ frontend/ (Vite, 21515) ──/api/ proxy──▶ backend/ (FastAPI, 127.0.0.1:21514)
+                                                                                 ├──▶ DEV Hub      http://backend:8080/api/v1
+                                                                                 ├──▶ DEV PostgreSQL   (personal credentials, not used by the demo)
+                                                                                 └──▶ DEV bucket       (personal credentials, not used by the demo)
+```
+
+In production the Up shell (the phone app) hosts the mini-app:
+
 ```text
 Up shell (phone)
    │  hosts the mini-app in a WebView; the SDK bridge talks to it
    ▼
 frontend/                          backend/                         CloudParse backend ("Hub")
-React + SDK  ──HTTP + user token──▶  FastAPI  ──machine-to-machine──▶  image cloudparse/up-backend
-                                                                       + PostgreSQL, Valkey, RustFS
+React + SDK  ──HTTP + user token──▶  FastAPI  ──machine-to-machine──▶  the organisation's backend
 ```
+
+How a request travels:
+
+1. The shell loads `frontend/` (the single `dist/index.html` built by `up-sdk build`). In a browser, `SDKProvider` mounts the SDK simulator instead.
+2. The frontend calls its backend through the SDK (`createApiService`). The URL comes from the shell (`env.backendUrl`, registered on the Hub). In development it comes from `VITE_BACKEND_URL`.
+3. The shell asks the Hub for a scoped token for this user and this app (ES256 JWT, `aud` = app uuid). It sends it as `Authorization: Bearer`.
+4. `backend/` verifies the token offline with the Hub's public key (signature, `exp`, `aud`), then answers.
+5. `backend/` calls the Hub only for Hub features, with its own machine-to-machine credentials (`HUB_APP_UUID`, `HUB_CLIENT_SECRET`).
+
+In development `VITE_BACKEND_URL` is `/api/v1`. The Vite dev server forwards `/api/` to the backend on `127.0.0.1:21514`. The page and the API share one origin, so one port is enough.
 
 | Path | Role |
 | --- | --- |
 | `frontend/` | Mini-app, `up-miniapps-demo-frontend`. React + Jotai + Tailwind + MapLibre on top of `@cloudparse/up-miniapps-sdk`. Instructions: `frontend/AGENT.md`. |
 | `backend/` | Mini-app backend, `up-miniapps-demo-backend`. Python + FastAPI. Verifies the Hub's user tokens and serves your own data. Instructions: `backend/AGENT.md`. |
-| `docker-compose.yml` | Local environment: `postgres`, `cache` (Valkey, Redis-compatible), `rustfs` and `cloudparse-backend` (image `cloudparse/up-backend`). It does **not** run your own two projects: they run on your machine so they hot-reload. |
+| `docs/coder.md` | How the demo runs in a Coder workspace: the services it uses, the settings, the limits. |
+| `SETUP.md` | The commands, in order. |
 | `.gitlab-ci.yml` | One manual job, `github-mirror`: pushes `main` to GitHub (template `.git_mirror_push` of `CloudParse/devops/ci-templates`). |
-| `scripts/` | `generate-keys.sh` (local signing keys), `register-miniapp.sh` (registers your mini-app on the local Hub) and `reset.sh` (wipes the local environment to start again). |
 
-The repository root is **not** an application: no code lives there, only the environment, the scripts and the documentation.
+The repository root is **not** an application: no code lives there, only the documentation and the CI file.
 
 Sub-project specifics live in `frontend/AGENT.md` and `backend/AGENT.md`. When they conflict with this file, the sub-project file wins for its own folder.
 
 ## 3. Quick start
 
-```bash
-scripts/generate-keys.sh                 # once: local ES256 key pair (gitignored)
-docker compose up -d --wait              # Hub + PostgreSQL + Valkey + RustFS, waits until healthy
-scripts/register-miniapp.sh              # once: registers the app, writes backend/.env
+The full list is in `SETUP.md`. In short, in the workspace:
 
-cd backend && uv sync && uv run --env-file .env python -m app             # http://localhost:21514/docs
-cd frontend && npm install && cp .env.template .env && npm run dev        # http://localhost:21515
+```bash
+cd backend && cp .env.template .env && uv sync && uv run --env-file .env python -m app    # terminal 1
+cd frontend && npm install && cp .env.template .env && npm run dev                       # terminal 2
 ```
 
-Something broken? `scripts/reset.sh` removes the containers and volumes, frees the ports and deletes the credentials; then start again from the first line.
+Then open port `21515` from the Coder dashboard.
 
-Host ports (block 21509-21515): Hub `21509`, PostgreSQL `21510`, cache `21511` (`CACHE_PORT`), RustFS API `21512`, RustFS console `21513`, backend `21514`, mini-app `21515`. All are bound to `127.0.0.1`, except the Vite dev server (`21515`): it listens on every interface, so a phone or an emulator on the local network can open the mini-app. Override the compose ones through a root `.env` (see `.env.template`). Before adding a port anywhere, check it does not clash with another project.
+Ports:
+- `21514`: the backend, bound to `127.0.0.1`.
+- `21515`: the Vite dev server, on every interface. Through its proxy, the backend's `/api/` routes are reachable on that port too.
+- Before adding a port anywhere, check it does not clash with another project.
 
 ## 4. General conventions
 
@@ -69,14 +90,15 @@ Host ports (block 21509-21515): Hub `21509`, PostgreSQL `21510`, cache `21511` (
 
 ## 5. Security rules
 
-- **No secret in the repository**, ever: not in code, config, compose, scripts, logs or test names. Secrets come from the environment (`backend/.env`, gitignored). Mark them `SecretStr` so they never print.
+- **No secret in the repository**, ever: not in code, config, scripts, logs or test names. Secrets come from the environment (`backend/.env`, gitignored). Mark them `SecretStr` so they never print.
 - **Anything in `frontend/` is public.** `VITE_*` variables are inlined into the bundle: never put a key, token or secret there. Dev-only values are blanked in production builds.
 - **Validate every input** at the edge (Pydantic models, `Query(...)` constraints). Never trust a client-supplied id, name or role.
 - **Authenticate and authorise.** Choose the access level of every route up front: public, authenticated, or admin (admin = `profile:miniapp:admin` scope in the Hub-signed token, enforced by `require_admin`, see the backend `AGENT.md`). Routes that return or change user data depend on `get_current_user`. A token minted for another mini-app (`aud`) must be rejected. Never weaken a check to "make it work".
 - **Never leak internals**: error bodies are generic (`{"error": {"code", "message"}}`), tracebacks stay in the logs, interactive docs are off in production.
 - **No raw HTML.** Never use `dangerouslySetInnerHTML`; no string-built SQL (use a query builder or parameters).
 - **CORS is an explicit allow-list**, never `*` with credentials.
-- **Docker**: pinned image tags, ports bound to `127.0.0.1`, no secret baked into an image, keys mounted read-only. The local dev OTP bypass (`TESTING_ALLOW_DEV_AUTH_BYPASS`) exists for local use only and must never be enabled elsewhere.
+- **Images**: pinned tags, no secret baked into an image.
+- **Your data credentials** (`~/.config/up/env`) are personal and short-lived. Never copy them into the repository, a config file or a log.
 - **Dependencies**: add as few as possible, run `npm audit` (frontend) and `uvx pip-audit` (backend) before shipping, and justify each new one.
 
 ## 6. Workflow
@@ -102,7 +124,7 @@ A task is **not finished** until this review has been done on the whole diff and
 - [ ] Endpoints protected; data exposure limited to what the caller needs.
 - [ ] Errors do not leak internals.
 - [ ] New dependencies justified and audited.
-- [ ] Docker and compose: pinned tags, local-only ports, no secret in images, safe inter-service communication.
+- [ ] Images: pinned tags, no secret in images.
 - [ ] Frontend: no secret in the bundle, no raw HTML injection, no unsafe URL handling.
 
 ### 7.2 Clean architecture

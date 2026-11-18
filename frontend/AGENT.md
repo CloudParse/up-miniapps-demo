@@ -11,7 +11,7 @@ Read the root `AGENT.md` first (architecture, security rules, mandatory final re
 
 ```bash
 npm install
-cp .env.template .env      # VITE_BACKEND_URL points at the backend (http://localhost:21514/api/v1)
+cp .env.template .env      # VITE_BACKEND_URL=/api/v1, proxied by Vite to the backend on 127.0.0.1:21514
 npm run dev                # http://localhost:21515, runs in the SDK phone simulator
 npm run check:write        # Biome: format + lint + organise imports
 npm run typecheck
@@ -36,6 +36,8 @@ Outside the shell (your browser), `SDKProvider` mounts a **simulator**: a phone 
 ### Calling the backend
 
 - `src/services/backend.ts` builds the client with `createApiService`. The URL comes from the shell (`env.backendUrl`) first, then from `VITE_BACKEND_URL`. Never invent one: a missing backend shows a visible empty state.
+- In development `VITE_BACKEND_URL` is `/api/v1`. `config/env.ts` turns a path into an absolute URL on the page's origin, and the Vite dev server forwards `/api/` to `http://127.0.0.1:21514` (`vite.config.ts`). An absolute URL is called directly.
+- `vite.config.ts` `server.allowedHosts`: Vite answers only to known hosts. In a Coder workspace it allows exactly the port URL host of 21515, read from `VSCODE_PROXY_URI`. The shell variable `DEV_ALLOWED_HOSTS` adds hosts (Vite does not read it from `.env`). See `../docs/coder.md`.
 - Requests go through the shell, which attaches the user's token. Never hand-roll `fetch`.
 - `src/services/helloService.ts` is the worked example: `GET /api/v1/hello`, wire type, mapping to the UI type in one function. `features/home/BackendGreetingCard.tsx` displays it, `features/home/greetingLoader.ts` loads it into `atoms/greeting.ts`.
 - The realtime demo (`features/tools/RealtimeDemo.tsx`) needs a WebSocket URL from the shell. The demo backend has none, so the demo shows its "not configured" state locally.

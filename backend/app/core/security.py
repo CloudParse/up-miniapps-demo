@@ -78,6 +78,7 @@ def build_token_verifier(config: Config) -> TokenVerifier | None:
 def _read_public_key(path: Path) -> str:
     if not path.is_file():
         raise FileNotFoundError(
-            f"Hub public key not found at {path}. Run scripts/generate-keys.sh."
+            f"Hub public key not found at {path}. Put the Hub's public key there "
+            "or set HUB_PUBLIC_KEY_PATH."
         )
     return path.read_text(encoding="utf-8")

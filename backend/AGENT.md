@@ -122,26 +122,13 @@ Rules:
 - Admin power is checked from the token on every request; never cache "is admin" or trust a flag sent by the client (body, header, query).
 - Admin routes never return more than needed, and are covered by three tests: admin `200`, regular user `403`, anonymous `401` (`tests/test_admin.py`).
 
-### Trying it locally
+### Trying it
 
-`scripts/register-miniapp.sh` creates a local Hub administrator, so you can mint both kinds of token:
+The tests cover the three access levels without a Hub (`tests/test_admin.py`, `tests/test_me.py`): `tests/conftest.py` signs tokens with a locally generated key pair standing in for the Hub's. Against the real DEV backend, a user token comes from the shell, so in a Coder workspace only the public route can be called by hand:
 
 ```bash
-HUB=http://localhost:21509/api/v1
-MASTER=$(curl -s -X POST $HUB/auth/login -H 'Content-Type: application/json' \
-  -d '{"countryCode":"+33","localNumber":"612345678","password":"password123"}' | jq -r .token)
-source .env   # HUB_APP_UUID
-
-mint() { curl -s -X POST $HUB/applications/$HUB_APP_UUID/token \
-  -H "Authorization: Bearer $MASTER" -H 'Content-Type: application/json' -d "$1" | jq -r .token; }
-
-USER_TOKEN=$(mint '{}')                                             # no admin scope
-ADMIN_TOKEN=$(mint '{"scopes":["profile:miniapp:admin"]}')          # granted: this user is a Hub admin
-
-curl -s localhost:21514/api/v1/hello                                                    # 200, public
-curl -s localhost:21514/api/v1/me -H "Authorization: Bearer $USER_TOKEN"                # 200, authenticated
-curl -s localhost:21514/api/v1/admin/hello -H "Authorization: Bearer $USER_TOKEN"       # 403
-curl -s localhost:21514/api/v1/admin/hello -H "Authorization: Bearer $ADMIN_TOKEN"      # 200
+curl -s localhost:21514/api/v1/hello                                  # 200, public
+curl -s -o /dev/null -w '%{http_code}\n' localhost:21514/api/v1/me    # 401 without a token, 503 before registration
 ```
 
 For the admin scope to be requested by the real app, list it in the application's `requiredScopes` when registering it.
@@ -160,7 +147,7 @@ Same convention as every Go backend of the Up family:
 
 ### The two backends
 
-- **CloudParse backend (the "Hub")**: the official Up backend (`cloudparse/up-backend`). It owns users, sign-in, the catalogue of mini-apps, push, points and achievements. It signs the tokens users carry. It is the authority; you run it locally through `docker-compose.yml`.
+- **CloudParse backend (the "Hub")**: the official Up backend (`cloudparse/up-backend`). It owns users, sign-in, the catalogue of mini-apps, push, points and achievements. It signs the tokens users carry. It is the authority. In a Coder workspace your backend uses the organisation's DEV backend, `http://backend:8080/api/v1` (`hub.base_url`).
 - **Your mini-app backend** (this project): owns **your** data and rules. It never sees passwords or phone numbers; it only receives a token saying *which user* is calling, *from which mini-app*.
 
 ### How your backend is identified
@@ -190,17 +177,11 @@ An admin calls `POST /api/v1/admin/applications` on the Hub (in production, from
 }
 ```
 
-Response (`201`): `{ "application": { "uuid": "...", ... }, "clientSecret": "..." }`. `name` must be unique (min 3 characters). `cardStyle` is required: the gradient of the mini-app's card on the shell home screen, one of `navy`, `blush`, `night`, `mist`, `violet` (`scripts/register-miniapp.sh` sends `navy`, override with `CARD_STYLE=...`). A lost secret cannot be read back: an admin calls `POST /api/v1/admin/applications/{uuid}/regenerate-secret`, and you update your environment.
+Response (`201`): `{ "application": { "uuid": "...", ... }, "clientSecret": "..." }`. `name` must be unique (min 3 characters). `cardStyle` is required: the gradient of the mini-app's card on the shell home screen, one of `navy`, `blush`, `night`, `mist`, `violet`. A lost secret cannot be read back: an admin calls `POST /api/v1/admin/applications/{uuid}/regenerate-secret`, and you update your environment.
 
-### Locally, in one command
+### Getting the credentials
 
-```bash
-scripts/generate-keys.sh       # once
-docker compose up -d
-scripts/register-miniapp.sh    # APP_NAME="Weather" scripts/register-miniapp.sh to rename
-```
-
-The script creates a throw-away local admin (the compose file enables the dev sign-in bypass: any phone number, OTP `999999`), registers the app, checks the credentials with a machine login, and writes `HUB_APP_UUID` and `HUB_CLIENT_SECRET` to `backend/.env`. The `uuid` and secret are then read by the config (`hub.app_uuid`, `hub.client_secret`).
+An organisation admin registers the mini-app on the organisation's DEV backend and gives you its `uuid` and `clientSecret`. Put them in `backend/.env` (copied from `.env.template`) as `HUB_APP_UUID` and `HUB_CLIENT_SECRET`; the config reads them as `hub.app_uuid` and `hub.client_secret`. The backend also needs the Hub's public key at `/etc/up-platform/jwt/public.pem`: see `../docs/coder.md`, "Limits".
 
 Until the app is registered, `hub.app_uuid` is empty: public routes work, authenticated routes answer `503` and the startup log says why.
 
@@ -229,21 +210,14 @@ POST {hub.base_url}/partner/auth/login   {"appUuid": "...", "clientSecret": "...
 
 Send the token as `Authorization: Bearer` on `/partner/...` routes. Cache it and refresh it a few minutes before expiry. Put this in `services/hub_client.py` behind a small class with an injectable `httpx2` client (so tests can stub the Hub), with a timeout on every call. Some partner capabilities (push, phone lookup, ...) must additionally be allow-listed for your app uuid in the Hub's configuration. Ask the Up team; do not look for a way around it.
 
-### Testing the registration locally
+### Checking the registration
 
-1. `docker compose up -d`, then `scripts/register-miniapp.sh`. Step 3 of the script already proves the machine login works (it fails loudly otherwise).
-2. Start the backend; `curl localhost:21514/api/v1/hello` answers publicly.
-3. Mint a user token the way the shell does, then call the protected route:
+The machine login proves the credentials work (run in `backend/`, after `set -a; . ./.env; set +a`):
 
 ```bash
-HUB=http://localhost:21509/api/v1
-MASTER=$(curl -s -X POST $HUB/auth/login -H 'Content-Type: application/json' \
-  -d '{"countryCode":"+33","localNumber":"612345678","password":"password123"}' | jq -r .token)
-source backend/.env
-SCOPED=$(curl -s -X POST $HUB/applications/$HUB_APP_UUID/token \
-  -H "Authorization: Bearer $MASTER" -H 'Content-Type: application/json' -d '{}' | jq -r .token)
-curl -s localhost:21514/api/v1/me -H "Authorization: Bearer $SCOPED"   # 200 + your user uuid
-curl -s -o /dev/null -w '%{http_code}\n' localhost:21514/api/v1/me      # 401 without a token
+jq -n '{appUuid: env.HUB_APP_UUID, clientSecret: env.HUB_CLIENT_SECRET}' \
+  | curl -fsS -X POST http://backend:8080/api/v1/partner/auth/login -H 'Content-Type: application/json' --data @- \
+  | jq -e .token >/dev/null && echo "credentials OK"
 ```
 
 Automated tests never need the Hub: `tests/conftest.py` signs tokens with a locally generated key pair standing in for the Hub's.

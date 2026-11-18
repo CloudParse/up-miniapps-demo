@@ -12,3 +12,4 @@ dist-ssr
 *.suo
 *.sw?
 /.env
+*.tsbuildinfo

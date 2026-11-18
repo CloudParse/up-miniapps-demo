@@ -7,6 +7,29 @@ import { viteSingleFile } from "vite-plugin-singlefile";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+const DEV_PORT = 21515;
+// The demo backend (../backend/configs/config.toml, server.port).
+const BACKEND_ORIGIN = "http://127.0.0.1:21514";
+
+// Vite answers only to the hosts it knows. In a Coder workspace, VSCODE_PROXY_URI
+// is the port URL template (https://{{port}}--<agent>--<workspace>--<owner>--<org>.<apps domain>):
+// allow exactly the host of this server's port, not the whole apps domain, which
+// every organisation shares. DEV_ALLOWED_HOSTS (a shell variable, comma separated,
+// a leading dot allows the subdomains) adds hosts by hand.
+function devAllowedHosts(): string[] {
+  const hosts = (process.env.DEV_ALLOWED_HOSTS ?? "")
+    .split(",")
+    .map((host) => host.trim())
+    .filter((host) => host.length > 0);
+  const coderProxy = process.env.VSCODE_PROXY_URI;
+  if (coderProxy) {
+    hosts.push(
+      new URL(coderProxy.replace("{{port}}", String(DEV_PORT))).hostname,
+    );
+  }
+  return hosts;
+}
+
 // Single self-contained dist/index.html, injected into the native WebView
 // (see `up-sdk build`). maplibre-gl needs its worker inlined: see
 // src/main.tsx's setWorkerUrl() call.
@@ -44,8 +67,11 @@ export default defineConfig({
     ],
   },
   server: {
+    allowedHosts: devAllowedHosts(),
     host: true,
-    port: 21515,
+    port: DEV_PORT,
+    // Same origin as the page: no CORS, and only port 21515 has to be opened.
+    proxy: { "/api/": BACKEND_ORIGIN },
     strictPort: true,
   },
 });
