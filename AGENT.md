@@ -16,7 +16,6 @@ The point is the **shape**: a clean architecture, a secure setup and a workflow 
 Where it lives:
 - GitLab `CloudParse/up/miniapps/up-miniapps-demo` is the source.
 - The manual CI job `github-mirror` (`.gitlab-ci.yml`) pushes `main` to the public GitHub mirror `CloudParse/up-miniapp-demo`.
-- Planned: each organisation's Gitea gets a copy for the teams that start a project in a Coder workspace (not set up on 2026-11-18).
 
 ## 2. Architecture
 
