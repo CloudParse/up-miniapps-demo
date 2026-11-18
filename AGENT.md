@@ -15,7 +15,7 @@ The point is the **shape**: a clean architecture, a secure setup and a workflow 
 
 Where it lives:
 - GitLab `CloudParse/up/miniapps/up-miniapps-demo` is the source.
-- The manual CI job `github-mirror` (`.gitlab-ci.yml`) pushes `main` to the public GitHub mirror `CloudParse/up-miniapp-demo`.
+- The manual CI job `github-mirror` (`.gitlab-ci.yml`) pushes `main` to the public GitHub mirror `CloudParse/up-miniapps-demo`.
 
 ## 2. Architecture
 
