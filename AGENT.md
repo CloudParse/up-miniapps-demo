@@ -75,7 +75,7 @@ Then open the app "Mini-app" of the workspace in the Coder dashboard (port `2151
 
 Ports:
 - `21514`: the API, bound to `127.0.0.1`.
-- `21515`: the Vite dev server, on every interface. Through its proxy, the API's `/api/` routes are reachable on that port too.
+- `21515`: the Vite dev server, bound to `127.0.0.1` (Coder reaches it there). Through its proxy, the API's `/api/` routes are reachable on that port too.
 - Before adding a port anywhere, check it does not clash with another project.
 
 ## 4. General conventions

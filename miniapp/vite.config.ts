@@ -72,7 +72,9 @@ export default defineConfig({
   },
   server: {
     allowedHosts: devAllowedHosts(),
-    host: true,
+    // loopback only: Coder reaches the app at 127.0.0.1:21515, and nothing else in the cluster may (the dev server serves the
+    // project's files)
+    host: "127.0.0.1",
     port: DEV_PORT,
     // Same origin as the page: no CORS, and only port 21515 has to be opened.
     proxy: {

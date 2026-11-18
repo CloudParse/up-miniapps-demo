@@ -25,21 +25,21 @@ export interface TestUser {
 
 export const TEST_USERS: readonly TestUser[] = DEV
   ? [
-      { firstName: "Camille", lastName: "Martin", localNumber: "700000001" },
-      { firstName: "Lucas", lastName: "Bernard", localNumber: "700000002" },
-      { firstName: "Inès", lastName: "Dubois", localNumber: "700000003" },
-      { firstName: "Hugo", lastName: "Thomas", localNumber: "700000004" },
-      { firstName: "Léa", lastName: "Robert", localNumber: "700000005" },
-      { firstName: "Nathan", lastName: "Richard", localNumber: "700000006" },
-      { firstName: "Chloé", lastName: "Petit", localNumber: "700000007" },
-      { firstName: "Yanis", lastName: "Durand", localNumber: "700000008" },
-      { firstName: "Manon", lastName: "Leroy", localNumber: "700000009" },
-      { firstName: "Adam", lastName: "Moreau", localNumber: "700000010" },
-      { firstName: "Sarah", lastName: "Simon", localNumber: "700000011" },
-      { firstName: "Louis", lastName: "Laurent", localNumber: "700000012" },
-      { firstName: "Jade", lastName: "Lefebvre", localNumber: "700000013" },
-      { firstName: "Gabriel", lastName: "Michel", localNumber: "700000014" },
-      { firstName: "Zoé", lastName: "Garcia", localNumber: "700000015" },
+      { firstName: "Camille", lastName: "Martin", localNumber: "639980001" },
+      { firstName: "Lucas", lastName: "Bernard", localNumber: "639980002" },
+      { firstName: "Inès", lastName: "Dubois", localNumber: "639980003" },
+      { firstName: "Hugo", lastName: "Thomas", localNumber: "639980004" },
+      { firstName: "Léa", lastName: "Robert", localNumber: "639980005" },
+      { firstName: "Nathan", lastName: "Richard", localNumber: "639980006" },
+      { firstName: "Chloé", lastName: "Petit", localNumber: "639980007" },
+      { firstName: "Yanis", lastName: "Durand", localNumber: "639980008" },
+      { firstName: "Manon", lastName: "Leroy", localNumber: "639980009" },
+      { firstName: "Adam", lastName: "Moreau", localNumber: "639980010" },
+      { firstName: "Sarah", lastName: "Simon", localNumber: "639980011" },
+      { firstName: "Louis", lastName: "Laurent", localNumber: "639980012" },
+      { firstName: "Jade", lastName: "Lefebvre", localNumber: "639980013" },
+      { firstName: "Gabriel", lastName: "Michel", localNumber: "639980014" },
+      { firstName: "Zoé", lastName: "Garcia", localNumber: "639980015" },
     ]
   : [];
 
