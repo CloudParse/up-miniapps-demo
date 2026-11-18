@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Registers this mini-app on the LOCAL CloudParse backend (the Hub) and writes
-# the credentials it returns to up-miniapps-template-python-backend/.env.
+# the credentials it returns to backend/.env.
 #
 #   scripts/register-miniapp.sh            # app name "My Mini-App"
 #   APP_NAME="Weather" scripts/register-miniapp.sh
 #   CARD_STYLE=violet scripts/register-miniapp.sh  # home card gradient: navy (default), blush, night, mist, violet
-#   FORCE=1 scripts/register-miniapp.sh   # overwrite an existing up-miniapps-template-python-backend/.env
+#   FORCE=1 scripts/register-miniapp.sh   # overwrite an existing backend/.env
 #
 # Local development only: it relies on the dev sign-in bypass that docker-compose.yml
 # enables (any phone number, OTP code 999999). In production an admin registers
@@ -17,7 +17,7 @@ HUB_URL="${HUB_URL:-http://localhost:21509/api/v1}"
 APP_NAME="${APP_NAME:-My Mini-App}"
 BACKEND_URL="${BACKEND_URL:-http://localhost:21514/api/v1}"
 CARD_STYLE="${CARD_STYLE:-navy}"
-ENV_FILE="$ROOT/up-miniapps-template-python-backend/.env"
+ENV_FILE="$ROOT/backend/.env"
 
 case "$CARD_STYLE" in
   navy|blush|night|mist|violet) ;;
@@ -25,7 +25,7 @@ case "$CARD_STYLE" in
 esac
 
 if [[ -f "$ENV_FILE" && "${FORCE:-0}" != "1" ]]; then
-  echo "up-miniapps-template-python-backend/.env already exists. Re-run with FORCE=1 to overwrite it." >&2
+  echo "backend/.env already exists. Re-run with FORCE=1 to overwrite it." >&2
   exit 1
 fi
 
@@ -93,9 +93,9 @@ post_json /partner/auth/login \
   "$(jq -n --arg id "$app_uuid" --arg secret "$client_secret" '{appUuid:$id, clientSecret:$secret}')" \
   | jq -e .token >/dev/null
 
-echo "4/4 Writing up-miniapps-template-python-backend/.env..."
+echo "4/4 Writing backend/.env..."
 umask 077
 printf 'HUB_APP_UUID=%s\nHUB_CLIENT_SECRET=%s\n' "$app_uuid" "$client_secret" > "$ENV_FILE"
 
 echo "Done. Mini-app UUID: $app_uuid"
-echo "The client secret is only shown once: it now lives in up-miniapps-template-python-backend/.env (gitignored)."
+echo "The client secret is only shown once: it now lives in backend/.env (gitignored)."

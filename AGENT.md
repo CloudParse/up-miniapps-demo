@@ -1,14 +1,22 @@
-# AGENT.md: Up Mini-App Template
+# AGENT.md: Up Mini-App Demo
 
 Entry point for every agent and student working in this repository. Read it fully before changing anything, then read the `AGENT.md` of the sub-project you are touching.
 
-Everything in this repository (code, comments, UI text, docs, commit messages) is written in English.
+Code, comments, docs and commit messages are written in English. The UI text of `frontend/` is French.
 
 ## 1. Purpose
 
-This repository is a **reference template** for students building an Up mini-app: a small web app that runs inside the Up mobile app (the "shell"), plus the backend that serves it.
+This repository is the **demo project** for teams building an Up mini-app: a web app that runs inside the Up mobile app (the "shell"), plus the backend that serves it.
 
-It is deliberately tiny: one backend route returns `Hello, World!` and the mini-app displays it. The point is not the feature but the **shape**: a clean architecture, a secure setup and a workflow you can copy for a real idea. The code must itself be an example of what we ask of you.
+- `frontend/` uses every public capability of `@cloudparse/up-miniapps-sdk` (map and journeys, QR codes, network, realtime, storage, haptics, permissions, account, achievements, payment demo). Its home screen shows the message of the backend route `GET /api/v1/hello`.
+- `backend/` is a small FastAPI service with public, authenticated and admin routes.
+
+The point is the **shape**: a clean architecture, a secure setup and a workflow you can copy for a real idea. The code must itself be an example of what we ask of you.
+
+Where it lives:
+- GitLab `CloudParse/up/miniapps/up-miniapps-demo` is the source.
+- The manual CI job `github-mirror` (`.gitlab-ci.yml`) pushes `main` to the public GitHub mirror `CloudParse/up-miniapp-demo`.
+- Planned: each organisation's Gitea gets a copy for the teams that start a project in a Coder workspace (not set up on 2026-11-18).
 
 ## 2. Architecture
 
@@ -16,43 +24,44 @@ It is deliberately tiny: one backend route returns `Hello, World!` and the mini-
 Up shell (phone)
    │  hosts the mini-app in a WebView; the SDK bridge talks to it
    ▼
-up-miniapps-react-template        up-miniapps-template-python-backend        CloudParse backend ("Hub")
+frontend/                          backend/                         CloudParse backend ("Hub")
 React + SDK  ──HTTP + user token──▶  FastAPI  ──machine-to-machine──▶  image cloudparse/up-backend
                                                                        + PostgreSQL, Valkey, RustFS
 ```
 
 | Path | Role |
 | --- | --- |
-| `up-miniapps-react-template/` | Frontend, `up-miniapps-react-template`. React + Jotai + Tailwind on top of `@cloudparse/up-miniapps-sdk`. Instructions: `up-miniapps-react-template/AGENT.md`. |
-| `up-miniapps-template-python-backend/` | Mini-app backend, `up-miniapps-template-python-backend`. Python + FastAPI. Verifies the Hub's user tokens and serves your own data. Instructions: `up-miniapps-template-python-backend/AGENT.md`. |
+| `frontend/` | Mini-app, `up-miniapps-demo-frontend`. React + Jotai + Tailwind + MapLibre on top of `@cloudparse/up-miniapps-sdk`. Instructions: `frontend/AGENT.md`. |
+| `backend/` | Mini-app backend, `up-miniapps-demo-backend`. Python + FastAPI. Verifies the Hub's user tokens and serves your own data. Instructions: `backend/AGENT.md`. |
 | `docker-compose.yml` | Local environment: `postgres`, `cache` (Valkey, Redis-compatible), `rustfs` and `cloudparse-backend` (image `cloudparse/up-backend`). It does **not** run your own two projects: they run on your machine so they hot-reload. |
+| `.gitlab-ci.yml` | One manual job, `github-mirror`: pushes `main` to GitHub (template `.git_mirror_push` of `CloudParse/devops/ci-templates`). |
 | `scripts/` | `generate-keys.sh` (local signing keys), `register-miniapp.sh` (registers your mini-app on the local Hub) and `reset.sh` (wipes the local environment to start again). |
 
 The repository root is **not** an application: no code lives there, only the environment, the scripts and the documentation.
 
-Sub-project specifics live in `up-miniapps-react-template/AGENT.md` and `up-miniapps-template-python-backend/AGENT.md`. When they conflict with this file, the sub-project file wins for its own folder.
+Sub-project specifics live in `frontend/AGENT.md` and `backend/AGENT.md`. When they conflict with this file, the sub-project file wins for its own folder.
 
 ## 3. Quick start
 
 ```bash
 scripts/generate-keys.sh                 # once: local ES256 key pair (gitignored)
 docker compose up -d --wait              # Hub + PostgreSQL + Valkey + RustFS, waits until healthy
-scripts/register-miniapp.sh              # once: registers the app, writes up-miniapps-template-python-backend/.env
+scripts/register-miniapp.sh              # once: registers the app, writes backend/.env
 
-cd up-miniapps-template-python-backend && uv sync && uv run --env-file .env python -m app    # http://localhost:21514/docs
-cd up-miniapps-react-template && npm install && cp .env.template .env && npm run dev # http://localhost:21515
+cd backend && uv sync && uv run --env-file .env python -m app             # http://localhost:21514/docs
+cd frontend && npm install && cp .env.template .env && npm run dev        # http://localhost:21515
 ```
 
 Something broken? `scripts/reset.sh` removes the containers and volumes, frees the ports and deletes the credentials; then start again from the first line.
 
-Host ports (all on `127.0.0.1`, block 21509-21515): Hub `21509`, PostgreSQL `21510`, cache `21511` (`CACHE_PORT`), RustFS API `21512`, RustFS console `21513`, backend `21514`, mini-app `21515`. Override the compose ones through a root `.env` (see `.env.template`). Before adding a port anywhere, check it does not clash with another project.
+Host ports (block 21509-21515): Hub `21509`, PostgreSQL `21510`, cache `21511` (`CACHE_PORT`), RustFS API `21512`, RustFS console `21513`, backend `21514`, mini-app `21515`. All are bound to `127.0.0.1`, except the Vite dev server (`21515`): it listens on every interface, so a phone or an emulator on the local network can open the mini-app. Override the compose ones through a root `.env` (see `.env.template`). Before adding a port anywhere, check it does not clash with another project.
 
 ## 4. General conventions
 
 - **Small, single-purpose units.** A file, function or component does one thing. Split before it grows, not after.
 - **Explicit names.** `fetchGreeting`, not `getData`. No abbreviations a newcomer would have to guess.
 - **Typed everywhere.** TypeScript `strict` and Python `mypy --strict`; never `any` (use `unknown` and narrow).
-- **One source of truth.** No duplicated logic, constants or types. Configuration is centralised (`up-miniapps-react-template/src/config/env.ts`, `up-miniapps-template-python-backend/app/core/config.py`).
+- **One source of truth.** No duplicated logic, constants or types. Configuration is centralised (`frontend/src/config/env.ts`, `backend/app/core/config.py`).
 - **No speculative code.** No unused parameters, dead code, "just in case" abstractions or dependencies you do not use. Add a layer when a second use case needs it.
 - **Comments explain why**, never what. A comment that restates the code is deleted.
 - **Wire format.** JSON keys are `camelCase`; everything else (Python, env vars, TOML keys, query strings) is `snake_case`.
@@ -61,8 +70,8 @@ Host ports (all on `127.0.0.1`, block 21509-21515): Hub `21509`, PostgreSQL `215
 
 ## 5. Security rules
 
-- **No secret in the repository**, ever: not in code, config, compose, scripts, logs or test names. Secrets come from the environment (`up-miniapps-template-python-backend/.env`, gitignored). Mark them `SecretStr` so they never print.
-- **Anything in `up-miniapps-react-template/` is public.** `VITE_*` variables are inlined into the bundle: never put a key, token or secret there. Dev-only values are blanked in production builds.
+- **No secret in the repository**, ever: not in code, config, compose, scripts, logs or test names. Secrets come from the environment (`backend/.env`, gitignored). Mark them `SecretStr` so they never print.
+- **Anything in `frontend/` is public.** `VITE_*` variables are inlined into the bundle: never put a key, token or secret there. Dev-only values are blanked in production builds.
 - **Validate every input** at the edge (Pydantic models, `Query(...)` constraints). Never trust a client-supplied id, name or role.
 - **Authenticate and authorise.** Choose the access level of every route up front: public, authenticated, or admin (admin = `profile:miniapp:admin` scope in the Hub-signed token, enforced by `require_admin`, see the backend `AGENT.md`). Routes that return or change user data depend on `get_current_user`. A token minted for another mini-app (`aud`) must be rejected. Never weaken a check to "make it work".
 - **Never leak internals**: error bodies are generic (`{"error": {"code", "message"}}`), tracebacks stay in the logs, interactive docs are off in production.
@@ -76,8 +85,8 @@ Host ports (all on `127.0.0.1`, block 21509-21515): Hub `21509`, PostgreSQL `215
 1. Read this file and the `AGENT.md` of the sub-project.
 2. Make the smallest change that does the job. One concern per change.
 3. Run the checks of every sub-project you touched:
-   - `up-miniapps-template-python-backend/`: `uv run ruff format . && uv run ruff check . && uv run mypy app tests && uv run pytest`
-   - `up-miniapps-react-template/`: `npm run check:write && npm run typecheck && npm run build`
+   - `backend/`: `uv run ruff format . && uv run ruff check . && uv run mypy app tests && uv run pytest`
+   - `frontend/`: `npm run check:write && npm run typecheck && npm run build`
 4. **Run the mandatory final review (section 7).**
 5. Only then call the task done.
 

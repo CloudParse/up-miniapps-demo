@@ -1,0 +1,23 @@
+# Every key can be overridden by an environment variable: the dotted key,
+# upper-cased, with dots replaced by underscores (hub.base_url -> HUB_BASE_URL).
+# `environment` is deliberately top-level so it maps to a plain ENVIRONMENT.
+# Secrets never live here: real values come from the environment (backend/.env).
+environment = "development"
+
+[server]
+host = "127.0.0.1"
+port = 21514
+
+[hub]
+# The CloudParse backend (the `cloudparse-backend` service of docker-compose.yml).
+base_url = "http://localhost:21509/api/v1"
+# Public half of the key pair the Hub signs user tokens with.
+public_key_path = "../keys/public.pem"
+# Credentials of this mini-app, returned once by scripts/register-miniapp.sh.
+app_uuid = ""
+client_secret = ""
+
+[cors]
+# Browser origins allowed in production. Local hosts are allowed automatically
+# when environment = "development".
+allowed_origins = []

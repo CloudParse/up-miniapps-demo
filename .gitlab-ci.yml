@@ -1,0 +1,16 @@
+# One manual job: push main, with its full history, to the public GitHub mirror.
+# GIT_MIRROR_TOKEN is a masked, protected CI/CD variable of this project: a GitHub fine-grained token with
+# "Contents: read and write" on CloudParse/up-miniapp-demo only.
+include:
+  - project: 'CloudParse/devops/ci-templates'
+    ref: v2.2.0
+    file: 'ci/git/git.yaml'
+
+stages:
+  - mirror
+
+github-mirror:
+  stage: mirror
+  extends: .git_mirror_push
+  variables:
+    GIT_MIRROR_URL: "https://github.com/CloudParse/up-miniapp-demo.git"

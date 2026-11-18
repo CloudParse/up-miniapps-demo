@@ -8,18 +8,18 @@
 # What the default reset does:
 #   1. `docker compose down -v`: removes the containers and their volumes
 #      (PostgreSQL, cache, RustFS), so the Hub starts with an empty database.
-#   2. Stops the processes of THIS checkout still listening on the template's
+#   2. Stops the processes of THIS checkout still listening on the demo's
 #      ports (the mini-app backend on 21514, the Vite dev server on 21515).
 #      Anything else on those ports is reported and left alone.
-#   3. Deletes up-miniapps-template-python-backend/.env: its credentials belong to
+#   3. Deletes backend/.env: its credentials belong to
 #      the mini-app registered in the database that step 1 just wiped.
 set -euo pipefail
 
 # Physical path (-P): lsof reports process working directories without symlinks.
 ROOT="$(CDPATH= cd -- "$(dirname "$0")/.." && pwd -P)"
 COMPOSE_FILE="$ROOT/docker-compose.yml"
-BACKEND_DIR="$ROOT/up-miniapps-template-python-backend"
-FRONTEND_DIR="$ROOT/up-miniapps-react-template"
+BACKEND_DIR="$ROOT/backend"
+FRONTEND_DIR="$ROOT/frontend"
 
 usage() { sed -n '2,6p' "$0" | sed 's/^# \{0,1\}//'; }
 
@@ -51,8 +51,8 @@ PORTS=(
   "$(compose_port CACHE_PORT 21511)"
   "$(compose_port RUSTFS_API_PORT 21512)"
   "$(compose_port RUSTFS_CONSOLE_PORT 21513)"
-  21514 # mini-app backend (up-miniapps-template-python-backend/configs/config.toml)
-  21515 # Vite dev server (up-miniapps-react-template/vite.config.ts)
+  21514 # mini-app backend (backend/configs/config.toml)
+  21515 # Vite dev server (frontend/vite.config.ts)
 )
 
 process_cwd() { # <pid>; empty when the process exited in the meantime
@@ -104,17 +104,17 @@ for port in "${PORTS[@]}"; do
 done
 
 echo "3/3 Removing local state..."
-remove_file up-miniapps-template-python-backend/.env
+remove_file backend/.env
 
 if ((full_reset)); then
   for path in keys \
-    up-miniapps-template-python-backend/.venv \
-    up-miniapps-template-python-backend/.mypy_cache \
-    up-miniapps-template-python-backend/.pytest_cache \
-    up-miniapps-template-python-backend/.ruff_cache \
-    up-miniapps-react-template/node_modules \
-    up-miniapps-react-template/dist \
-    up-miniapps-react-template/.env; do
+    backend/.venv \
+    backend/.mypy_cache \
+    backend/.pytest_cache \
+    backend/.ruff_cache \
+    frontend/node_modules \
+    frontend/dist \
+    frontend/.env; do
     remove_file "$path"
   done
   find "$BACKEND_DIR" -type d -name __pycache__ -prune -exec rm -rf {} +

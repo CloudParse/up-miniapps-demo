@@ -1,0 +1,199 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@source "../**/*.{ts,tsx}";
+/* Tailwind v4's content scan matches by path AND extension — the directive
+   above only ever covered this app's own `.ts`/`.tsx` files, never the
+   SDK's compiled `dist/index.js` (a `.js` file, outside both the pattern
+   and node_modules' own default exclusion). Every class the SDK's shared
+   components use (bg-brand-panel, bg-off-map-chip, etc.) was silently
+   generating NO CSS rule at all — not a fallback, nothing — the whole time;
+   confirmed directly (`document.styleSheets` had zero `.bg-brand-panel`
+   rule) after the ExitConfirmModal/EdgeDirectionIndicators migration
+   *looked* visually correct, which turned out to be the real
+   `.shadow-panel` box-shadow (a literal CSS class below, never
+   Tailwind-generated, so unaffected by this gap) plus the dialog
+   overlay's own backdrop-blur creating enough accidental contrast to read
+   as "a solid panel" when it wasn't one. Same fix every other
+   `up-miniapps-*` app already needed (see the SDK's own AGENTS.md entry
+   38) — this app was the one left out, since it resolves the SDK via a
+   `file:..` symlink to its own parent directory rather than a sibling
+   checkout, which doesn't change where the installed package actually
+   ends up (`node_modules/@cloudparse/up-miniapps-sdk`, same as any other
+   dependency type). */
+@source "../../node_modules/@cloudparse/up-miniapps-sdk/dist";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+:root {
+  --brand-bg: #0b0d12;
+  --brand-card: #141821;
+  --brand-card-strong: #1b2130;
+  --brand-border: #262d3d;
+  --brand-nav-bg: #0f131b;
+  --accent-primary: #7dd3fc;
+  --accent-secondary: #a78bfa;
+  --accent-success: #4ade80;
+  --accent-warning: #fbbf24;
+  --accent-danger: #f87171;
+  --ink-bright: #f8fafc;
+  --ink-soft: #cbd5e1;
+  --ink-faint: #64748b;
+  --ink-on-accent: #0b0d12;
+}
+
+:root[data-theme="light"] {
+  --brand-bg: #f5f7fb;
+  --brand-card: #ffffff;
+  --brand-card-strong: #eef2f8;
+  --brand-border: #d9e0ec;
+  --brand-nav-bg: #ffffff;
+  --accent-primary: #0369a1;
+  --accent-secondary: #6d28d9;
+  --accent-success: #15803d;
+  --accent-warning: #b45309;
+  --accent-danger: #b91c1c;
+  --ink-bright: #0f172a;
+  --ink-soft: #334155;
+  --ink-faint: #64748b;
+  --ink-on-accent: #ffffff;
+}
+
+@theme inline {
+  /* No font tokens here: the SDK stylesheet ships the Up fonts and declares
+     `--font-sans` (Figtree) and `--font-display` (Bricolage Grotesque, the
+     `font-display` utility used by titles and card headlines). Redeclaring
+     them would collide with the SDK's unlayered tokens. */
+  --color-brand-bg: var(--brand-bg);
+  --color-brand-card: var(--brand-card);
+  --color-brand-card-strong: var(--brand-card-strong);
+  --color-brand-border: var(--brand-border);
+  --color-brand-nav-bg: var(--brand-nav-bg);
+  --color-accent-primary: var(--accent-primary);
+  --color-accent-secondary: var(--accent-secondary);
+  --color-accent-success: var(--accent-success);
+  --color-accent-warning: var(--accent-warning);
+  --color-accent-danger: var(--accent-danger);
+  --color-ink-bright: var(--ink-bright);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+  --color-ink-on-accent: var(--ink-on-accent);
+  /* `ink-deep` and `brand-panel`: the SDK's own shared chrome components
+     (ExitConfirmModal, GeofenceModal, BackButtonControl) are written
+     against these token names, not this app's `ink-on-accent`/`brand-card`
+     naming — added so this app can adopt those components directly rather
+     than reimplementing them locally (the same gap that caused a real
+     transparent-background bug in up-miniapps-cursor when it adopted
+     ExitConfirmModal without these tokens defined — see that repo's own
+     AGENTS.md). Aliased to this app's existing equivalents, not new
+     values: `ink-deep` is this app's own "text on an accent fill" token by
+     a different name; `brand-panel` is this app's own elevated-surface
+     color (`brand-card`). Both already vary correctly by `data-theme`
+     through the `var()` chain. */
+  --color-ink-deep: var(--ink-on-accent);
+  --color-brand-panel: var(--brand-card);
+  /* `off-map-chip`: EdgeDirectionIndicators' own edge-of-map compass-chip
+     fill (PoiOffMapIndicators.tsx, added 2026-10-06 — another SDK
+     component this app had zero coverage of before). First tried aliasing
+     to `brand-card-strong` (a muted elevated-surface tone) but that reads
+     as nearly invisible against this app's own dark map style — live-
+     tested, only the chip's own direction-arrow icon (accent-primary) was
+     legible, the circular fill blended straight into the map tiles.
+     up-miniapps-toilets hit the identical tradeoff and settled on its own
+     `accent-primary` value for this exact token rather than a muted one —
+     same fix here, aliased to this app's own `accent-primary`. */
+  --color-off-map-chip: var(--accent-primary);
+  /* EdgeDirectionIndicators' own distance pill uses text-xxs — same value
+     up-miniapps-toilets/explore already settled on for the identical use. */
+  --text-xxs: 0.5625rem;
+  --text-xxs-minus: 0.625rem;
+  --text-xs-minus: 0.6875rem;
+  --text-xs-plus: 0.8125rem;
+  --text-sm-plus: 0.9375rem;
+  --text-md-plus: 1.0625rem;
+  --text-xl-plus: 1.375rem;
+  --text-2xl-plus: 1.75rem;
+}
+
+@layer base {
+  /* `h-full` on AppShell (and anything else in this tree) needs a real
+     height chain from the document root down — `html`/`body`/`#root` have
+     no explicit height otherwise, so `height: 100%` would resolve to 0.
+     Deliberately NOT `h-screen`/`100vh`/`100dvh` anywhere in this app:
+     viewport units always measure the real browser viewport, ignoring any
+     ancestor's actual rendered size — inside the SDK's phone simulator the
+     app mounts in a `position: fixed` box sized to the (possibly scaled)
+     phone screen, not the browser tab, so a viewport-unit height silently
+     sizes the app to the wrong box (overflow/clipping, insets appearing
+     broken). A plain `height: 100%` chain correctly inherits whatever real
+     pixel height that box has, in the simulator and in a real device's
+     WebView alike. */
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    background-color: var(--brand-bg);
+    color: var(--ink-bright);
+    color-scheme: dark;
+    font-family: var(--font-sans);
+    margin: 0;
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  :root[data-theme="light"] body {
+    color-scheme: light;
+  }
+
+  input,
+  textarea {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+
+  button,
+  a,
+  [role="button"] {
+    -webkit-tap-highlight-color: transparent;
+    outline: none;
+  }
+}
+
+/* `shadow-panel`/`shadow-panel-sm`: the SDK's shared chrome components use
+   these utility classes directly (they're plain CSS classes, not `@theme`
+   color tokens). Same values as every other `up-miniapps-*` app's own
+   `.shadow-panel`/`-sm` — a black-based elevation shadow reads the same way
+   regardless of the underlying theme's light/dark palette. */
+.shadow-panel {
+  box-shadow:
+    0 8px 20px -6px rgba(0, 0, 0, 0.35),
+    0 2px 6px -2px rgba(0, 0, 0, 0.25);
+}
+
+.shadow-panel-sm {
+  box-shadow:
+    0 3px 10px -3px rgba(0, 0, 0, 0.35),
+    0 1px 3px -1px rgba(0, 0, 0, 0.25);
+}
+
+/* Scrollbars hidden app-wide (native WebView mini-app, no device/browser
+   ever needs a visible scrollbar) — same rule as up-miniapps-by-night,
+   global instead of a per-element opt-in so no current or future scroll
+   container (this app's own, or one injected by the SDK) can slip through
+   unstyled. `*` is deliberate: `::-webkit-scrollbar` display:none and
+   Firefox's `scrollbar-width: none` both only take effect on the actual
+   overflowing element, not inherited from a parent, so this has to be
+   universal. */
+* {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+*::-webkit-scrollbar {
+  display: none;
+}

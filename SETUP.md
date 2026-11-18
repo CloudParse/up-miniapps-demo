@@ -4,6 +4,8 @@ Prerequisites: Docker, [uv](https://docs.astral.sh/uv/), Node.js 26 LTS (>= 26),
 
 ## 1. Environment (once)
 
+A checkout from before the rename to `up-miniapps-demo` still runs containers of the compose project `up-miniapps-template` on the same ports. Remove them first: `docker compose -p up-miniapps-template down -v`.
+
 ```bash
 scripts/generate-keys.sh
 docker compose up -d --wait
@@ -13,7 +15,7 @@ scripts/register-miniapp.sh
 ## 2. Backend (terminal 1)
 
 ```bash
-cd up-miniapps-template-python-backend
+cd backend
 uv sync
 uv run --env-file .env python -m app
 ```
@@ -23,7 +25,7 @@ API docs: http://localhost:21514/docs
 ## 3. Mini-app (terminal 2)
 
 ```bash
-cd up-miniapps-react-template
+cd frontend
 npm install
 cp .env.template .env
 npm run dev
@@ -36,7 +38,7 @@ Open http://localhost:21515
 The SDK ships a Claude Code plugin: the `up-miniapp-builder` skill (exact SDK signatures, tested recipes, mandatory mini-app rules) and the `/new-miniapp` command. Install it from the copy `npm install` just downloaded, in a third terminal at the root of this project:
 
 ```bash
-claude plugin marketplace add ./up-miniapps-react-template/node_modules/@cloudparse/up-miniapps-sdk/claude-plugin
+claude plugin marketplace add ./frontend/node_modules/@cloudparse/up-miniapps-sdk/claude-plugin
 claude plugin install up-miniapps-sdk@up-miniapps
 ```
 

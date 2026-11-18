@@ -1,16 +1,18 @@
 # Local development environment for a mini-app: the CloudParse (Hub) backend and
 # the infrastructure it needs. Your own mini-app backend and frontend run on the
-# host (see up-miniapps-template-python-backend/AGENT.md and up-miniapps-react-template/AGENT.md), so they hot-reload.
+# host (see backend/AGENT.md and frontend/AGENT.md), so they hot-reload.
 #
 #   scripts/generate-keys.sh && docker compose up
 #
 # Every port is published on 127.0.0.1 only and lives in the 21509-21515 block,
 # chosen to avoid the usual 5432 / 6379 / 8080 / 9000 clashes.
-name: up-miniapps-template
+name: up-miniapps-demo
 
 services:
   postgres:
-    image: postgres:16.4-alpine
+    # PostgreSQL 18, the version the platform runs. The image keeps its data in
+    # /var/lib/postgresql/18/docker, so the volume is mounted at /var/lib/postgresql.
+    image: postgres:18.6-alpine3.24
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
@@ -18,7 +20,7 @@ services:
     ports:
       - "127.0.0.1:${POSTGRES_PORT:-21510}:5432"
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - postgres-18:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
       interval: 5s
@@ -42,7 +44,7 @@ services:
 
   rustfs:
     # S3-compatible object storage (RustFS), the Hub's storage backend.
-    image: rustfs/rustfs:1.0.1
+    image: rustfs/rustfs:1.0.6
     environment:
       RUSTFS_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:-admin}
       RUSTFS_SECRET_KEY: ${RUSTFS_SECRET_KEY:-password123}
@@ -61,7 +63,7 @@ services:
   cloudparse-backend:
     # The official Up backend (the "Hub"). Docker Hub only publishes commit-SHA
     # tags for now and the image is amd64-only, hence the pinned platform.
-    image: cloudparse/up-backend:${UP_BACKEND_TAG:-4edec41f}
+    image: cloudparse/up-backend:${UP_BACKEND_TAG:-74cc3a6a}
     platform: linux/amd64
     depends_on:
       postgres:
@@ -77,9 +79,6 @@ services:
       SERVER_BASE_URL: http://localhost:${CLOUDPARSE_BACKEND_PORT:-21509}
       DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-postgres}?sslmode=disable
       CACHE_URL: redis://cache:6379/0
-      # Read instead of CACHE_URL by Hub images built before up/backend c26a6cb (2026-11-16), such as the default tag
-      # below. Remove it once UP_BACKEND_TAG points to a newer image.
-      REDIS_URL: redis://cache:6379/0
       STORAGE_ENDPOINT: rustfs:9000
       STORAGE_ACCESS_KEY: ${RUSTFS_ACCESS_KEY:-admin}
       STORAGE_SECRET_KEY: ${RUSTFS_SECRET_KEY:-password123}
@@ -95,13 +94,14 @@ services:
     ports:
       - "127.0.0.1:${CLOUDPARSE_BACKEND_PORT:-21509}:8080"
     healthcheck:
-      test: ["CMD", "curl", "-fs", "http://localhost:8080/swagger/index.html"]
+      # The image has no curl: busybox wget, on the Hub's readiness route (503 while the database is down).
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:8080/healthz"]
       interval: 5s
       timeout: 3s
       retries: 20
     restart: unless-stopped
 
 volumes:
-  postgres-data:
+  postgres-18:
   cache-valkey:
   rustfs-data:
