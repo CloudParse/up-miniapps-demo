@@ -3,7 +3,7 @@
 # "Contents: read and write" on CloudParse/up-miniapp-demo only.
 include:
   - project: 'CloudParse/devops/ci-templates'
-    ref: v2.2.0
+    ref: v2.2.1
     file: 'ci/git/git.yaml'
 
 stages:
