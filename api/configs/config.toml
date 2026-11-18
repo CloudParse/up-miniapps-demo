@@ -1,0 +1,43 @@
+# Every key can be overridden by an environment variable: the dotted key,
+# upper-cased, with dots replaced by underscores (hub.base_url -> HUB_BASE_URL).
+# `environment` is deliberately top-level so it maps to a plain ENVIRONMENT.
+# Secrets never live here: real values come from the environment (api/.env).
+environment = "development"
+
+[server]
+host = "127.0.0.1"
+port = 21514
+
+[hub]
+# The CloudParse backend (the "Hub"): the organisation's DEV backend, as reached from a Coder workspace.
+base_url = "http://backend:8080/api/v1"
+# Public half of the key pair the Hub signs user tokens with. A deployed custom component gets it mounted here.
+# In a Coder workspace, copy it here (docs/coder.md). Template org-custom-component also sets HUB_PUBLIC_KEY_PATH to it.
+public_key_path = "/etc/up-platform/jwt/public.pem"
+# Credentials of this mini-app on the Hub. In development every mini-app uses the
+# DEV backend's shared mock registration (seeded by the platform, no real secret).
+# In production the platform sets HUB_APP_UUID and HUB_CLIENT_SECRET.
+app_uuid = "0d0d0d0d-0000-4000-8000-000000000001"
+client_secret = "mock_secret"
+
+# Your mini-app's own DEV resources. The Coder workspace of the mini-app sets
+# them (DATABASE_URL, CACHE_URL, CACHE_KEY_PREFIX, STORAGE_*): the same names a
+# deployed component gets. Empty means not configured.
+[database]
+url = ""
+
+[cache]
+url = ""
+# Every key this mini-app writes starts with it (the cache user may only touch these).
+key_prefix = ""
+
+[storage]
+endpoint = ""
+access_key = ""
+secret_key = ""
+bucket = ""
+
+[cors]
+# Browser origins allowed in production. Local hosts are allowed automatically
+# when environment = "development".
+allowed_origins = []

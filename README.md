@@ -1,7 +1,7 @@
 # Up Mini-App Demo
 
-A complete Up mini-app with its backend: a React frontend that uses every capability of `@cloudparse/up-miniapps-sdk` (`frontend/`), and a FastAPI backend (`backend/`). It runs in a Coder workspace of your organisation and uses the organisation's DEV backend, PostgreSQL and bucket.
+A complete Up mini-app with its API: a React mini-app that uses every capability of `@cloudparse/up-miniapps-sdk` (`miniapp/`), and a FastAPI API (`api/`). Every mini-app project of an organisation starts as a copy of it. It runs in the project's Coder workspace, against the organisation's DEV backend and the mini-app's own DEV database, cache and bucket.
 
-Run the commands in [`SETUP.md`](SETUP.md) to get started, then read [`AGENT.md`](AGENT.md): it holds the architecture, the quick start, the conventions and the review checklist. Then read `frontend/AGENT.md` and `backend/AGENT.md`.
+Run the commands in [`SETUP.md`](SETUP.md) to get started, then read [`AGENT.md`](AGENT.md): it holds the architecture, the quick start, the conventions and the review checklist. Then read `miniapp/AGENT.md` and `api/AGENT.md`.
 
 How it runs in Coder: [`docs/coder.md`](docs/coder.md).
