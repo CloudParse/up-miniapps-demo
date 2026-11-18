@@ -66,19 +66,23 @@ function handleBack() {
   appStore.set(overlayAtom, { kind: "exit" });
 }
 
-// Development without VITE_DEV_TOKEN: sign in as a test user of the DEV backend.
-const USE_DEV_USERS = APP_CONFIG.isDev && APP_CONFIG.devToken === "";
+// Development without VITE_DEV_TOKEN: the simulator signs in as a test user of the DEV backend. `import.meta.env.DEV` is a
+// literal, so the production build keeps ShellApp only and drops src/dev/ entirely.
+const USE_DEV_USERS = import.meta.env.DEV && APP_CONFIG.devToken === "";
 
-export default function App() {
-  const devSession = useDevSession(USE_DEV_USERS);
-  const signedIn = !USE_DEV_USERS || devSession.token !== "";
+function ShellApp() {
   return (
-    <SDKProvider
-      debug={false}
-      edgeToEdge
-      mockJWTToken={USE_DEV_USERS ? devSession.token : APP_CONFIG.devToken}
-    >
-      {signedIn ? (
+    <SDKProvider debug={false} edgeToEdge mockJWTToken={APP_CONFIG.devToken}>
+      <DemoApp />
+    </SDKProvider>
+  );
+}
+
+function TestUserApp() {
+  const devSession = useDevSession(true);
+  return (
+    <SDKProvider debug={false} edgeToEdge mockJWTToken={devSession.token}>
+      {devSession.token !== "" ? (
         <DemoApp />
       ) : (
         <DevUserPicker
@@ -90,6 +94,8 @@ export default function App() {
     </SDKProvider>
   );
 }
+
+export default USE_DEV_USERS ? TestUserApp : ShellApp;
 
 function DemoApp() {
   const [context, setContext] = useAtom(contextAtom);

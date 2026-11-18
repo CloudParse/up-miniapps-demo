@@ -15,11 +15,13 @@ export interface DevSession {
 }
 
 // Development only: the scoped token of the picked test user, kept fresh.
-// `enabled` false (production build, or VITE_DEV_TOKEN set) does nothing.
+// `enabled` false does nothing.
 export function useDevSession(enabled: boolean): DevSession {
   const [user, setUser] = useAtom(devUserAtom);
   const [token, setToken] = useState("");
   const [error, setError] = useState("");
+  // bumped on every pick: picking the same user again after a failure retries the sign-in
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     setToken("");
@@ -43,12 +45,13 @@ export function useDevSession(enabled: boolean): DevSession {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [enabled, user]);
+  }, [enabled, user, attempt]);
 
   const signIn = useCallback(
     (next: TestUser | null) => {
       saveUser(next);
       setUser(next);
+      setAttempt((n) => n + 1);
     },
     [setUser],
   );

@@ -1,6 +1,6 @@
 // Development only: sign in to the organisation's DEV backend (the "Hub") as one
 // of its test users, then get the scoped token the shell would give this mini-app.
-// Never part of a production build (App.tsx renders the picker only in dev).
+// Cut out of a production build: App.tsx guards it with the literal import.meta.env.DEV.
 //
 // The DEV backend seeds the same registration and the same users (up/backend,
 // DEV seed Job of story 024). Keep both lists identical.

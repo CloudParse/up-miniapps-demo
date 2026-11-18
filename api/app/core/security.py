@@ -64,11 +64,25 @@ class TokenVerifier:
             raise UnauthorizedError("Invalid or expired token.") from error
 
 
+# The DEV backend's shared registration (config.toml defaults), refused in production.
+DEV_MOCK_APP_UUID = "0d0d0d0d-0000-4000-8000-000000000001"
+DEV_MOCK_CLIENT_SECRET = "mock_secret"  # noqa: S105 - public DEV value
+
+
 def build_token_verifier(config: Config) -> TokenVerifier | None:
     """Return a verifier, or None while the mini-app is not registered yet."""
     if not config.hub.app_uuid:
         logger.warning("hub.app_uuid is empty: authenticated routes are disabled")
         return None
+    if config.is_production and (
+        config.hub.app_uuid == DEV_MOCK_APP_UUID
+        or config.hub.client_secret.get_secret_value() == DEV_MOCK_CLIENT_SECRET
+    ):
+        # the shared DEV registration opens nothing in production: set the real one
+        raise ValueError(
+            "production runs with the DEV mock registration: set HUB_APP_UUID "
+            "and HUB_CLIENT_SECRET"
+        )
     audiences = [config.hub.app_uuid]
     if config.is_development:
         audiences.append(DEV_SHELL_APP_UUID)

@@ -80,3 +80,13 @@ def test_a_missing_hub_key_disables_authentication_in_development_only(
     production = config.model_copy(update={"environment": "production", "hub": missing})
     with pytest.raises(FileNotFoundError):
         build_token_verifier(production)
+
+
+def test_production_refuses_the_dev_mock_registration(config: Config) -> None:
+    mock = config.hub.model_copy(
+        update={"app_uuid": "0d0d0d0d-0000-4000-8000-000000000001"}
+    )
+    production = config.model_copy(update={"environment": "production", "hub": mock})
+
+    with pytest.raises(ValueError, match="DEV mock registration"):
+        build_token_verifier(production)

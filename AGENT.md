@@ -74,8 +74,8 @@ cd miniapp && npm run dev                         # terminal 2
 Then open the app "Mini-app" of the workspace in the Coder dashboard (port `21515`) and pick a test user.
 
 Ports:
-- `21514`: the backend, bound to `127.0.0.1`.
-- `21515`: the Vite dev server, on every interface. Through its proxy, the backend's `/api/` routes are reachable on that port too.
+- `21514`: the API, bound to `127.0.0.1`.
+- `21515`: the Vite dev server, on every interface. Through its proxy, the API's `/api/` routes are reachable on that port too.
 - Before adding a port anywhere, check it does not clash with another project.
 
 ## 4. General conventions
@@ -95,7 +95,7 @@ Ports:
 - **No secret in the repository**, ever: not in code, config, scripts, logs or test names. Secrets come from the environment (`api/.env`, gitignored). Mark them `SecretStr` so they never print.
 - **Anything in `miniapp/` is public.** `VITE_*` variables are inlined into the bundle: never put a key, token or secret there. Dev-only values are blanked in production builds.
 - **Validate every input** at the edge (Pydantic models, `Query(...)` constraints). Never trust a client-supplied id, name or role.
-- **Authenticate and authorise.** Choose the access level of every route up front: public, authenticated, or admin (admin = `profile:miniapp:admin` scope in the Hub-signed token, enforced by `require_admin`, see the backend `AGENT.md`). Routes that return or change user data depend on `get_current_user`. A token minted for another mini-app (`aud`) must be rejected. Never weaken a check to "make it work".
+- **Authenticate and authorise.** Choose the access level of every route up front: public, authenticated, or admin (admin = `profile:miniapp:admin` scope in the Hub-signed token, enforced by `require_admin`, see `api/AGENT.md`). Routes that return or change user data depend on `get_current_user`. A token minted for another mini-app (`aud`) must be rejected. Never weaken a check to "make it work".
 - **Never leak internals**: error bodies are generic (`{"error": {"code", "message"}}`), tracebacks stay in the logs, interactive docs are off in production.
 - **No raw HTML.** Never use `dangerouslySetInnerHTML`; no string-built SQL (use a query builder or parameters).
 - **CORS is an explicit allow-list**, never `*` with credentials.

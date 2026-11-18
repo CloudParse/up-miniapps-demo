@@ -31,7 +31,7 @@ def get_token_verifier(request: Request) -> TokenVerifier:
     verifier: TokenVerifier | None = request.app.state.token_verifier
     if verifier is None:
         raise ServiceUnavailableError(
-            "Authentication is not configured: register the mini-app first."
+            "Authentication is not configured (no Hub public key or app uuid)."
         )
     return verifier
 
