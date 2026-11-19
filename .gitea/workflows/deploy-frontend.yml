@@ -1,8 +1,10 @@
 # Deploys the mini-app bundle to production: builds <miniapp.dir>, packs the content of <miniapp.out> as a .tar.gz and publishes it
 # with the new version and an empty changelog. The organisation API keeps the 5 newest versions itself.
 # Started by its button of the platform (workflow_dispatch), which picks the version.
-# Secrets written by the platform: UP_API_URL, UP_CLIENT_ID, UP_CLIENT_SECRET.
+# Secrets written by the platform: UP_API_URL, UP_CLIENT_ID, UP_CLIENT_SECRET. They are read by the steps that need them and by no other step.
 # You may delete this file when your mini-app has no such part; the platform then shows no button for it.
+# Security model: docs/deploy.md. A writer of this repository can edit this file and read these secrets; the limits are on
+# the platform side (30-minute token, one mini-app, no delete right).
 name: deploy-frontend
 
 on:
@@ -20,12 +22,27 @@ jobs:
   deploy-frontend:
     runs-on: up-ci
     steps:
+      # First step: nothing else runs on a version that is not a plain semver.
+      - name: Check the version
+        env:
+          VERSION: ${{ inputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! "$VERSION" =~ ^(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})$ ]]; then
+            echo "the version must be a plain semver such as 1.2.3" >&2
+            exit 1
+          fi
+
+      # The commit built is gitea.sha: the head of the branch the platform dispatched on (the default branch), as it is when
+      # this run starts. miniapp.yaml is read from that same checkout, and it is the copy that decides what is built.
       - name: Check out the repository
         env:
           GITEA_TOKEN: ${{ gitea.token }}
           SERVER_URL: ${{ gitea.server_url }}
           REPOSITORY: ${{ gitea.repository }}
           COMMIT: ${{ gitea.sha }}
+        shell: bash
         run: |
           set -euo pipefail
           # CI_GITEA_URL is the in-cluster address of Gitea, set by the runner of the organisation.
@@ -35,45 +52,47 @@ jobs:
           rm -f "$askpass"
           git -C src checkout --quiet "$COMMIT"
 
-      # A mini-app may have no api, no miniapp or no plugin section: the run then ends successfully, building nothing.
+      # An invalid miniapp.yaml FAILS this step. An absent section is not an error: the run says so once and the steps
+      # below are skipped (a mini-app may have no api, no miniapp or no plugin).
       - name: Read miniapp.yaml
+        id: plan
         working-directory: src
+        shell: bash
         run: |
           set -euo pipefail
           plan="$(python3 .gitea/scripts/miniapp_config.py plan --target frontend)"
-          case "$plan" in
-            skip*) echo "::notice::${plan#skip }"; echo "${plan#skip }"; : >.ci-skip ;;
-          esac
+          if [[ "$plan" == skip* ]]; then
+            echo "::notice::${plan#skip }"
+            echo "skip=true" >>"$GITHUB_OUTPUT"
+          fi
 
-      # The build step gets no secret: the build command comes from the repository.
       - name: Build the miniapp
+        if: steps.plan.outputs.skip != 'true'
         working-directory: src
+        shell: bash
         run: |
           set -euo pipefail
-          if [ -f .ci-skip ]; then echo "skipped: nothing to deploy"; exit 0; fi
-          py="$PWD/.gitea/scripts/miniapp_config.py"
-          build="$(python3 "$py" get miniapp.build)"
-          cd "$(python3 "$py" get miniapp.dir)"
-          sh -c "$build"
+          .gitea/scripts/run-build.sh miniapp
 
       - name: Pack the bundle
+        if: steps.plan.outputs.skip != 'true'
         working-directory: src
         env:
           VERSION: ${{ inputs.version }}
+        shell: bash
         run: |
           set -euo pipefail
-          if [ -f .ci-skip ]; then echo "skipped: nothing to deploy"; exit 0; fi
           python3 .gitea/scripts/bundle.py miniapp --version "$VERSION" --out dist-ci
 
       - name: Publish
+        if: steps.plan.outputs.skip != 'true'
         working-directory: src
         env:
           UP_API_URL: ${{ secrets.UP_API_URL }}
           UP_CLIENT_ID: ${{ secrets.UP_CLIENT_ID }}
           UP_CLIENT_SECRET: ${{ secrets.UP_CLIENT_SECRET }}
           VERSION: ${{ inputs.version }}
+        shell: bash
         run: |
           set -euo pipefail
-          if [ -f .ci-skip ]; then echo "skipped: nothing to deploy"; exit 0; fi
-          file="$(ls dist-ci/miniapp-"$VERSION".tar.gz)"
-          python3 .gitea/scripts/up_api.py publish miniapp --version "$VERSION" --file "$file"
+          python3 .gitea/scripts/up_api.py publish miniapp --version "$VERSION" --file "dist-ci/miniapp-$VERSION.tar.gz"

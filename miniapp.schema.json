@@ -34,18 +34,15 @@
       "description": "Name shown in the shell."
     },
     "description": {
-      "type": "string"
+      "type": "string",
+      "maxLength": 2000
     },
     "logo": {
       "type": [
         "string",
         "null"
       ],
-      "pattern": "^[A-Za-z0-9._/-]+\\.webp$",
-      "not": {
-        "type": "string",
-        "pattern": "(^/|\\.\\.)"
-      },
+      "pattern": "^(?=.*\\.webp$)(?!-)(?!(?:\\.{1,2}|\\.git|dist-ci)(?:/|$))[A-Za-z0-9._-]+(?:/(?!-)(?!(?:\\.{1,2}|\\.git|dist-ci)(?:/|$))[A-Za-z0-9._-]+)*$",
       "description": "Path of a .webp image in this repository (e.g. assets/logo.webp); null keeps the logo set in the backoffice."
     },
     "cardStyle": {
@@ -83,14 +80,14 @@
       "properties": {
         "dir": {
           "type": "string",
-          "pattern": "^(?!/)(?!.*\\.\\.)[A-Za-z0-9._/-]+$",
-          "description": "Folder of the API; its Dockerfile is the build file and the folder is the build context."
+          "pattern": "^(?!-)(?!(?:\\.{1,2}|\\.git|dist-ci)(?:/|$))[A-Za-z0-9._-]+(?:/(?!-)(?!(?:\\.{1,2}|\\.git|dist-ci)(?:/|$))[A-Za-z0-9._-]+)*$",
+          "description": "Folder of the API; its Dockerfile is the build file and the folder is the build context. Plain path segments only (no leading '/' or '-', no '.', '..', '.git', 'dist-ci', '//')."
         },
         "port": {
           "type": "integer",
-          "minimum": 1,
+          "minimum": 1024,
           "maximum": 65535,
-          "description": "Port the container listens on."
+          "description": "Port the container listens on (1024 or more: the image runs as a non-root user)."
         },
         "healthPath": {
           "type": "string",
@@ -142,18 +139,18 @@
       "properties": {
         "dir": {
           "type": "string",
-          "pattern": "^(?!/)(?!.*\\.\\.)[A-Za-z0-9._/-]+$",
+          "pattern": "^(?!-)(?!(?:\\.{1,2}|\\.git|dist-ci)(?:/|$))[A-Za-z0-9._-]+(?:/(?!-)(?!(?:\\.{1,2}|\\.git|dist-ci)(?:/|$))[A-Za-z0-9._-]+)*$",
           "description": "Folder of the mini-app."
         },
         "build": {
           "type": "string",
           "minLength": 1,
           "maxLength": 500,
-          "description": "Shell command run in dir to build (no secret is available to it)."
+          "description": "Shell command run in dir to build. It runs with a scrubbed environment, which is not a security boundary (see docs/deploy.md)."
         },
         "out": {
           "type": "string",
-          "pattern": "^(?!/)(?!.*\\.\\.)[A-Za-z0-9._/-]+$",
+          "pattern": "^(?!-)(?!(?:\\.{1,2}|\\.git|dist-ci)(?:/|$))[A-Za-z0-9._-]+(?:/(?!-)(?!(?:\\.{1,2}|\\.git|dist-ci)(?:/|$))[A-Za-z0-9._-]+)*$",
           "description": "Build output folder, relative to dir."
         }
       }
@@ -171,24 +168,24 @@
       "properties": {
         "dir": {
           "type": "string",
-          "pattern": "^(?!/)(?!.*\\.\\.)[A-Za-z0-9._/-]+$",
+          "pattern": "^(?!-)(?!(?:\\.{1,2}|\\.git|dist-ci)(?:/|$))[A-Za-z0-9._-]+(?:/(?!-)(?!(?:\\.{1,2}|\\.git|dist-ci)(?:/|$))[A-Za-z0-9._-]+)*$",
           "description": "Folder of the plugin."
         },
         "build": {
           "type": "string",
           "minLength": 1,
           "maxLength": 500,
-          "description": "Shell command run in dir to build (no secret is available to it)."
+          "description": "Shell command run in dir to build. It runs with a scrubbed environment, which is not a security boundary (see docs/deploy.md)."
         },
         "out": {
           "type": "string",
-          "pattern": "^(?!/)(?!.*\\.\\.)[A-Za-z0-9._/-]+$",
+          "pattern": "^(?!-)(?!(?:\\.{1,2}|\\.git|dist-ci)(?:/|$))[A-Za-z0-9._-]+(?:/(?!-)(?!(?:\\.{1,2}|\\.git|dist-ci)(?:/|$))[A-Za-z0-9._-]+)*$",
           "description": "Build output folder, relative to dir."
         },
         "file": {
           "type": "string",
-          "pattern": "^(?!/)(?!.*\\.\\.)[A-Za-z0-9._/-]+\\.m?js$",
-          "description": "The ES module, relative to out."
+          "pattern": "^(?=.*\\.m?js$)(?!-)(?!(?:\\.{1,2}|\\.git|dist-ci)(?:/|$))[A-Za-z0-9._-]+(?:/(?!-)(?!(?:\\.{1,2}|\\.git|dist-ci)(?:/|$))[A-Za-z0-9._-]+)*$",
+          "description": "The ES module (.js or .mjs), relative to out."
         }
       }
     }

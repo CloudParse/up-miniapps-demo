@@ -16,8 +16,8 @@ Read `AGENT.md` at the root, then the `AGENT.md` of the folder you change (`api/
 ## Settings of the mini-app
 
 - `miniapp.yaml` (repository root) holds the backoffice settings: `uuid`, `slug` (both never change), `name`, `description`, `logo` (a `.webp` of the repository or `null`), `cardStyle`, `darkTheme`, `deviceTypes`. Its format is `miniapp.schema.json`.
-- The platform writes it whenever it is missing and never overwrites it. Edit it to change how the mini-app looks; never add a secret or an environment variable to it. The backoffice is updated from it by a CI job (not available yet).
-- `version: 2` adds the production deployment sections: `api` (`dir`, `port`, `healthPath`, `command`, `publicIngress`), `services` (`postgres`, `cache`, `bucket`), `miniapp` and `plugin` (`dir`, `build`, `out`; the plugin also `file`, one `.js`/`.mjs` module). Example: `docs/miniapp.example.yaml`.
+- The platform writes it whenever it is missing and never overwrites it. Edit it to change how the mini-app looks; never add a secret or an environment variable to it. The platform reads its deployment sections at each deploy. Its display settings are not applied to the backoffice by a CI job (story 025).
+- `version: 2` adds the production deployment sections: `api` (`dir`, `port` (1024 or more), `healthPath`, `command`, `publicIngress`), `services` (`postgres`, `cache`, `bucket`), `miniapp` and `plugin` (`dir`, `build`, `out`; the plugin also `file`, one `.js`/`.mjs` module). Example: `docs/miniapp.example.yaml`.
 
 ## Deploying
 

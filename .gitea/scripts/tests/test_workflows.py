@@ -9,17 +9,15 @@ import sys
 import tarfile
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
+
+import yaml  # PyYAML is required here (check.sh installs it with uv when missing); the test must fail loudly without it
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(Path(__file__).parent))
 
 from mock_server import MockServer  # noqa: E402
-
-try:
-    import yaml
-except ImportError:  # pragma: no cover
-    yaml = None
 
 APP = "5b5101d1-0f4c-4b7e-9a35-2d6f1f0c7a11"
 CONFIG = f"""version: 2
@@ -35,25 +33,32 @@ miniapp:
   out: dist
 plugin:
   dir: plugin
-  build: mkdir -p dist && echo 'export default {{}}' > dist/plugin.mjs
+  build: "mkdir -p dist && printf 'export default 1;' > dist/plugin.mjs"
   out: dist
   file: plugin.mjs
 """
+SECRET = "topsecret"
+# Built from pieces so that this file does not contain the words it forbids elsewhere.
+FORBIDDEN = ("DEL" + "ETE", "pru" + "ne", "--ke" + "ep", "registry_" + "pru" + "ne", "/pack" + "ages")
 
 
-def load(name: str) -> dict:
+def workflow(name: str) -> dict:
     return yaml.safe_load((ROOT / ".gitea" / "workflows" / name).read_text())
 
 
-def steps(workflow: dict) -> list[dict]:
-    return next(iter(workflow["jobs"].values()))["steps"]
+def steps_of(name: str) -> list[dict]:
+    return next(iter(workflow(name)["jobs"].values()))["steps"]
 
 
 def expand(value: str, context: dict[str, str]) -> str:
-    return re.sub(r"\$\{\{\s*([\w.]+)\s*\}\}", lambda m: context[m.group(1)], value)
+    return re.sub(r"\$\{\{\s*([\w.]+)\s*\}\}", lambda m: context[m.group(1)], str(value))
 
 
-@unittest.skipIf(yaml is None, "PyYAML missing")
+class Run:
+    def __init__(self, ok: bool, failed_step: str, log: str) -> None:
+        self.ok, self.failed_step, self.log = ok, failed_step, log
+
+
 class WorkflowTest(unittest.TestCase):
     def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
@@ -63,56 +68,63 @@ class WorkflowTest(unittest.TestCase):
         (self.src / "miniapp.yaml").write_text(CONFIG)
         (self.src / "miniapp").mkdir()
         (self.src / "plugin").mkdir()
+        patcher = unittest.mock.patch.dict(os.environ, {"UP_CI_ALLOW_HTTP": "true"})
+        patcher.start()
+        self.addCleanup(patcher.stop)
 
-    def run_steps(self, name: str, context: dict[str, str], skip: tuple[str, ...] = ("Check out the repository",)) -> None:
-        for step in steps(load(name)):
-            if step["name"] in skip:
+    def run_workflow(self, name: str, context: dict[str, str], *, ignore_outputs: bool = False, extra_env: dict | None = None) -> Run:
+        outputs: dict[str, str] = {}
+        log = ""
+        for step in steps_of(name):
+            condition = step.get("if")
+            if condition is not None:
+                match = re.fullmatch(r"steps\.(\w+)\.outputs\.(\w+) != 'true'", condition)
+                self.assertTrue(match, f"unsupported condition {condition!r}")
+                if not ignore_outputs and outputs.get(f"{match.group(1)}.{match.group(2)}") == "true":
+                    continue
+            if step["name"] == "Check out the repository":
                 continue
-            env = {**os.environ, **{k: expand(v, context) for k, v in step.get("env", {}).items()}}
-            result = subprocess.run(  # noqa: S603
-                ["bash", "-c", expand(step["run"], context)], cwd=self.src, env=env, capture_output=True, text=True
-            )
-            self.assertEqual(result.returncode, 0, f"{step['name']}\n{result.stdout}\n{result.stderr}")
-            self.assertNotIn("topsecret", result.stdout + result.stderr, f"secret printed in {step['name']}")
+            out_file = Path(self.tmp.name) / "github_output"
+            out_file.write_text("")
+            env = {**os.environ, **(extra_env or {}), **{k: expand(v, context) for k, v in step.get("env", {}).items()}}
+            env["GITHUB_OUTPUT"] = str(out_file)
+            cwd = self.src if step.get("working-directory") == "src" else Path(self.tmp.name)
+            self.assertEqual(step.get("shell"), "bash", f"{step['name']} must name its shell")
+            result = subprocess.run(["bash", "-c", expand(step["run"], context)], cwd=cwd, env=env, capture_output=True, text=True)  # noqa: S603, S607
+            log += result.stdout + result.stderr
+            self.assertNotIn(SECRET, result.stdout + result.stderr, f"a secret was printed by {step['name']}")
+            if result.returncode:
+                return Run(False, step["name"], log)
+            for line in out_file.read_text().splitlines():
+                key, _, value = line.partition("=")
+                outputs[f"{step.get('id')}.{key}"] = value
+        return Run(True, "", log)
 
-    def platform(self):
+    def platform(self) -> MockServer:
         def responder(method: str, path: str, headers: dict, body: bytes):
-            if path.endswith("/ci/token"):
-                return 200, {"token": "jwt"}
-            if method == "GET":
-                return 200, {"data": [], "nextCursor": None}
-            return 201, {}
+            return (200, {"token": "jwt"}) if path.endswith("/ci/token") else (201, {})
 
         return MockServer(responder)
 
-    def up_context(self, server: MockServer) -> dict[str, str]:
+    def context(self, server: MockServer, version: str = "1.0.4") -> dict[str, str]:
         return {
-            "inputs.version": "1.0.4",
+            "inputs.version": version,
             "secrets.UP_API_URL": server.url,
             "secrets.UP_CLIENT_ID": "cid",
-            "secrets.UP_CLIENT_SECRET": "topsecret",
+            "secrets.UP_CLIENT_SECRET": SECRET,
+            "secrets.REGISTRY_USER": "ci",
+            "secrets.REGISTRY_TOKEN": SECRET,
+            "gitea.repository": "demo/Demo-Atlas-5b51",
+            "gitea.server_url": "https://git.example",
+            "gitea.repository_owner": "demo",
+            "gitea.token": SECRET,
+            "gitea.sha": "0" * 40,
         }
 
-    def test_frontend_publishes_only_the_miniapp(self) -> None:
-        with self.platform() as server:
-            self.run_steps("deploy-frontend.yml", self.up_context(server))
-        calls = [(c["method"], c["path"]) for c in server.calls if "/admin/" in c["path"]]
-        self.assertEqual(calls, [("POST", f"/admin/applications/{APP}/artifacts")])
-        with tarfile.open(self.src / "dist-ci" / "miniapp-1.0.4.tar.gz") as archive:
-            self.assertEqual(archive.getnames(), ["index.html"])
-        self.assertFalse(list((self.src / "dist-ci").glob("plugin-*")))
+    def calls(self, server: MockServer) -> list[tuple[str, str]]:
+        return [(c["method"], c["path"]) for c in server.calls]
 
-    def test_plugin_workflow_publishes_the_module(self) -> None:
-        with self.platform() as server:
-            self.run_steps("deploy-plugin.yml", self.up_context(server))
-        posts = [c["path"] for c in server.calls if c["method"] == "POST" and "/admin/" in c["path"]]
-        self.assertEqual(posts, [f"/admin/applications/{APP}/backoffice-plugin/artifacts"])
-        self.assertTrue((self.src / "dist-ci" / "plugin-1.0.4.mjs").exists())
-        self.assertFalse(list((self.src / "dist-ci").glob("miniapp-*")))
-
-    @staticmethod
-    def without_section(section: str) -> str:
-        """CONFIG with one top-level section (and its indented lines) removed."""
+    def without_section(self, section: str) -> None:
         lines, skipping = [], False
         for line in CONFIG.splitlines():
             if line.startswith(f"{section}:"):
@@ -122,88 +134,170 @@ class WorkflowTest(unittest.TestCase):
                 continue
             skipping = False
             lines.append(line)
-        return "\n".join(lines) + "\n"
+        (self.src / "miniapp.yaml").write_text("\n".join(lines) + "\n")
 
-    def test_each_workflow_succeeds_and_does_nothing_without_its_section(self) -> None:
-        os.environ["KANIKO_EXECUTOR"] = "/nonexistent-must-not-run"
-        self.addCleanup(os.environ.pop, "KANIKO_EXECUTOR", None)
-        for name, section in {"deploy-backend.yml": "api", "deploy-frontend.yml": "miniapp", "deploy-plugin.yml": "plugin"}.items():
-            with self.subTest(name), self.platform() as server:
-                (self.src / "miniapp.yaml").write_text(self.without_section(section))
-                shutil.rmtree(self.src / "dist-ci", ignore_errors=True)
-                (self.src / ".ci-skip").unlink(missing_ok=True)
-                context = {**self.up_context(server), "secrets.REGISTRY_USER": "u", "secrets.REGISTRY_TOKEN": "topsecret",
-                           "gitea.server_url": server.url, "gitea.repository": "demo/x", "gitea.repository_owner": "demo"}
-                self.run_steps(name, context)
-                self.assertEqual(server.calls, [], "no platform call when the section is absent")
-                self.assertFalse((self.src / "dist-ci").exists(), "nothing built when the section is absent")
-                self.assertTrue((self.src / ".ci-skip").exists())
+    # --- the exact sequence of platform calls ---------------------------------------------------------------
 
-    def test_backend_builds_then_rolls_out_with_the_runner_environment(self) -> None:
-        (self.src / "api").mkdir()
+    def test_frontend_calls_token_then_publish_and_nothing_else(self) -> None:
+        with self.platform() as server:
+            result = self.run_workflow("deploy-frontend.yml", self.context(server))
+        self.assertTrue(result.ok, result.log)
+        self.assertEqual(self.calls(server), [("POST", "/ci/token"), ("POST", f"/admin/applications/{APP}/artifacts")])
+        with tarfile.open(self.src / "dist-ci" / "miniapp-1.0.4.tar.gz") as archive:
+            self.assertEqual(archive.getnames(), ["index.html"])
+        self.assertFalse(list((self.src / "dist-ci").glob("plugin-*")))
+
+    def test_plugin_calls_token_then_publish_and_nothing_else(self) -> None:
+        with self.platform() as server:
+            result = self.run_workflow("deploy-plugin.yml", self.context(server))
+        self.assertTrue(result.ok, result.log)
+        self.assertEqual(self.calls(server), [("POST", "/ci/token"), ("POST", f"/admin/applications/{APP}/backoffice-plugin/artifacts")])
+        self.assertTrue((self.src / "dist-ci" / "plugin-1.0.4.mjs").exists())
+
+    def backend_run(self, extra_env: dict | None = None, version: str = "1.0.3") -> tuple[Run, MockServer, Path]:
+        (self.src / "api").mkdir(exist_ok=True)
         (self.src / "api" / "Dockerfile").write_text("FROM scratch\n")
         fake = Path(self.tmp.name) / "kaniko"
         args_file = Path(self.tmp.name) / "args"
         fake.write_text(f'#!/bin/sh\nprintf "%s\\n" "$@" > {args_file}\n')
         fake.chmod(0o755)
-
-        def responder(method: str, path: str, headers: dict, body: bytes):
-            return (200, {"token": "jwt"}) if path.endswith("/ci/token") else (200, {})
-
-        runner_env = {
+        env = {
             "KANIKO_EXECUTOR": str(fake),
+            "KANIKO_DOCKER_CONFIG": str(Path(self.tmp.name) / "docker"),
             "CI_REGISTRY_HOST": "git.demo.example",
             "CI_REGISTRY_INSECURE": "true",
-            "CI_GITEA_URL": "http://gitea-http.prod-demo:3000",
+            **(extra_env or {}),
         }
-        os.environ.update(runner_env)
-        for key in runner_env:
-            self.addCleanup(os.environ.pop, key, None)
-        with MockServer(responder) as server:
-            context = {
-                "inputs.version": "1.0.3",
-                "secrets.UP_API_URL": server.url,
-                "secrets.UP_CLIENT_ID": "cid",
-                "secrets.UP_CLIENT_SECRET": "topsecret",
-                "secrets.REGISTRY_USER": "ci",
-                "secrets.REGISTRY_TOKEN": "topsecret",
-                "gitea.server_url": "https://elsewhere.example",
-                "gitea.repository": "demo/Demo-Atlas-5b51",
-                "gitea.repository_owner": "demo",
-            }
-            self.run_steps("deploy-backend.yml", context)
+        with self.platform() as server:
+            result = self.run_workflow("deploy-backend.yml", self.context(server, version), extra_env=env)
+        return result, server, args_file
+
+    def test_backend_pushes_then_deploys_the_tag_as_the_last_call(self) -> None:
+        result, server, args_file = self.backend_run()
+        self.assertTrue(result.ok, result.log)
         kaniko_args = args_file.read_text().split()
         self.assertIn("git.demo.example/demo/demo-atlas-5b51:1.0.3", kaniko_args)
         self.assertIn("--insecure", kaniko_args)
-        self.assertEqual(
-            [(c["method"], c["path"]) for c in server.calls],
-            [("POST", "/ci/token"), ("POST", f"/admin/applications/{APP}/custom-component/deploy")],
-        )
+        self.assertIn("API_PORT=8000", kaniko_args)
+        self.assertEqual(self.calls(server), [("POST", "/ci/token"), ("POST", f"/admin/applications/{APP}/custom-component/deploy")])
+        self.assertEqual(json.loads(server.calls[-1]["body"]), {"tag": "1.0.3"})
 
-    def test_no_workflow_or_script_deletes_anything(self) -> None:
-        for path in list((ROOT / ".gitea" / "workflows").glob("*.yml")) + list((ROOT / ".gitea" / "scripts").glob("*.*")):
-            text = path.read_text()
-            for forbidden in ("DELETE", "prune", "registry_prune", "--keep"):
-                self.assertNotIn(forbidden, text, f"{forbidden} in {path.name}")
+    def test_backend_without_a_registry_host_fails_and_calls_nothing(self) -> None:
+        (self.src / "api").mkdir(exist_ok=True)
+        (self.src / "api" / "Dockerfile").write_text("FROM scratch\n")
+        with self.platform() as server:
+            result = self.run_workflow("deploy-backend.yml", self.context(server), extra_env={"KANIKO_EXECUTOR": "/nonexistent"})
+        self.assertFalse(result.ok)
+        self.assertEqual(result.failed_step, "Build and push the image")
+        self.assertIn("CI_REGISTRY_HOST", result.log)
+        self.assertEqual(server.calls, [])
 
-    def test_only_allowed_platform_calls_are_made(self) -> None:
-        allowed = ("/ci/token", "/artifacts", "/backoffice-plugin/artifacts", "/custom-component/deploy")
-        text = "".join(p.read_text() for p in (ROOT / ".gitea" / "scripts").glob("up_api.py"))
-        for fragment in allowed[1:]:
-            self.assertIn(fragment, text)
-        self.assertNotIn("/api/v1/packages", "".join(p.read_text() for p in (ROOT / ".gitea" / "scripts").glob("*.py")))
+    def test_registry_insecure_comes_only_from_the_runner_variable(self) -> None:
+        result, _, args_file = self.backend_run({"CI_REGISTRY_INSECURE": "false"})
+        self.assertTrue(result.ok, result.log)
+        self.assertNotIn("--insecure", args_file.read_text().split())
 
-    def test_workflows_declare_dispatch_runner_and_no_secret_in_build(self) -> None:
+    # --- the version ------------------------------------------------------------------------------------------
+
+    def test_a_bad_version_stops_at_the_first_step_in_every_workflow(self) -> None:
         for name in ("deploy-backend.yml", "deploy-frontend.yml", "deploy-plugin.yml"):
-            workflow = load(name)
-            triggers = workflow.get("on", workflow.get(True))
-            self.assertIn("version", triggers["workflow_dispatch"]["inputs"])
-            self.assertEqual(next(iter(workflow["jobs"].values()))["runs-on"], "up-ci")
-        for name in ("deploy-frontend.yml", "deploy-plugin.yml"):
-            for step in steps(load(name)):
-                if step["name"].startswith("Build"):
-                    self.assertFalse(any("secrets." in str(v) for v in step.get("env", {}).values()))
-        _ = json
+            self.assertEqual(steps_of(name)[0]["name"], "Check the version")
+            for bad in ("latest", "1.0", "1.0.0\n--x", '1.0.0"; name="x', "../1.0.0", "01.0.0", "1.0.0-rc1", " 1.0.0", ""):
+                with self.subTest(name=name, version=bad), self.platform() as server:
+                    result = self.run_workflow(name, self.context(server, bad))
+                    self.assertFalse(result.ok)
+                    self.assertEqual(result.failed_step, "Check the version")
+                    self.assertEqual(server.calls, [])
+
+    # --- absent sections and invalid files --------------------------------------------------------------------
+
+    def test_each_workflow_succeeds_and_does_nothing_without_its_section(self) -> None:
+        for name, section in {"deploy-backend.yml": "api", "deploy-frontend.yml": "miniapp", "deploy-plugin.yml": "plugin"}.items():
+            with self.subTest(name), self.platform() as server:
+                self.without_section(section)
+                shutil.rmtree(self.src / "dist-ci", ignore_errors=True)
+                result = self.run_workflow(name, self.context(server), extra_env={"KANIKO_EXECUTOR": "/nonexistent-must-not-run"})
+                self.assertTrue(result.ok, result.log)
+                self.assertEqual(server.calls, [])
+                self.assertFalse((self.src / "dist-ci").exists())
+                self.assertEqual(result.log.count("::notice::"), 1, "the notice is printed once")
+                self.assertIn(f"no `{section}` section", result.log)
+
+    def test_an_invalid_file_fails_the_run_at_the_read_step(self) -> None:
+        invalid = {
+            "unknown key": CONFIG + "extra: 1\n",
+            "version 1 with sections": CONFIG.replace("version: 2", "version: 1"),
+            "line separator": CONFIG.replace("name: Atlas", "name: Atlas api2: x"),
+            "bad port": CONFIG.replace("port: 8000", "port: 80"),
+        }
+        for label, text in invalid.items():
+            for name in ("deploy-backend.yml", "deploy-frontend.yml", "deploy-plugin.yml"):
+                with self.subTest(label=label, workflow=name), self.platform() as server:
+                    (self.src / "miniapp.yaml").write_text(text)
+                    result = self.run_workflow(name, self.context(server))
+                    self.assertFalse(result.ok, "an invalid file must fail the run, never skip it")
+                    self.assertEqual(result.failed_step, "Read miniapp.yaml")
+                    self.assertEqual(server.calls, [])
+
+    def test_a_broken_skip_signal_fails_closed(self) -> None:
+        """If the step output never arrives, the build steps run and fail on the missing section: no silent success."""
+        self.without_section("miniapp")
+        with self.platform() as server:
+            result = self.run_workflow("deploy-frontend.yml", self.context(server), ignore_outputs=True)
+        self.assertFalse(result.ok)
+        self.assertEqual(server.calls, [])
+
+    # --- secrets ----------------------------------------------------------------------------------------------
+
+    def test_builds_run_with_a_scrubbed_environment(self) -> None:
+        probe = Path(self.tmp.name) / "env.txt"
+        config = CONFIG.replace(
+            "build: mkdir -p dist && echo hello > dist/index.html",
+            f"build: env > {probe} && mkdir -p dist && echo hello > dist/index.html",
+        )
+        (self.src / "miniapp.yaml").write_text(config)
+        leak = {"CI_REGISTRY_HOST": "leak", "CI_GITEA_URL": "leak", "UP_CLIENT_SECRET": "leak", "GITEA_TOKEN": "leak", "REGISTRY_TOKEN": "leak"}
+        with self.platform() as server:
+            result = self.run_workflow("deploy-frontend.yml", self.context(server), extra_env=leak)
+        self.assertTrue(result.ok, result.log)
+        seen = {line.split("=", 1)[0] for line in probe.read_text().splitlines()}
+        self.assertFalse(seen & set(leak), f"the build saw {seen & set(leak)}")
+        self.assertNotIn(os.environ.get("HOME", "/nonexistent-home"), probe.read_text().split("HOME=")[1].splitlines()[0])
+
+    def test_secrets_are_referenced_only_by_the_steps_that_need_them(self) -> None:
+        allowed = {
+            "deploy-backend.yml": {"Build and push the image": "REGISTRY_", "Deploy the component": "UP_"},
+            "deploy-frontend.yml": {"Publish": "UP_"},
+            "deploy-plugin.yml": {"Publish": "UP_"},
+        }
+        for name, per_step in allowed.items():
+            for step in steps_of(name):
+                used = {m for m in re.findall(r"secrets\.(\w+)", json.dumps(step))}
+                if step["name"] in per_step:
+                    self.assertTrue(all(u.startswith(per_step[step["name"]]) for u in used), (name, step["name"], used))
+                else:
+                    self.assertFalse(used, f"{name}: step {step['name']!r} must not see secrets: {used}")
+
+    # --- shape ------------------------------------------------------------------------------------------------
+
+    def test_workflows_declare_dispatch_runner_and_shell(self) -> None:
+        for name in ("deploy-backend.yml", "deploy-frontend.yml", "deploy-plugin.yml"):
+            wf = workflow(name)
+            triggers = wf.get("on", wf.get(True))
+            self.assertEqual(list(triggers), ["workflow_dispatch"])
+            self.assertEqual(list(triggers["workflow_dispatch"]["inputs"]), ["version"])
+            self.assertEqual(next(iter(wf["jobs"].values()))["runs-on"], "up-ci")
+            for step in steps_of(name):
+                self.assertEqual(step.get("shell"), "bash")
+
+    def test_nothing_removes_anything_anywhere_including_the_tests(self) -> None:
+        folders = [ROOT / ".gitea" / "workflows", ROOT / ".gitea" / "scripts", ROOT / ".gitea" / "scripts" / "tests"]
+        for folder in folders:
+            for path in folder.iterdir():
+                if path.is_file() and path.suffix in {".py", ".sh", ".yml"}:
+                    text = path.read_text()
+                    for word in FORBIDDEN:
+                        self.assertNotIn(word, text, f"{word!r} in {path.relative_to(ROOT)}")
 
 
 if __name__ == "__main__":

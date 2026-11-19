@@ -58,9 +58,9 @@ In development `VITE_BACKEND_URL` is `/api/v1`. The Vite dev server forwards `/a
 | `SETUP.md` | The commands, in order. |
 | `miniapp.yaml` | In a project repository only (written by the platform whenever it is missing, never overwritten; not in this template): the backoffice settings of the mini-app (name, description, logo, card style, theme, devices). Never a secret nor an environment variable. |
 | `miniapp.schema.json` | The format of `miniapp.yaml` (versions 1 and 2). |
-| `docs/deploy.md` | Production deployment: the two buttons, `miniapp.yaml` sections, the workflows, the CI contract with the platform. |
+| `docs/deploy.md` | Production deployment: the buttons, `miniapp.yaml` sections, the workflows, the CI contract with the platform. |
 | `docs/miniapp.example.yaml` | A complete deployable `miniapp.yaml` to copy from (the template itself holds no `miniapp.yaml`). |
-| `api/Dockerfile` | Production image of the API (non-root, `API_PORT` build argument). Built by the CI with Kaniko. |
+| `api/Dockerfile` | Production image of the API (pinned bases, non-root, `/app` read-only, `API_PORT` build argument, port 1024 or more). Built by the CI with Kaniko. |
 | `.gitea/workflows/` | `deploy-backend.yml`, `deploy-frontend.yml` (mini-app bundle only) and `deploy-plugin.yml`, started by the platform (`workflow_dispatch`, input `version`), run on the organisation's runner `up-ci`. |
 | `.gitea/scripts/` | The CI scripts (standard library Python and one shell script) and their tests: run `.gitea/scripts/check.sh`. |
 | `.gitlab-ci.yml` | One manual job, `github-mirror`: pushes `main` to GitHub (template `.git_mirror_push` of `CloudParse/devops/ci-templates`). |
@@ -88,13 +88,15 @@ Ports:
 ### Production deployment (story 029)
 
 `miniapp.yaml` (`version: 2`) configures the deployment: `api` (dir, port, healthPath, command, publicIngress), `services` (postgres, cache, bucket), `miniapp`, `plugin`. The platform's buttons (backend, frontend, plugin) start one Gitea workflow each. A workflow whose section is absent from `miniapp.yaml` ends successfully with a notice and builds nothing (`miniapp_config.py plan`); a developer may delete a workflow they do not use. Rules for anyone changing this part:
-- The workflows and scripts only read secrets from the environment (`UP_API_URL`, `UP_CLIENT_ID`, `UP_CLIENT_SECRET`, `REGISTRY_USER`, `REGISTRY_TOKEN`), never from arguments, and never print them. Build steps get no secret.
-- The version comes from the platform (workflow input); a workflow never invents one.
-- Retention is the platform's: the organisation API keeps the 5 newest bundles and plugin versions after each publish, the super API keeps the latest image. The CI token has no delete right: no workflow or script deletes or prunes anything (a test enforces it), and calls only token, publish and component deploy.
-- The runner environment `CI_GITEA_URL`, `CI_REGISTRY_HOST`, `CI_REGISTRY_INSECURE`, `CI_ORGANISATION_SLUG` is read by the workflows; the Gitea context is only a fallback.
+- The workflows and scripts only read secrets from the environment (`UP_API_URL`, `UP_CLIENT_ID`, `UP_CLIENT_SECRET`, `REGISTRY_USER`, `REGISTRY_TOKEN`), never from arguments, and never print them. Only the steps that need a secret reference it. Build commands run through `run-build.sh` with `env -i`. That is hygiene, not a boundary: a writer of the repository controls the CI and can read its secrets (`docs/deploy.md`, "Security model"). The real limits are the platform's: a 30-minute token for one mini-app, no delete right.
+- The version comes from the platform (workflow input); a workflow never invents one. It is checked as a strict semver in the first step of every workflow, in `bundle.py` and in `up_api.py`.
+- An invalid `miniapp.yaml` fails the run (fail closed). Only an absent section skips. The parser refuses control characters, quoted keys, unknown keys and escapes.
+- The last call of the backend workflow is `POST .../custom-component/deploy` with `{"tag": "<version>"}`, after the image push.
+- Retention is the platform's: the organisation API keeps the 5 newest bundles and plugin versions after each publish, the super API keeps the latest image. The CI token has no delete right: no workflow, script or test file deletes anything (a test enforces it), and calls only token, publish and component deploy.
+- The runner environment `CI_REGISTRY_HOST` (required, no fallback) and `CI_REGISTRY_INSECURE` (the only source of the insecure mode) are read by the image build. `CI_GITEA_URL` is the clone address; the Gitea server URL is its only fallback.
 - The plugin is one ES module (`.js` or `.mjs`): the organisation API refuses anything else.
-- The schema, `miniapp_config.py` and `docs/miniapp.example.yaml` change together; `tests/test_miniapp_config.py` checks that the validator and the schema agree.
-- The runner has no Docker daemon, no PyYAML: standard library only, Kaniko for images.
+- The schema, `miniapp_config.py` and `docs/miniapp.example.yaml` change together; `.gitea/scripts/tests/test_miniapp_config.py` checks that the validator and the schema agree.
+- The runner has no Docker daemon, no PyYAML: standard library only, Kaniko for images. The tests need PyYAML and jsonschema (`check.sh` installs them with `uv`) and fail without them.
 
 ## 4. General conventions
 

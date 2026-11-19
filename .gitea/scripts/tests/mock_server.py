@@ -5,7 +5,7 @@ import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any, Callable
 
-Responder = Callable[[str, str, dict[str, str], bytes], tuple[int, Any]]
+Responder = Callable[..., tuple]  # (method, path, headers, body) -> (status, payload) or (status, payload, extra headers)
 
 
 class MockServer:
@@ -19,15 +19,19 @@ class MockServer:
                 body = self.rfile.read(length) if length else b""
                 headers = {key.lower(): value for key, value in self.headers.items()}
                 outer.calls.append({"method": self.command, "path": self.path, "headers": headers, "body": body})
-                status, payload = responder(self.command, self.path, headers, body)
+                answer = responder(self.command, self.path, headers, body)
+                status, payload = answer[0], answer[1]
+                extra = answer[2] if len(answer) > 2 else {}
                 data = json.dumps(payload).encode() if payload is not None else b""
                 self.send_response(status)
                 self.send_header("Content-Type", "application/json")
                 self.send_header("Content-Length", str(len(data)))
+                for key, value in extra.items():
+                    self.send_header(key, value)
                 self.end_headers()
                 self.wfile.write(data)
 
-            do_GET = do_POST = do_DELETE = do_PUT = _handle
+            do_GET = do_POST = _handle
 
             def log_message(self, *args: Any) -> None:  # silence
                 return

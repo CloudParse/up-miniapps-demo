@@ -7,7 +7,7 @@ Environment (Gitea Actions secrets, never arguments):
 The mini-app uuid comes from miniapp.yaml.
 
 Usage: up_api.py publish miniapp|plugin --version 1.2.3 --file <path>
-       up_api.py deploy-component
+       up_api.py deploy-component --version 1.2.3   (the image <registry>/<owner>/<repo>:1.2.3 is already pushed)
 The CI token may only publish bundles and plugin versions and roll out the component: nothing here deletes. Retention is the
 server's (the organisation API keeps the newest 5 versions after each publish).
 """
@@ -33,7 +33,9 @@ def _env(name: str) -> str:
 
 class Client:
     def __init__(self, api_url: str, app_uuid: str, client_id: str, client_secret: str) -> None:
+        ci_http.check_url(api_url)
         self.api = api_url.rstrip("/")
+        miniapp_config.check_uuid(app_uuid)
         self.app_uuid = app_uuid
         self._credentials = {"clientId": client_id, "clientSecret": client_secret}
         self._token = ""
@@ -58,6 +60,7 @@ class Client:
 
     def publish(self, kind: str, version: str, file_path: Path) -> Any:
         """Upload one bundle with an empty changelog; the plugin becomes the active one."""
+        miniapp_config.check_version(version)
         fields = {"version": version}
         if kind == "plugin":
             fields["activate"] = "true"
@@ -65,10 +68,11 @@ class Client:
         headers = {"Authorization": f"Bearer {self.token()}", "Content-Type": content_type, "Accept": "application/json"}
         return ci_http.request("POST", self._publish_url(kind), headers=headers, body=body)
 
-    def deploy_component(self) -> Any:
-        """Roll out the custom component linked to the mini-app (the platform set its image tag before the run)."""
+    def deploy_component(self, version: str) -> Any:
+        """Ask the platform to deploy the pushed image: it sets the tag to `version` only when the registry holds it."""
+        miniapp_config.check_version(version)
         url = f"{self.api}/admin/applications/{self.app_uuid}/custom-component/deploy"
-        return ci_http.request_json("POST", url, {}, token=self.token())
+        return ci_http.request_json("POST", url, {"tag": version}, token=self.token())
 
 
 def main(argv: list[str]) -> int:
@@ -79,18 +83,20 @@ def main(argv: list[str]) -> int:
     publish.add_argument("kind", choices=KINDS)
     publish.add_argument("--version", required=True)
     publish.add_argument("--file", required=True, type=Path)
-    sub.add_parser("deploy-component")
+    deploy = sub.add_parser("deploy-component")
+    deploy.add_argument("--version", required=True)
     args = parser.parse_args(argv)
     try:
         config = miniapp_config.load(Path(args.config))
-        client = Client.from_env(str(config.get("uuid", "")))
+        miniapp_config.validate(config)
+        client = Client.from_env(str(config["uuid"]))
         if args.command == "publish":
             client.publish(args.kind, args.version, args.file)
             print(f"published {args.kind} {args.version}")
         else:
-            client.deploy_component()
-            print("component deployment started")
-    except (ci_http.ApiError, miniapp_config.ConfigError, ValueError, OSError) as error:
+            client.deploy_component(args.version)
+            print(f"deployment of {args.version} started")
+    except (ci_http.ApiError, miniapp_config.ConfigError, OSError) as error:
         print(f"up_api: {error}", file=sys.stderr)
         return 1
     return 0
