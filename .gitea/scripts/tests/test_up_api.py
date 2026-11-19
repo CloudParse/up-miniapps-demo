@@ -53,10 +53,22 @@ class UpApiTest(unittest.TestCase):
             self.assertEqual(publish["path"], f"/admin/applications/{APP}/backoffice-plugin/artifacts")
             self.assertIn(b'name="activate"\r\n\r\ntrue', publish["body"])
 
-    def test_prune_keeps_three_newest_and_follows_pages(self) -> None:
-        pages = {"": (artifacts("1.0.1", "1.0.2", "1.0.3"), "c2"), "c2": (artifacts("1.0.4", "1.0.5")[:1] + [], "c3")}
-        # second page holds one more (newest by createdAt), third page is empty
-        pages["c2"] = ([{"uuid": "u-1.0.9", "version": "1.0.9", "createdAt": "2026-11-09T10:00:00Z"}], "c3")
+    def test_prune_miniapp_uses_the_prune_old_route(self) -> None:
+        def responder(method: str, path: str, headers: dict, body: bytes):
+            if path.endswith("/ci/token"):
+                return 200, {"token": "t"}
+            return 200, {"deletedCount": 2, "failedCount": 0}
+
+        with MockServer(responder) as server:
+            result = up_api.Client(server.url, APP, "c", "s").prune_old(5)
+            self.assertEqual(result["deletedCount"], 2)
+            call = server.calls[-1]
+            self.assertEqual((call["method"], call["path"]), ("DELETE", "/admin/applications/artifacts/prune-old?keep=5"))
+            with self.assertRaises(ValueError):
+                up_api.Client(server.url, APP, "c", "s").prune_old(3)
+
+    def test_prune_follows_pages_and_keeps_the_newest(self) -> None:
+        pages = {"": (artifacts("1.0.1", "1.0.2", "1.0.3"), "c2"), "c2": ([{"uuid": "u-1.0.9", "version": "1.0.9", "createdAt": "2026-11-09T10:00:00Z"}], "c3")}
 
         def responder(method: str, path: str, headers: dict, body: bytes):
             if path.endswith("/ci/token"):
@@ -68,10 +80,12 @@ class UpApiTest(unittest.TestCase):
             return 204, None
 
         with MockServer(responder) as server:
-            removed = up_api.Client(server.url, APP, "c", "s").prune("miniapp", 3)
-            self.assertEqual(sorted(removed), ["1.0.1"])
-            deletes = [call["path"] for call in server.calls if call["method"] == "DELETE"]
-            self.assertEqual(deletes, ["/admin/applications/artifacts/u-1.0.1"])
+            removed = up_api.Client(server.url, APP, "c", "s").prune("plugin", 3)
+            self.assertEqual(removed, ["1.0.1"])
+            self.assertEqual(
+                [c["path"] for c in server.calls if c["method"] == "DELETE"],
+                ["/admin/backoffice-plugins/artifacts/u-1.0.1"],
+            )
 
     def test_prune_plugin_uses_plugin_routes(self) -> None:
         def responder(method: str, path: str, headers: dict, body: bytes):

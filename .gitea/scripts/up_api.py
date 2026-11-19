@@ -7,7 +7,7 @@ Environment (Gitea Actions secrets, never arguments):
 The mini-app uuid comes from miniapp.yaml.
 
 Usage: up_api.py publish miniapp|plugin --version 1.2.3 --file <path>
-       up_api.py prune miniapp|plugin [--keep 3]
+       up_api.py prune miniapp|plugin [--keep 5]   (miniapp: the organisation API's prune-old route; plugin: one by one)
        up_api.py deploy-component
 """
 
@@ -23,6 +23,7 @@ import miniapp_config
 KINDS = ("miniapp", "plugin")
 MAX_PAGES = 20
 PAGE_SIZE = 100
+MIN_PRUNE_KEEP = 5  # the organisation API's prune-old refuses less
 
 
 def _env(name: str) -> str:
@@ -86,8 +87,15 @@ class Client:
                 break
         return artifacts
 
+    def prune_old(self, keep: int) -> dict[str, int]:
+        """Mini-app bundles: the organisation API's own route deletes every artifact beyond the `keep` newest of each app."""
+        if keep < MIN_PRUNE_KEEP:
+            raise ValueError(f"keep must be at least {MIN_PRUNE_KEEP}: the API refuses less")
+        answer = ci_http.request_json("DELETE", f"{self.api}/admin/applications/artifacts/prune-old?keep={keep}", token=self.token())
+        return answer if isinstance(answer, dict) else {}
+
     def prune(self, kind: str, keep: int) -> list[str]:
-        """Delete every bundle beyond the `keep` newest; returns the versions deleted."""
+        """Plugin bundles: delete every one beyond the `keep` newest, one by one; returns the versions deleted."""
         if keep < 1:
             raise ValueError("keep must be at least 1")
         newest_first = sorted(self.list_artifacts(kind), key=lambda item: str(item.get("createdAt", "")), reverse=True)
@@ -113,7 +121,7 @@ def main(argv: list[str]) -> int:
     publish.add_argument("--file", required=True, type=Path)
     prune = sub.add_parser("prune")
     prune.add_argument("kind", choices=KINDS)
-    prune.add_argument("--keep", type=int, default=3)
+    prune.add_argument("--keep", type=int, default=MIN_PRUNE_KEEP)
     sub.add_parser("deploy-component")
     args = parser.parse_args(argv)
     try:
@@ -123,8 +131,14 @@ def main(argv: list[str]) -> int:
             client.publish(args.kind, args.version, args.file)
             print(f"published {args.kind} {args.version}")
         elif args.command == "prune":
-            removed = client.prune(args.kind, args.keep)
-            print(f"pruned {args.kind}: {', '.join(removed) if removed else 'nothing to delete'}")
+            if args.kind == "miniapp":
+                result = client.prune_old(args.keep)
+                print(f"pruned miniapp bundles: {result.get('deletedCount', 0)} deleted, {result.get('failedCount', 0)} failed")
+                if result.get("failedCount"):
+                    return 1
+            else:
+                removed = client.prune(args.kind, args.keep)
+                print(f"pruned plugin bundles: {', '.join(removed) if removed else 'nothing to delete'}")
         else:
             client.deploy_component()
             print("component deployment started")

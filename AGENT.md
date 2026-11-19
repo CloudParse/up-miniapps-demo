@@ -61,7 +61,7 @@ In development `VITE_BACKEND_URL` is `/api/v1`. The Vite dev server forwards `/a
 | `docs/deploy.md` | Production deployment: the two buttons, `miniapp.yaml` sections, the workflows, the CI contract with the platform. |
 | `docs/miniapp.example.yaml` | A complete deployable `miniapp.yaml` to copy from (the template itself holds no `miniapp.yaml`). |
 | `api/Dockerfile` | Production image of the API (non-root, `API_PORT` build argument). Built by the CI with Kaniko. |
-| `.gitea/workflows/` | `deploy-backend.yml` and `deploy-frontend.yml`, started by the platform (`workflow_dispatch`, input `version`), run on the organisation's runner `up-ci`. |
+| `.gitea/workflows/` | `deploy-backend.yml`, `deploy-frontend.yml` (mini-app bundle only) and `deploy-plugin.yml`, started by the platform (`workflow_dispatch`, input `version`), run on the organisation's runner `up-ci`. |
 | `.gitea/scripts/` | The CI scripts (standard library Python and one shell script) and their tests: run `.gitea/scripts/check.sh`. |
 | `.gitlab-ci.yml` | One manual job, `github-mirror`: pushes `main` to GitHub (template `.git_mirror_push` of `CloudParse/devops/ci-templates`). |
 
@@ -87,10 +87,10 @@ Ports:
 
 ### Production deployment (story 029)
 
-`miniapp.yaml` (`version: 2`) configures the deployment: `api` (dir, port, healthPath, command, publicIngress), `services` (postgres, cache, bucket), `miniapp`, `plugin`. The platform's two buttons start the Gitea workflows. Rules for anyone changing this part:
+`miniapp.yaml` (`version: 2`) configures the deployment: `api` (dir, port, healthPath, command, publicIngress), `services` (postgres, cache, bucket), `miniapp`, `plugin`. The platform's buttons (backend, frontend, plugin) start one Gitea workflow each. A workflow whose section is absent from `miniapp.yaml` ends successfully with a notice and builds nothing (`miniapp_config.py plan`); a developer may delete a workflow they do not use. Rules for anyone changing this part:
 - The workflows and scripts only read secrets from the environment (`UP_API_URL`, `UP_CLIENT_ID`, `UP_CLIENT_SECRET`, `REGISTRY_USER`, `REGISTRY_TOKEN`), never from arguments, and never print them. Build steps get no secret.
 - The version comes from the platform (workflow input); a workflow never invents one.
-- Retention: 1 image, 3 bundles per kind. The scripts delete the rest after a successful deploy.
+- Retention: 1 image; 5 bundles per kind (the organisation API's `prune-old` minimum, one by one for the plugin). The scripts delete the rest after a successful deploy.
 - The plugin is one ES module (`.js` or `.mjs`): the organisation API refuses anything else.
 - The schema, `miniapp_config.py` and `docs/miniapp.example.yaml` change together; `tests/test_miniapp_config.py` checks that the validator and the schema agree.
 - The runner has no Docker daemon, no PyYAML: standard library only, Kaniko for images.

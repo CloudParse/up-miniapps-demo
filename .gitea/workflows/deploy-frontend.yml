@@ -1,7 +1,8 @@
-# Deploys the frontend of the mini-app to production: builds miniapp/ (and plugin/ when configured), packs the bundles
-# and publishes them with the new version and an empty changelog. Only the 3 newest bundles of each kind are kept.
-# Started by the "Déployer le frontend" button of the platform (workflow_dispatch), which picks the version.
+# Deploys the mini-app bundle to production: builds <miniapp.dir>, packs the content of <miniapp.out> as a .tar.gz and publishes it
+# with the new version and an empty changelog. The 5 newest bundles are kept (the organisation API's minimum).
+# Started by its button of the platform (workflow_dispatch), which picks the version.
 # Secrets written by the platform: UP_API_URL, UP_CLIENT_ID, UP_CLIENT_SECRET.
+# You may delete this file when your mini-app has no such part; the platform then shows no button for it.
 name: deploy-frontend
 
 on:
@@ -32,42 +33,37 @@ jobs:
           rm -f "$askpass"
           git -C src checkout --quiet "$COMMIT"
 
-      - name: Validate miniapp.yaml
-        working-directory: src
-        run: python3 .gitea/scripts/miniapp_config.py validate --target frontend
-
-      # The build steps get no secret: the build commands come from the repository.
-      - name: Build the mini-app
+      # A mini-app may have no api, no miniapp or no plugin section: the run then ends successfully, building nothing.
+      - name: Read miniapp.yaml
         working-directory: src
         run: |
           set -euo pipefail
-          py="$PWD/.gitea/scripts/miniapp_config.py"
-          if [ -n "$(python3 "$py" get miniapp.dir)" ]; then
-            build="$(python3 "$py" get miniapp.build)"
-            (cd "$(python3 "$py" get miniapp.dir)" && sh -c "$build")
-          fi
+          plan="$(python3 .gitea/scripts/miniapp_config.py plan --target frontend)"
+          case "$plan" in
+            skip*) echo "::notice::${plan#skip }"; echo "${plan#skip }"; : >.ci-skip ;;
+          esac
 
-      - name: Build the plugin
+      # The build step gets no secret: the build command comes from the repository.
+      - name: Build the miniapp
         working-directory: src
         run: |
           set -euo pipefail
+          if [ -f .ci-skip ]; then echo "skipped: nothing to deploy"; exit 0; fi
           py="$PWD/.gitea/scripts/miniapp_config.py"
-          if [ -n "$(python3 "$py" get plugin.dir)" ]; then
-            build="$(python3 "$py" get plugin.build)"
-            (cd "$(python3 "$py" get plugin.dir)" && sh -c "$build")
-          fi
+          build="$(python3 "$py" get miniapp.build)"
+          cd "$(python3 "$py" get miniapp.dir)"
+          sh -c "$build"
 
-      - name: Pack the bundles
+      - name: Pack the bundle
         working-directory: src
         env:
           VERSION: ${{ inputs.version }}
         run: |
           set -euo pipefail
-          py=.gitea/scripts/miniapp_config.py
-          if [ -n "$(python3 $py get miniapp.dir)" ]; then python3 .gitea/scripts/bundle.py miniapp --version "$VERSION" --out dist-ci; fi
-          if [ -n "$(python3 $py get plugin.dir)" ]; then python3 .gitea/scripts/bundle.py plugin --version "$VERSION" --out dist-ci; fi
+          if [ -f .ci-skip ]; then echo "skipped: nothing to deploy"; exit 0; fi
+          python3 .gitea/scripts/bundle.py miniapp --version "$VERSION" --out dist-ci
 
-      - name: Publish the bundles
+      - name: Publish and prune
         working-directory: src
         env:
           UP_API_URL: ${{ secrets.UP_API_URL }}
@@ -76,13 +72,7 @@ jobs:
           VERSION: ${{ inputs.version }}
         run: |
           set -euo pipefail
-          py=.gitea/scripts/miniapp_config.py
-          if [ -n "$(python3 $py get miniapp.dir)" ]; then
-            python3 .gitea/scripts/up_api.py publish miniapp --version "$VERSION" --file "dist-ci/miniapp-$VERSION.tar.gz"
-            python3 .gitea/scripts/up_api.py prune miniapp --keep 3
-          fi
-          if [ -n "$(python3 $py get plugin.dir)" ]; then
-            plugin="$(ls dist-ci/plugin-"$VERSION".*)"
-            python3 .gitea/scripts/up_api.py publish plugin --version "$VERSION" --file "$plugin"
-            python3 .gitea/scripts/up_api.py prune plugin --keep 3
-          fi
+          if [ -f .ci-skip ]; then echo "skipped: nothing to deploy"; exit 0; fi
+          file="$(ls dist-ci/miniapp-"$VERSION".tar.gz)"
+          python3 .gitea/scripts/up_api.py publish miniapp --version "$VERSION" --file "$file"
+          python3 .gitea/scripts/up_api.py prune miniapp --keep 5

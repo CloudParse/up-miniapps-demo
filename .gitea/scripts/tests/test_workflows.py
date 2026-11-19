@@ -75,37 +75,74 @@ class WorkflowTest(unittest.TestCase):
             self.assertEqual(result.returncode, 0, f"{step['name']}\n{result.stdout}\n{result.stderr}")
             self.assertNotIn("topsecret", result.stdout + result.stderr, f"secret printed in {step['name']}")
 
-    def test_frontend_publishes_both_bundles_and_prunes(self) -> None:
+    def platform(self):
         def responder(method: str, path: str, headers: dict, body: bytes):
             if path.endswith("/ci/token"):
                 return 200, {"token": "jwt"}
             if method == "GET":
                 return 200, {"data": [], "nextCursor": None}
+            if path.endswith("prune-old?keep=5"):
+                return 200, {"deletedCount": 1, "failedCount": 0}
             return 201, {}
 
-        with MockServer(responder) as server:
-            context = {
-                "inputs.version": "1.0.4",
-                "secrets.UP_API_URL": server.url,
-                "secrets.UP_CLIENT_ID": "cid",
-                "secrets.UP_CLIENT_SECRET": "topsecret",
-            }
-            self.run_steps("deploy-frontend.yml", context)
-        posts = [c for c in server.calls if c["method"] == "POST" and "/admin/" in c["path"]]
+        return MockServer(responder)
+
+    def up_context(self, server: MockServer) -> dict[str, str]:
+        return {
+            "inputs.version": "1.0.4",
+            "secrets.UP_API_URL": server.url,
+            "secrets.UP_CLIENT_ID": "cid",
+            "secrets.UP_CLIENT_SECRET": "topsecret",
+        }
+
+    def test_frontend_publishes_only_the_miniapp_and_prunes_with_prune_old(self) -> None:
+        with self.platform() as server:
+            self.run_steps("deploy-frontend.yml", self.up_context(server))
+        calls = [(c["method"], c["path"]) for c in server.calls if "/admin/" in c["path"]]
         self.assertEqual(
-            [p["path"] for p in posts],
-            [f"/admin/applications/{APP}/artifacts", f"/admin/applications/{APP}/backoffice-plugin/artifacts"],
+            calls,
+            [("POST", f"/admin/applications/{APP}/artifacts"), ("DELETE", "/admin/applications/artifacts/prune-old?keep=5")],
         )
         with tarfile.open(self.src / "dist-ci" / "miniapp-1.0.4.tar.gz") as archive:
             self.assertEqual(archive.getnames(), ["index.html"])
-        self.assertTrue((self.src / "dist-ci" / "plugin-1.0.4.mjs").exists())
+        self.assertFalse(list((self.src / "dist-ci").glob("plugin-*")))
 
-    def test_frontend_stops_on_invalid_config(self) -> None:
-        (self.src / "miniapp.yaml").write_text(CONFIG.replace("version: 2", "version: 1"))
-        with self.assertRaises(AssertionError) as raised:
-            self.run_steps("deploy-frontend.yml", {"inputs.version": "1.0.4"})
-        self.assertIn("Validate miniapp.yaml", str(raised.exception))
-        self.assertIn("version: 2", str(raised.exception))
+    def test_plugin_workflow_publishes_the_module_and_keeps_five(self) -> None:
+        with self.platform() as server:
+            self.run_steps("deploy-plugin.yml", self.up_context(server))
+        posts = [c["path"] for c in server.calls if c["method"] == "POST" and "/admin/" in c["path"]]
+        self.assertEqual(posts, [f"/admin/applications/{APP}/backoffice-plugin/artifacts"])
+        self.assertTrue((self.src / "dist-ci" / "plugin-1.0.4.mjs").exists())
+        self.assertFalse(list((self.src / "dist-ci").glob("miniapp-*")))
+
+    @staticmethod
+    def without_section(section: str) -> str:
+        """CONFIG with one top-level section (and its indented lines) removed."""
+        lines, skipping = [], False
+        for line in CONFIG.splitlines():
+            if line.startswith(f"{section}:"):
+                skipping = True
+                continue
+            if skipping and line.startswith("  "):
+                continue
+            skipping = False
+            lines.append(line)
+        return "\n".join(lines) + "\n"
+
+    def test_each_workflow_succeeds_and_does_nothing_without_its_section(self) -> None:
+        os.environ["KANIKO_EXECUTOR"] = "/nonexistent-must-not-run"
+        self.addCleanup(os.environ.pop, "KANIKO_EXECUTOR", None)
+        for name, section in {"deploy-backend.yml": "api", "deploy-frontend.yml": "miniapp", "deploy-plugin.yml": "plugin"}.items():
+            with self.subTest(name), self.platform() as server:
+                (self.src / "miniapp.yaml").write_text(self.without_section(section))
+                shutil.rmtree(self.src / "dist-ci", ignore_errors=True)
+                (self.src / ".ci-skip").unlink(missing_ok=True)
+                context = {**self.up_context(server), "secrets.REGISTRY_USER": "u", "secrets.REGISTRY_TOKEN": "topsecret",
+                           "gitea.server_url": server.url, "gitea.repository": "demo/x", "gitea.repository_owner": "demo"}
+                self.run_steps(name, context)
+                self.assertEqual(server.calls, [], "no platform call when the section is absent")
+                self.assertFalse((self.src / "dist-ci").exists(), "nothing built when the section is absent")
+                self.assertTrue((self.src / ".ci-skip").exists())
 
     def test_backend_builds_rolls_out_then_prunes_the_registry(self) -> None:
         (self.src / "api").mkdir()
@@ -149,14 +186,15 @@ class WorkflowTest(unittest.TestCase):
         self.assertLess(deploy_index, delete_index)
 
     def test_workflows_declare_dispatch_runner_and_no_secret_in_build(self) -> None:
-        for name in ("deploy-backend.yml", "deploy-frontend.yml"):
+        for name in ("deploy-backend.yml", "deploy-frontend.yml", "deploy-plugin.yml"):
             workflow = load(name)
             triggers = workflow.get("on", workflow.get(True))
             self.assertIn("version", triggers["workflow_dispatch"]["inputs"])
             self.assertEqual(next(iter(workflow["jobs"].values()))["runs-on"], "up-ci")
-        for step in steps(load("deploy-frontend.yml")):
-            if step["name"].startswith("Build"):
-                self.assertFalse(any("secrets." in str(v) for v in step.get("env", {}).values()))
+        for name in ("deploy-frontend.yml", "deploy-plugin.yml"):
+            for step in steps(load(name)):
+                if step["name"].startswith("Build"):
+                    self.assertFalse(any("secrets." in str(v) for v in step.get("env", {}).values()))
         _ = json
 
 

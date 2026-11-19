@@ -14,8 +14,8 @@ name: Atlas
 """
 
 
-def check(extra: str, target: str | None = None) -> None:
-    mc.validate(mc.parse(BASE + extra), target)
+def check(extra: str) -> None:
+    mc.validate(mc.parse(BASE + extra))
 
 
 class ParseTest(unittest.TestCase):
@@ -41,29 +41,34 @@ class ParseTest(unittest.TestCase):
 
     def test_example_in_docs_is_valid(self) -> None:
         config = mc.load(ROOT / "docs" / "miniapp.example.yaml")
-        mc.validate(config, "backend")
-        mc.validate(config, "frontend")
+        mc.validate(config)
+        self.assertEqual(mc.plan(config, "backend"), "run")
+        self.assertEqual(mc.plan(config, "frontend"), "run")
+        self.assertTrue(mc.plan(config, "plugin").startswith("skip "))  # the example's plugin section is commented out
 
 
 class ValidateTest(unittest.TestCase):
-    def test_minimal_v1_is_valid_but_not_deployable(self) -> None:
-        mc.validate(mc.parse(BASE.replace("version: 2", "version: 1")))
-        with self.assertRaisesRegex(mc.ConfigError, "version: 2"):
-            mc.validate(mc.parse(BASE.replace("version: 2", "version: 1")), "backend")
+    def test_v1_is_valid_and_every_target_is_skipped(self) -> None:
+        config = mc.parse(BASE.replace("version: 2", "version: 1"))
+        mc.validate(config)
+        for target in mc.TARGETS:
+            self.assertTrue(mc.plan(config, target).startswith("skip "))
 
     def test_v1_with_deploy_sections_refused(self) -> None:
         with self.assertRaisesRegex(mc.ConfigError, "api: needs `version: 2`"):
             mc.validate(mc.parse(BASE.replace("version: 2", "version: 1") + "api:\n  dir: api\n  port: 80\n"))
 
-    def test_backend_target_needs_api(self) -> None:
-        with self.assertRaisesRegex(mc.ConfigError, "no backend"):
-            check("", "backend")
-        check("api:\n  dir: api\n  port: 8000\n", "backend")
+    def test_plan_is_per_section_and_never_an_error_when_absent(self) -> None:
+        config = mc.parse(BASE + "api:\n  dir: api\n  port: 8000\nplugin:\n  dir: p\n  build: b\n  out: dist\n  file: a.mjs\n")
+        self.assertEqual(mc.plan(config, "backend"), "run")
+        self.assertEqual(mc.plan(config, "plugin"), "run")
+        self.assertRegex(mc.plan(config, "frontend"), r"^skip .*`miniapp` section")
+        with self.assertRaises(mc.ConfigError):
+            mc.plan(config, "nope")
 
-    def test_frontend_target_needs_miniapp_or_plugin(self) -> None:
-        with self.assertRaisesRegex(mc.ConfigError, "miniapp or a plugin"):
-            check("", "frontend")
-        check("miniapp:\n  dir: m\n  build: npm run build\n  out: dist\n", "frontend")
+    def test_plan_still_refuses_an_invalid_file(self) -> None:
+        with self.assertRaises(mc.ConfigError):
+            mc.plan(mc.parse(BASE + "api:\n  dir: api\n  port: 0\n"), "frontend")
 
     def test_rejects_bad_values(self) -> None:
         cases = {

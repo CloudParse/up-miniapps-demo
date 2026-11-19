@@ -21,7 +21,7 @@ Read `AGENT.md` at the root, then the `AGENT.md` of the folder you change (`api/
 
 ## Deploying
 
-The platform's buttons "Déployer le backend" and "Déployer le frontend" start `.gitea/workflows/deploy-backend.yml` and `deploy-frontend.yml` on the organisation's runner. The backend image is built from `api/Dockerfile` with the port of `api.port`; the frontend publishes `miniapp-<version>.tar.gz` (and the plugin module). The version is chosen by the platform (patch +1). Details: `docs/deploy.md`. Never put a secret in `miniapp.yaml` or in a workflow; change the CI scripts only with their tests (`.gitea/scripts/check.sh`).
+The platform's buttons "Déployer le backend", "Déployer le frontend" and "Déployer le plugin" start `deploy-backend.yml`, `deploy-frontend.yml` and `deploy-plugin.yml` of `.gitea/workflows/` on the organisation's runner. The backend image is built from `api/Dockerfile` with the port of `api.port`; the frontend publishes `miniapp-<version>.tar.gz`; the plugin workflow publishes the plugin module. A workflow whose section is absent from `miniapp.yaml` ends successfully and does nothing; delete the ones you do not use. The version is chosen by the platform (patch +1). Details: `docs/deploy.md`. Never put a secret in `miniapp.yaml` or in a workflow; change the CI scripts only with their tests (`.gitea/scripts/check.sh`).
 
 ## Users and tokens in development
 

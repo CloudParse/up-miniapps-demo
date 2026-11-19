@@ -4,7 +4,10 @@ The CI runner has Python but no PyYAML, so this reads the small YAML subset the 
 nested mappings (two-space indent), scalars, quoted strings, flow lists `[a, b]` and block lists `- a`.
 Anything else (anchors, multi-line strings, tabs) is refused with a clear message.
 
-Usage: miniapp_config.py validate [--target backend|frontend] [--file miniapp.yaml]
+Usage: miniapp_config.py validate [--file miniapp.yaml]
+       miniapp_config.py plan --target backend|frontend|plugin [--file miniapp.yaml]
+           prints `run`, or `skip <reason>` when the section of that target is absent (never an error);
+           an invalid file is an error
        miniapp_config.py get <dotted.key> [--file miniapp.yaml]   (prints the value; a list prints one item per line)
 """
 
@@ -20,7 +23,8 @@ REL_PATH = re.compile(r"^(?!/)(?!.*\.\.)[A-Za-z0-9._/-]+$")
 HEALTH_PATH = re.compile(r"^/[A-Za-z0-9._~/%-]*$")
 JS_FILE = re.compile(r"^(?!/)(?!.*\.\.)[A-Za-z0-9._/-]+\.m?js$")
 SERVICES = ("postgres", "cache", "bucket")
-TARGETS = ("backend", "frontend")
+SECTION_OF_TARGET = {"backend": "api", "frontend": "miniapp", "plugin": "plugin"}
+TARGETS = tuple(SECTION_OF_TARGET)
 
 
 class ConfigError(ValueError):
@@ -190,8 +194,8 @@ def _check_api(api: dict[str, Any]) -> None:
         raise ConfigError("api.publicIngress: must be true or false")
 
 
-def validate(config: dict[str, Any], target: str | None = None) -> None:
-    """Raise ConfigError with a message the developer can act on; target is backend, frontend or None."""
+def validate(config: dict[str, Any]) -> None:
+    """Raise ConfigError with a message the developer can act on."""
     if config.get("version") not in (1, 2):
         raise ConfigError("version: must be 1 or 2")
     if not isinstance(config.get("uuid"), str) or not UUID.match(config["uuid"]):
@@ -219,20 +223,17 @@ def validate(config: dict[str, Any], target: str | None = None) -> None:
             _check_build(name, section)
     if "plugin" in config and not JS_FILE.match(str(config["plugin"]["file"])):
         raise ConfigError("plugin.file: must be a .js or .mjs file, relative to out")
-    _check_target(config, target)
 
 
-def _check_target(config: dict[str, Any], target: str | None) -> None:
-    if target is None:
-        return
+def plan(config: dict[str, Any], target: str) -> str:
+    """`run` when the target's section exists, else `skip <reason>`; the file is validated first."""
     if target not in TARGETS:
         raise ConfigError(f"target must be one of {', '.join(TARGETS)}")
-    if config["version"] != 2:
-        raise ConfigError("version: set `version: 2` in miniapp.yaml to deploy")
-    if target == "backend" and "api" not in config:
-        raise ConfigError("api: this mini-app has no backend, add an api section to deploy one")
-    if target == "frontend" and "miniapp" not in config and "plugin" not in config:
-        raise ConfigError("miniapp: add a miniapp or a plugin section to deploy a frontend")
+    validate(config)
+    section = SECTION_OF_TARGET[target]
+    if section in config:
+        return "run"
+    return f"skip miniapp.yaml has no `{section}` section: nothing to deploy for the {target} (add it with `version: 2`, or delete this workflow)"
 
 
 def get(config: dict[str, Any], dotted: str) -> Any:
@@ -258,8 +259,10 @@ def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
     check = sub.add_parser("validate")
-    check.add_argument("--target", choices=TARGETS)
     check.add_argument("--file", default="miniapp.yaml")
+    planned = sub.add_parser("plan")
+    planned.add_argument("--target", choices=TARGETS, required=True)
+    planned.add_argument("--file", default="miniapp.yaml")
     read = sub.add_parser("get")
     read.add_argument("key")
     read.add_argument("--file", default="miniapp.yaml")
@@ -267,7 +270,9 @@ def main(argv: list[str]) -> int:
     try:
         config = load(Path(args.file))
         if args.command == "validate":
-            validate(config, args.target)
+            validate(config)
+        elif args.command == "plan":
+            print(plan(config, args.target))
         else:
             print(_format(get(config, args.key)))
     except ConfigError as error:

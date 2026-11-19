@@ -1,14 +1,15 @@
-# Deploys the API of the mini-app to production: builds api/ into an image, pushes it to this organisation's Gitea
+# Deploys the API of the mini-app to production: builds <api.dir> into an image, pushes it to this organisation's Gitea
 # registry and rolls out the custom component linked to the mini-app.
-# Started by the "Déployer le backend" button of the platform (workflow_dispatch), which picks the version.
+# Started by its button of the platform (workflow_dispatch), which picks the version.
 # Secrets written by the platform: UP_API_URL, UP_CLIENT_ID, UP_CLIENT_SECRET, REGISTRY_USER, REGISTRY_TOKEN.
+# You may delete this file when your mini-app has no such part; the platform then shows no button for it.
 name: deploy-backend
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: Semver of this deployment (the image tag), e.g. 1.0.3
+        description: Semver of this deployment, e.g. 1.0.3
         required: true
 
 concurrency:
@@ -32,9 +33,15 @@ jobs:
           rm -f "$askpass"
           git -C src checkout --quiet "$COMMIT"
 
-      - name: Validate miniapp.yaml
+      # A mini-app may have no api, no miniapp or no plugin section: the run then ends successfully, building nothing.
+      - name: Read miniapp.yaml
         working-directory: src
-        run: python3 .gitea/scripts/miniapp_config.py validate --target backend
+        run: |
+          set -euo pipefail
+          plan="$(python3 .gitea/scripts/miniapp_config.py plan --target backend)"
+          case "$plan" in
+            skip*) echo "::notice::${plan#skip }"; echo "${plan#skip }"; : >.ci-skip ;;
+          esac
 
       - name: Build and push the image
         working-directory: src
@@ -46,6 +53,7 @@ jobs:
           REPOSITORY: ${{ gitea.repository }}
         run: |
           set -euo pipefail
+          if [ -f .ci-skip ]; then echo "skipped: nothing to deploy"; exit 0; fi
           host="${SERVER_URL#*://}"; host="${host%%/*}"
           export IMAGE="$(printf '%s/%s' "$host" "$REPOSITORY" | tr '[:upper:]' '[:lower:]')"
           export API_DIR="$(python3 .gitea/scripts/miniapp_config.py get api.dir)"
@@ -59,7 +67,10 @@ jobs:
           UP_API_URL: ${{ secrets.UP_API_URL }}
           UP_CLIENT_ID: ${{ secrets.UP_CLIENT_ID }}
           UP_CLIENT_SECRET: ${{ secrets.UP_CLIENT_SECRET }}
-        run: python3 .gitea/scripts/up_api.py deploy-component
+        run: |
+          set -euo pipefail
+          if [ -f .ci-skip ]; then echo "skipped: nothing to deploy"; exit 0; fi
+          python3 .gitea/scripts/up_api.py deploy-component
 
       - name: Keep only this image
         working-directory: src
@@ -71,4 +82,6 @@ jobs:
           OWNER: ${{ gitea.repository_owner }}
           REPOSITORY: ${{ gitea.repository }}
         run: |
+          set -euo pipefail
+          if [ -f .ci-skip ]; then echo "skipped: nothing to deploy"; exit 0; fi
           python3 .gitea/scripts/registry_prune.py --owner "$OWNER" --name "${REPOSITORY#*/}" --keep-version "$VERSION"
