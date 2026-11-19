@@ -57,10 +57,15 @@ In development `VITE_BACKEND_URL` is `/api/v1`. The Vite dev server forwards `/a
 | `docs/coder.md` | How the demo runs in a Coder workspace: the services it uses, the settings, the limits. |
 | `SETUP.md` | The commands, in order. |
 | `miniapp.yaml` | In a project repository only (written by the platform whenever it is missing, never overwritten; not in this template): the backoffice settings of the mini-app (name, description, logo, card style, theme, devices). Never a secret nor an environment variable. |
-| `miniapp.schema.json` | The format of `miniapp.yaml`. |
+| `miniapp.schema.json` | The format of `miniapp.yaml` (versions 1 and 2). |
+| `docs/deploy.md` | Production deployment: the two buttons, `miniapp.yaml` sections, the workflows, the CI contract with the platform. |
+| `docs/miniapp.example.yaml` | A complete deployable `miniapp.yaml` to copy from (the template itself holds no `miniapp.yaml`). |
+| `api/Dockerfile` | Production image of the API (non-root, `API_PORT` build argument). Built by the CI with Kaniko. |
+| `.gitea/workflows/` | `deploy-backend.yml` and `deploy-frontend.yml`, started by the platform (`workflow_dispatch`, input `version`), run on the organisation's runner `up-ci`. |
+| `.gitea/scripts/` | The CI scripts (standard library Python and one shell script) and their tests: run `.gitea/scripts/check.sh`. |
 | `.gitlab-ci.yml` | One manual job, `github-mirror`: pushes `main` to GitHub (template `.git_mirror_push` of `CloudParse/devops/ci-templates`). |
 
-The repository root is **not** an application: no code lives there, only the documentation, `miniapp.yaml`, its schema and the CI file.
+The repository root is **not** an application: no code lives there, only the documentation, `miniapp.yaml`, its schema, the CI files (`.gitlab-ci.yml`, `.gitea/`).
 
 Sub-project specifics live in `miniapp/AGENT.md` and `api/AGENT.md`. When they conflict with this file, the sub-project file wins for its own folder.
 
@@ -79,6 +84,16 @@ Ports:
 - `21514`: the API, bound to `127.0.0.1`.
 - `21515`: the Vite dev server, bound to `127.0.0.1` (Coder reaches it there). Through its proxy, the API's `/api/` routes are reachable on that port too.
 - Before adding a port anywhere, check it does not clash with another project.
+
+### Production deployment (story 029)
+
+`miniapp.yaml` (`version: 2`) configures the deployment: `api` (dir, port, healthPath, command, publicIngress), `services` (postgres, cache, bucket), `miniapp`, `plugin`. The platform's two buttons start the Gitea workflows. Rules for anyone changing this part:
+- The workflows and scripts only read secrets from the environment (`UP_API_URL`, `UP_CLIENT_ID`, `UP_CLIENT_SECRET`, `REGISTRY_USER`, `REGISTRY_TOKEN`), never from arguments, and never print them. Build steps get no secret.
+- The version comes from the platform (workflow input); a workflow never invents one.
+- Retention: 1 image, 3 bundles per kind. The scripts delete the rest after a successful deploy.
+- The plugin is one ES module (`.js` or `.mjs`): the organisation API refuses anything else.
+- The schema, `miniapp_config.py` and `docs/miniapp.example.yaml` change together; `tests/test_miniapp_config.py` checks that the validator and the schema agree.
+- The runner has no Docker daemon, no PyYAML: standard library only, Kaniko for images.
 
 ## 4. General conventions
 

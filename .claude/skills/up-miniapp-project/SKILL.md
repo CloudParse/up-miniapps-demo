@@ -17,6 +17,11 @@ Read `AGENT.md` at the root, then the `AGENT.md` of the folder you change (`api/
 
 - `miniapp.yaml` (repository root) holds the backoffice settings: `uuid`, `slug` (both never change), `name`, `description`, `logo` (a `.webp` of the repository or `null`), `cardStyle`, `darkTheme`, `deviceTypes`. Its format is `miniapp.schema.json`.
 - The platform writes it whenever it is missing and never overwrites it. Edit it to change how the mini-app looks; never add a secret or an environment variable to it. The backoffice is updated from it by a CI job (not available yet).
+- `version: 2` adds the production deployment sections: `api` (`dir`, `port`, `healthPath`, `command`, `publicIngress`), `services` (`postgres`, `cache`, `bucket`), `miniapp` and `plugin` (`dir`, `build`, `out`; the plugin also `file`, one `.js`/`.mjs` module). Example: `docs/miniapp.example.yaml`.
+
+## Deploying
+
+The platform's buttons "Déployer le backend" and "Déployer le frontend" start `.gitea/workflows/deploy-backend.yml` and `deploy-frontend.yml` on the organisation's runner. The backend image is built from `api/Dockerfile` with the port of `api.port`; the frontend publishes `miniapp-<version>.tar.gz` (and the plugin module). The version is chosen by the platform (patch +1). Details: `docs/deploy.md`. Never put a secret in `miniapp.yaml` or in a workflow; change the CI scripts only with their tests (`.gitea/scripts/check.sh`).
 
 ## Users and tokens in development
 

@@ -8,3 +8,7 @@
 
 # Local production overrides: never committed (backend URLs are built in as fallbacks).
 .env.production
+
+# CI scripts: local runs.
+dist-ci/
+__pycache__/

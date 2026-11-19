@@ -1,12 +1,23 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "miniapp.yaml",
-  "description": "Settings of an Up mini-app in its organisation's backoffice: identity and display. Never a secret nor an environment variable.",
+  "description": "Settings of an Up mini-app: identity and display (version 1 and 2), and how the project is deployed to production (version 2). Never a secret nor an environment variable.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["version", "uuid", "slug", "name"],
+  "required": [
+    "version",
+    "uuid",
+    "slug",
+    "name"
+  ],
   "properties": {
-    "version": { "const": 1, "description": "Version of this format." },
+    "version": {
+      "enum": [
+        1,
+        2
+      ],
+      "description": "Version of this format. 1: identity and display only (the project cannot be deployed). 2: adds api, services, miniapp and plugin."
+    },
     "uuid": {
       "type": "string",
       "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
@@ -17,20 +28,41 @@
       "pattern": "^[a-z]([a-z0-9-]{0,18}[a-z0-9])?$",
       "description": "Short name chosen at creation, never changes."
     },
-    "name": { "type": "string", "minLength": 1, "description": "Name shown in the shell." },
-    "description": { "type": "string" },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Name shown in the shell."
+    },
+    "description": {
+      "type": "string"
+    },
     "logo": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "pattern": "^[A-Za-z0-9._/-]+\\.webp$",
-      "not": { "type": "string", "pattern": "(^/|\\.\\.)" },
+      "not": {
+        "type": "string",
+        "pattern": "(^/|\\.\\.)"
+      },
       "description": "Path of a .webp image in this repository (e.g. assets/logo.webp); null keeps the logo set in the backoffice."
     },
     "cardStyle": {
-      "enum": ["navy", "blush", "night", "mist", "violet"],
+      "enum": [
+        "navy",
+        "blush",
+        "night",
+        "mist",
+        "violet"
+      ],
       "description": "Gradient of the mini-app's card on the shell home screen."
     },
     "darkTheme": {
-      "type": ["boolean", "null"],
+      "type": [
+        "boolean",
+        "null"
+      ],
       "description": "Whether the mini-app's UI is dark; null leaves it to the mini-app (the shell follows its own signal)."
     },
     "deviceTypes": {
@@ -39,6 +71,171 @@
       "minItems": 1,
       "uniqueItems": true,
       "description": "Devices the mini-app is shown on."
+    },
+    "api": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dir",
+        "port"
+      ],
+      "description": "The mini-app's backend. Omit the whole section when there is none. Built from <dir>/Dockerfile, deployed as the custom component linked to the mini-app.",
+      "properties": {
+        "dir": {
+          "type": "string",
+          "pattern": "^(?!/)(?!.*\\.\\.)[A-Za-z0-9._/-]+$",
+          "description": "Folder of the API; its Dockerfile is the build file and the folder is the build context."
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535,
+          "description": "Port the container listens on."
+        },
+        "healthPath": {
+          "type": "string",
+          "pattern": "^/[A-Za-z0-9._~/%-]*$",
+          "description": "HTTP path that answers 200 when the API is healthy (readiness probe)."
+        },
+        "command": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "description": "Exec-form command overriding the image's own entrypoint; omit to use the image's."
+        },
+        "publicIngress": {
+          "type": "boolean",
+          "description": "Whether the API gets a public address (default false: reachable from the organisation only)."
+        }
+      }
+    },
+    "services": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "What the API depends on; each one the platform provisions for the deployed API (PostgreSQL database, cache user, bucket). Needs api.",
+      "properties": {
+        "postgres": {
+          "type": "boolean"
+        },
+        "cache": {
+          "type": "boolean"
+        },
+        "bucket": {
+          "type": "boolean"
+        }
+      }
+    },
+    "miniapp": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dir",
+        "build",
+        "out"
+      ],
+      "description": "The mini-app bundle shown in the Up shell. Omit when there is none. Published as a .tar.gz of the content of out.",
+      "properties": {
+        "dir": {
+          "type": "string",
+          "pattern": "^(?!/)(?!.*\\.\\.)[A-Za-z0-9._/-]+$",
+          "description": "Folder of the mini-app."
+        },
+        "build": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "description": "Shell command run in dir to build (no secret is available to it)."
+        },
+        "out": {
+          "type": "string",
+          "pattern": "^(?!/)(?!.*\\.\\.)[A-Za-z0-9._/-]+$",
+          "description": "Build output folder, relative to dir."
+        }
+      }
+    },
+    "plugin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dir",
+        "build",
+        "out",
+        "file"
+      ],
+      "description": "The backoffice plugin of the mini-app. Omit when there is none. Published as one ES module (.js or .mjs): the backoffice loads exactly this file.",
+      "properties": {
+        "dir": {
+          "type": "string",
+          "pattern": "^(?!/)(?!.*\\.\\.)[A-Za-z0-9._/-]+$",
+          "description": "Folder of the plugin."
+        },
+        "build": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500,
+          "description": "Shell command run in dir to build (no secret is available to it)."
+        },
+        "out": {
+          "type": "string",
+          "pattern": "^(?!/)(?!.*\\.\\.)[A-Za-z0-9._/-]+$",
+          "description": "Build output folder, relative to dir."
+        },
+        "file": {
+          "type": "string",
+          "pattern": "^(?!/)(?!.*\\.\\.)[A-Za-z0-9._/-]+\\.m?js$",
+          "description": "The ES module, relative to out."
+        }
+      }
     }
-  }
+  },
+  "dependentRequired": {
+    "services": [
+      "api"
+    ]
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "version": {
+            "const": 1
+          }
+        },
+        "required": [
+          "version"
+        ]
+      },
+      "then": {
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "api"
+              ]
+            },
+            {
+              "required": [
+                "services"
+              ]
+            },
+            {
+              "required": [
+                "miniapp"
+              ]
+            },
+            {
+              "required": [
+                "plugin"
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ]
 }

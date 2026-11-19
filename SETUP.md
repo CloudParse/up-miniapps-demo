@@ -42,7 +42,11 @@ In the Coder dashboard, open the app **Mini-app** of your workspace (port 21515)
 
 Without the app (no apps domain on your organisation's Coder), run on your laptop `coder port-forward <workspace> --tcp 21515:21515` and open `http://localhost:21515`.
 
-## 4. Start Claude Code
+## 4. Deploy to production
+
+Set `version: 2` in `miniapp.yaml` and add the `api`, `services`, `miniapp` and `plugin` sections you need (example: `docs/miniapp.example.yaml`). Commit, push, then press **Déployer le backend** and/or **Déployer le frontend** in the platform. Details and the CI contract: `docs/deploy.md`.
+
+## 5. Start Claude Code
 
 From the root of the project, so it loads `CLAUDE.md` and `AGENT.md`. Sign in with your own Anthropic account (`/login`).
 

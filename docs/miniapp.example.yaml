@@ -1,0 +1,41 @@
+# yaml-language-server: $schema=../miniapp.schema.json
+# EXAMPLE of a deployable miniapp.yaml (version 2). Copy the sections you need into the miniapp.yaml at the root of YOUR
+# project, keep the uuid and slug the platform wrote there, and delete the sections you do not use.
+# Never put a secret or an environment variable here.
+version: 2
+uuid: 5b5101d1-0f4c-4b7e-9a35-2d6f1f0c7a11
+slug: atlas
+name: Atlas
+description: Example mini-app
+logo: null
+cardStyle: navy
+darkTheme: null
+deviceTypes: [PHONE, TABLET]
+
+# Backend. Built from <dir>/Dockerfile and deployed as the component linked to the mini-app.
+# Omit the whole section when the mini-app has no backend.
+api:
+  dir: api
+  port: 8000                 # the port the container listens on
+  healthPath: /healthz       # answers 200 when the API is healthy
+  publicIngress: false       # true: the API gets a public address
+  # command: ["python", "-m", "app"]   # only to override the image's own entrypoint
+
+# What the API needs. The platform provisions each one and hands its settings to the API at start.
+services:
+  postgres: true
+  cache: true
+  bucket: true
+
+# The mini-app shown in the Up shell: built, packed as a .tar.gz of the content of `out`, published.
+miniapp:
+  dir: miniapp
+  build: npm ci && npm run build
+  out: dist
+
+# The backoffice plugin (optional): published as ONE ES module, `file`, relative to `out`.
+# plugin:
+#   dir: plugin
+#   build: npm ci && npm run build
+#   out: dist
+#   file: plugin.mjs

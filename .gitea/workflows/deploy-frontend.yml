@@ -1,0 +1,88 @@
+# Deploys the frontend of the mini-app to production: builds miniapp/ (and plugin/ when configured), packs the bundles
+# and publishes them with the new version and an empty changelog. Only the 3 newest bundles of each kind are kept.
+# Started by the "Déployer le frontend" button of the platform (workflow_dispatch), which picks the version.
+# Secrets written by the platform: UP_API_URL, UP_CLIENT_ID, UP_CLIENT_SECRET.
+name: deploy-frontend
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Semver of this deployment, e.g. 1.0.3
+        required: true
+
+concurrency:
+  group: deploy-frontend
+  cancel-in-progress: false
+
+jobs:
+  deploy-frontend:
+    runs-on: up-ci
+    steps:
+      - name: Check out the repository
+        env:
+          GITEA_TOKEN: ${{ gitea.token }}
+          SERVER_URL: ${{ gitea.server_url }}
+          REPOSITORY: ${{ gitea.repository }}
+          COMMIT: ${{ gitea.sha }}
+        run: |
+          set -euo pipefail
+          askpass="$(mktemp)"; printf '#!/bin/sh\necho "$GITEA_TOKEN"\n' >"$askpass"; chmod 700 "$askpass"
+          GIT_ASKPASS="$askpass" GIT_TERMINAL_PROMPT=0 git clone --quiet "$SERVER_URL/$REPOSITORY.git" src
+          rm -f "$askpass"
+          git -C src checkout --quiet "$COMMIT"
+
+      - name: Validate miniapp.yaml
+        working-directory: src
+        run: python3 .gitea/scripts/miniapp_config.py validate --target frontend
+
+      # The build steps get no secret: the build commands come from the repository.
+      - name: Build the mini-app
+        working-directory: src
+        run: |
+          set -euo pipefail
+          py="$PWD/.gitea/scripts/miniapp_config.py"
+          if [ -n "$(python3 "$py" get miniapp.dir)" ]; then
+            build="$(python3 "$py" get miniapp.build)"
+            (cd "$(python3 "$py" get miniapp.dir)" && sh -c "$build")
+          fi
+
+      - name: Build the plugin
+        working-directory: src
+        run: |
+          set -euo pipefail
+          py="$PWD/.gitea/scripts/miniapp_config.py"
+          if [ -n "$(python3 "$py" get plugin.dir)" ]; then
+            build="$(python3 "$py" get plugin.build)"
+            (cd "$(python3 "$py" get plugin.dir)" && sh -c "$build")
+          fi
+
+      - name: Pack the bundles
+        working-directory: src
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          py=.gitea/scripts/miniapp_config.py
+          if [ -n "$(python3 $py get miniapp.dir)" ]; then python3 .gitea/scripts/bundle.py miniapp --version "$VERSION" --out dist-ci; fi
+          if [ -n "$(python3 $py get plugin.dir)" ]; then python3 .gitea/scripts/bundle.py plugin --version "$VERSION" --out dist-ci; fi
+
+      - name: Publish the bundles
+        working-directory: src
+        env:
+          UP_API_URL: ${{ secrets.UP_API_URL }}
+          UP_CLIENT_ID: ${{ secrets.UP_CLIENT_ID }}
+          UP_CLIENT_SECRET: ${{ secrets.UP_CLIENT_SECRET }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          py=.gitea/scripts/miniapp_config.py
+          if [ -n "$(python3 $py get miniapp.dir)" ]; then
+            python3 .gitea/scripts/up_api.py publish miniapp --version "$VERSION" --file "dist-ci/miniapp-$VERSION.tar.gz"
+            python3 .gitea/scripts/up_api.py prune miniapp --keep 3
+          fi
+          if [ -n "$(python3 $py get plugin.dir)" ]; then
+            plugin="$(ls dist-ci/plugin-"$VERSION".*)"
+            python3 .gitea/scripts/up_api.py publish plugin --version "$VERSION" --file "$plugin"
+            python3 .gitea/scripts/up_api.py prune plugin --keep 3
+          fi

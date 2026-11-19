@@ -144,6 +144,10 @@ Same convention as every Go backend of the Up family:
 - The committed file holds safe defaults and **empty placeholders for secrets**. The one exception: `hub.app_uuid` and `hub.client_secret` default to the DEV backend's shared mock registration (`0d0d0d0d-0000-4000-8000-000000000001`, `mock_secret`), which opens nothing outside the DEV backend. Real values come from the environment (`api/.env`, loaded with `uv run --env-file .env`, gitignored). Secrets are `SecretStr`.
 - To add a setting: add the key to `config.toml`, the field to the matching model in `core/config.py`, a test in `tests/test_config.py`.
 
+## Production image (`Dockerfile`)
+
+The CI builds `Dockerfile` with Kaniko (`docs/deploy.md`). Keep it: multi-stage, dependencies from `uv.lock` (`uv sync --frozen --no-dev`), a non-root user (`10001`), no secret, pinned base images, `ENVIRONMENT=production`, `SERVER_HOST=0.0.0.0` and `SERVER_PORT` from the build argument `API_PORT` (`miniapp.yaml` `api.port`). A new runtime file (outside `app/` and `configs/`) must be copied in the Dockerfile. `.dockerignore` keeps `.env`, tests and caches out of the image. Probe `GET /healthz` (`api.healthPath`).
+
 ## Registering a mini-app on the CloudParse backend
 
 ### The two backends
