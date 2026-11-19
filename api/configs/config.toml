@@ -10,7 +10,7 @@ port = 21514
 
 [hub]
 # The CloudParse backend (the "Hub"): the organisation's DEV backend, as reached from a Coder workspace.
-base_url = "http://backend:8080/api/v1"
+base_url = "http://backend-service:8080/api/v1"
 # Public half of the key pair the Hub signs user tokens with. A deployed component gets it mounted here; the project's
 # Coder workspace sets HUB_PUBLIC_KEY_PATH to the copy it writes.
 public_key_path = "/etc/up-platform/jwt/public.pem"

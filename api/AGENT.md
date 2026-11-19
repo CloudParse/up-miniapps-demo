@@ -148,7 +148,7 @@ Same convention as every Go backend of the Up family:
 
 ### The two backends
 
-- **CloudParse backend (the "Hub")**: the official Up backend (`cloudparse/up-backend`). It owns users, sign-in, the catalogue of mini-apps, push, points and achievements. It signs the tokens users carry. It is the authority. In a Coder workspace your backend uses the organisation's DEV backend, `http://backend:8080/api/v1` (`hub.base_url`).
+- **CloudParse backend (the "Hub")**: the official Up backend (`cloudparse/up-backend`). It owns users, sign-in, the catalogue of mini-apps, push, points and achievements. It signs the tokens users carry. It is the authority. In a Coder workspace your backend uses the organisation's DEV backend, `http://backend-service:8080/api/v1` (`hub.base_url`).
 - **Your mini-app backend** (this project): owns **your** data and rules. It never sees passwords or phone numbers; it only receives a token saying *which user* is calling, *from which mini-app*.
 
 ### How your backend is identified
@@ -215,7 +215,7 @@ The machine login proves the credentials work (run in `api/`, after `set -a; . .
 
 ```bash
 jq -n '{appUuid: env.HUB_APP_UUID, clientSecret: env.HUB_CLIENT_SECRET}' \
-  | curl -fsS -X POST http://backend:8080/api/v1/partner/auth/login -H 'Content-Type: application/json' --data @- \
+  | curl -fsS -X POST http://backend-service:8080/api/v1/partner/auth/login -H 'Content-Type: application/json' --data @- \
   | jq -e .token >/dev/null && echo "credentials OK"
 ```
 

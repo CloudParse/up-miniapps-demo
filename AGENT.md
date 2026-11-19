@@ -23,7 +23,7 @@ The project runs in its **Coder workspace** (`docs/coder.md`). The API and the m
 
 ```text
 Browser ──Coder app "Mini-app" (private)──▶ miniapp/ (Vite, 21515) ──/api/ proxy──▶ api/ (FastAPI, 127.0.0.1:21514)
-                                                 │                                   ├──▶ DEV Hub         http://backend:8080/api/v1
+                                                 │                                   ├──▶ DEV Hub         http://backend-service:8080/api/v1
                                                  │                                   ├──▶ DEV database    DATABASE_URL
                                                  │                                   ├──▶ DEV cache       CACHE_URL, CACHE_KEY_PREFIX
                                                  │                                   └──▶ DEV bucket      STORAGE_*

@@ -13,7 +13,7 @@ Your browser
 Coder workspace (dev-<organisation>)
    ├─ miniapp/  Vite dev server, port 21515, live reload, SDK simulator
    │     ├─ /api/ ──proxy──▶ api/  FastAPI, 127.0.0.1:21514
-   │     │                      ├──▶ DEV backend (the Hub)          http://backend:8080/api/v1
+   │     │                      ├──▶ DEV backend (the Hub)          http://backend-service:8080/api/v1
    │     │                      ├──▶ your mini-app's DEV database  DATABASE_URL
    │     │                      ├──▶ your mini-app's DEV cache     CACHE_URL, CACHE_KEY_PREFIX
    │     │                      └──▶ your mini-app's DEV bucket    STORAGE_*
@@ -53,7 +53,7 @@ Coder workspace (dev-<organisation>)
 
 ## Settings that make it work
 
-- `miniapp/.env` keeps `VITE_BACKEND_URL=/api/v1`. Vite forwards `/api/` to the API on `127.0.0.1:21514`, and `/hub/` to the DEV backend (`DEV_HUB_ORIGIN`, default `http://backend:8080`).
+- `miniapp/.env` keeps `VITE_BACKEND_URL=/api/v1`. Vite forwards `/api/` to the API on `127.0.0.1:21514`, and `/hub/` to the DEV backend (`DEV_HUB_ORIGIN`, default `http://backend-service:8080`).
 - Vite answers only to hosts it knows. Coder sets `VSCODE_PROXY_URI` in the workspace: `miniapp/vite.config.ts` allows exactly the host of port 21515. Another host needs the shell variable `DEV_ALLOWED_HOSTS` (comma separated; `.example.com` allows every subdomain).
 
 ## Limits (2026-11-19)
