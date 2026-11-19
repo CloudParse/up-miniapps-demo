@@ -5,3 +5,5 @@ A complete Up mini-app with its API: a React mini-app that uses every capability
 Run the commands in [`SETUP.md`](SETUP.md) to get started, then read [`AGENT.md`](AGENT.md): it holds the architecture, the quick start, the conventions and the review checklist. Then read `miniapp/AGENT.md` and `api/AGENT.md`.
 
 How it runs in Coder: [`docs/coder.md`](docs/coder.md).
+
+The settings of the mini-app (name, description, logo, card style, theme, devices) live in `miniapp.yaml` at the root of each project repository, written by the platform when it creates the repository; [`miniapp.schema.json`](miniapp.schema.json) describes the format. See `SETUP.md`, "Settings of the mini-app".

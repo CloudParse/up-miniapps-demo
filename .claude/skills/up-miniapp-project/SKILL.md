@@ -13,6 +13,11 @@ Read `AGENT.md` at the root, then the `AGENT.md` of the folder you change (`api/
 - Start: `cd api && uv run --env-file .env python -m app` (127.0.0.1:21514), then `cd miniapp && npm run dev` (21515, proxies `/api/` to the API). Open the workspace app "Mini-app".
 - `GET /api/v1/resources` (signed in) tells whether the database, the cache and the bucket answer.
 
+## Settings of the mini-app
+
+- `miniapp.yaml` (repository root) holds the backoffice settings: `uuid`, `slug` (both never change), `name`, `description`, `logo` (a `.webp` of the repository or `null`), `cardStyle`, `darkTheme`, `deviceTypes`. Its format is `miniapp.schema.json`.
+- Edit it to change how the mini-app looks; never add a secret or an environment variable to it. The backoffice is updated from it by a CI job (not available yet).
+
 ## Users and tokens in development
 
 - The DEV backend has 15 test users (`miniapp/src/dev/devHub.ts`). The simulator signs in as the one picked and sends a real scoped token, so `get_current_user` works as in production.

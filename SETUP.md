@@ -16,6 +16,8 @@ At every start, that workspace:
 3. installs the dependencies of `api/` (`uv sync`, Python 3.14) and of `miniapp/` (`npm ci`);
 4. installs the SDK's Claude Code plugin.
 
+The repository also got `miniapp.yaml` at its root (see "Settings of the mini-app" below).
+
 Nothing to configure. If a step failed (a warning in the workspace's startup log), run it again from a terminal: `up-project-setup`.
 
 ## 1. API (terminal 1)
@@ -55,6 +57,16 @@ After an SDK upgrade (`npm update` or a new version in `miniapp/package.json`), 
 claude plugin uninstall up-miniapps-sdk@up-miniapps
 claude plugin install up-miniapps-sdk@up-miniapps
 ```
+
+## Settings of the mini-app (`miniapp.yaml`)
+
+`miniapp.yaml`, at the root of the repository, holds what the backoffice shows of the mini-app: its identity and how it looks.
+
+- The platform writes it once, when it creates the repository, with the values of the backoffice. It never overwrites it.
+- From then on the file is their source. A CI job will apply it to the backoffice (not available yet).
+- Fields: `uuid` and `slug` (never change), `name`, `description`, `logo`, `cardStyle`, `darkTheme`, `deviceTypes`. `miniapp.schema.json` describes each one; editors that read the `yaml-language-server` comment check the file as you type.
+- `logo` is the path of a `.webp` image of this repository, for example `assets/logo.webp`; `null` keeps the logo set in the backoffice.
+- Never put a secret or an environment variable in it.
 
 ## Stop
 
