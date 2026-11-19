@@ -16,7 +16,7 @@ Read `AGENT.md` at the root, then the `AGENT.md` of the folder you change (`api/
 ## Settings of the mini-app
 
 - `miniapp.yaml` (repository root) holds the backoffice settings: `uuid`, `slug` (both never change), `name`, `description`, `logo` (a `.webp` of the repository or `null`), `cardStyle`, `darkTheme`, `deviceTypes`. Its format is `miniapp.schema.json`.
-- Edit it to change how the mini-app looks; never add a secret or an environment variable to it. The backoffice is updated from it by a CI job (not available yet).
+- The platform writes it whenever it is missing and never overwrites it. Edit it to change how the mini-app looks; never add a secret or an environment variable to it. The backoffice is updated from it by a CI job (not available yet).
 
 ## Users and tokens in development
 

@@ -6,4 +6,4 @@ Run the commands in [`SETUP.md`](SETUP.md) to get started, then read [`AGENT.md`
 
 How it runs in Coder: [`docs/coder.md`](docs/coder.md).
 
-The settings of the mini-app (name, description, logo, card style, theme, devices) live in `miniapp.yaml` at the root of each project repository, written by the platform when it creates the repository; [`miniapp.schema.json`](miniapp.schema.json) describes the format. See `SETUP.md`, "Settings of the mini-app".
+The settings of the mini-app (name, description, logo, card style, theme, devices) live in `miniapp.yaml` at the root of each project repository, written by the platform whenever it is missing (never overwritten); [`miniapp.schema.json`](miniapp.schema.json) describes the format. See `SETUP.md`, "Settings of the mini-app".

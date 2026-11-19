@@ -1,6 +1,5 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://up.cloudparse.fr/schemas/miniapp.v1.json",
   "title": "miniapp.yaml",
   "description": "Settings of an Up mini-app in its organisation's backoffice: identity and display. Never a secret nor an environment variable.",
   "type": "object",
@@ -18,8 +17,8 @@
       "pattern": "^[a-z]([a-z0-9-]{0,18}[a-z0-9])?$",
       "description": "Short name chosen at creation, never changes."
     },
-    "name": { "type": "string", "minLength": 1, "maxLength": 100, "description": "Name shown in the shell." },
-    "description": { "type": "string", "maxLength": 2000 },
+    "name": { "type": "string", "minLength": 1, "description": "Name shown in the shell." },
+    "description": { "type": "string" },
     "logo": {
       "type": ["string", "null"],
       "pattern": "^[A-Za-z0-9._/-]+\\.webp$",

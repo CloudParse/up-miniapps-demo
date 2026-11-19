@@ -56,7 +56,7 @@ In development `VITE_BACKEND_URL` is `/api/v1`. The Vite dev server forwards `/a
 | `api/` | Mini-app API, `up-miniapps-demo-api`. Python + FastAPI. Verifies the Hub's user tokens and serves your own data. Instructions: `api/AGENT.md`. |
 | `docs/coder.md` | How the demo runs in a Coder workspace: the services it uses, the settings, the limits. |
 | `SETUP.md` | The commands, in order. |
-| `miniapp.yaml` | In a project repository only (written by the platform, not in this template): the backoffice settings of the mini-app (name, description, logo, card style, theme, devices). Never a secret nor an environment variable. |
+| `miniapp.yaml` | In a project repository only (written by the platform whenever it is missing, never overwritten; not in this template): the backoffice settings of the mini-app (name, description, logo, card style, theme, devices). Never a secret nor an environment variable. |
 | `miniapp.schema.json` | The format of `miniapp.yaml`. |
 | `.gitlab-ci.yml` | One manual job, `github-mirror`: pushes `main` to GitHub (template `.git_mirror_push` of `CloudParse/devops/ci-templates`). |
 
