@@ -1,17 +1,19 @@
 #!/usr/bin/env bash
-# Build the API image with Kaniko (no Docker daemon) and push it to the Gitea container registry.
+# Build the API image with Kaniko (no Docker daemon) and push it to the Gitea container registry. Pushes only: the
+# platform deletes the old images, the CI token and this account never delete.
 #
 # Environment (never arguments):
-#   IMAGE            <registry-host>/<owner>/<repository>, lower case, without tag
+#   REGISTRY_HOST    registry host the nodes pull from (runner env CI_REGISTRY_HOST)
+#   REPOSITORY       <owner>/<repository> of the project; the image is <REGISTRY_HOST>/<REPOSITORY> in lower case
 #   VERSION          semver of this deployment, becomes the image tag
 #   API_DIR          folder of the API (build context, holds the Dockerfile)
 #   API_PORT         port the container listens on (build argument)
 #   REGISTRY_USER, REGISTRY_TOKEN   account that pushes (write:package)
-#   REGISTRY_INSECURE=true          plain HTTP registry (local clusters only)
+#   REGISTRY_INSECURE=true          registry with a local-CA certificate or plain HTTP (local clusters only)
 #   KANIKO_EXECUTOR                 path of the executor (default /kaniko/executor)
 set -euo pipefail
 
-: "${IMAGE:?IMAGE is required}" "${VERSION:?VERSION is required}" "${API_DIR:?API_DIR is required}"
+: "${REGISTRY_HOST:?REGISTRY_HOST is required}" "${REPOSITORY:?REPOSITORY is required}" "${VERSION:?VERSION is required}" "${API_DIR:?API_DIR is required}"
 : "${API_PORT:?API_PORT is required}" "${REGISTRY_USER:?REGISTRY_USER is required}" "${REGISTRY_TOKEN:?REGISTRY_TOKEN is required}"
 
 if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -23,7 +25,8 @@ if [[ ! -f "$API_DIR/Dockerfile" ]]; then
   exit 1
 fi
 
-registry_host="${IMAGE%%/*}"
+registry_host="$REGISTRY_HOST"
+IMAGE="$(printf '%s/%s' "$REGISTRY_HOST" "$REPOSITORY" | tr '[:upper:]' '[:lower:]')"
 executor="${KANIKO_EXECUTOR:-/kaniko/executor}"
 
 # The credentials go to a private file, not to a command line.

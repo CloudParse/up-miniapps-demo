@@ -90,7 +90,8 @@ Ports:
 `miniapp.yaml` (`version: 2`) configures the deployment: `api` (dir, port, healthPath, command, publicIngress), `services` (postgres, cache, bucket), `miniapp`, `plugin`. The platform's buttons (backend, frontend, plugin) start one Gitea workflow each. A workflow whose section is absent from `miniapp.yaml` ends successfully with a notice and builds nothing (`miniapp_config.py plan`); a developer may delete a workflow they do not use. Rules for anyone changing this part:
 - The workflows and scripts only read secrets from the environment (`UP_API_URL`, `UP_CLIENT_ID`, `UP_CLIENT_SECRET`, `REGISTRY_USER`, `REGISTRY_TOKEN`), never from arguments, and never print them. Build steps get no secret.
 - The version comes from the platform (workflow input); a workflow never invents one.
-- Retention: 1 image; 5 bundles per kind (the organisation API's `prune-old` minimum, one by one for the plugin). The scripts delete the rest after a successful deploy.
+- Retention is the platform's: the organisation API keeps the 5 newest bundles and plugin versions after each publish, the super API keeps the latest image. The CI token has no delete right: no workflow or script deletes or prunes anything (a test enforces it), and calls only token, publish and component deploy.
+- The runner environment `CI_GITEA_URL`, `CI_REGISTRY_HOST`, `CI_REGISTRY_INSECURE`, `CI_ORGANISATION_SLUG` is read by the workflows; the Gitea context is only a fallback.
 - The plugin is one ES module (`.js` or `.mjs`): the organisation API refuses anything else.
 - The schema, `miniapp_config.py` and `docs/miniapp.example.yaml` change together; `tests/test_miniapp_config.py` checks that the validator and the schema agree.
 - The runner has no Docker daemon, no PyYAML: standard library only, Kaniko for images.

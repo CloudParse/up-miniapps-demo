@@ -81,8 +81,6 @@ class WorkflowTest(unittest.TestCase):
                 return 200, {"token": "jwt"}
             if method == "GET":
                 return 200, {"data": [], "nextCursor": None}
-            if path.endswith("prune-old?keep=5"):
-                return 200, {"deletedCount": 1, "failedCount": 0}
             return 201, {}
 
         return MockServer(responder)
@@ -95,19 +93,16 @@ class WorkflowTest(unittest.TestCase):
             "secrets.UP_CLIENT_SECRET": "topsecret",
         }
 
-    def test_frontend_publishes_only_the_miniapp_and_prunes_with_prune_old(self) -> None:
+    def test_frontend_publishes_only_the_miniapp(self) -> None:
         with self.platform() as server:
             self.run_steps("deploy-frontend.yml", self.up_context(server))
         calls = [(c["method"], c["path"]) for c in server.calls if "/admin/" in c["path"]]
-        self.assertEqual(
-            calls,
-            [("POST", f"/admin/applications/{APP}/artifacts"), ("DELETE", "/admin/applications/artifacts/prune-old?keep=5")],
-        )
+        self.assertEqual(calls, [("POST", f"/admin/applications/{APP}/artifacts")])
         with tarfile.open(self.src / "dist-ci" / "miniapp-1.0.4.tar.gz") as archive:
             self.assertEqual(archive.getnames(), ["index.html"])
         self.assertFalse(list((self.src / "dist-ci").glob("plugin-*")))
 
-    def test_plugin_workflow_publishes_the_module_and_keeps_five(self) -> None:
+    def test_plugin_workflow_publishes_the_module(self) -> None:
         with self.platform() as server:
             self.run_steps("deploy-plugin.yml", self.up_context(server))
         posts = [c["path"] for c in server.calls if c["method"] == "POST" and "/admin/" in c["path"]]
@@ -144,7 +139,7 @@ class WorkflowTest(unittest.TestCase):
                 self.assertFalse((self.src / "dist-ci").exists(), "nothing built when the section is absent")
                 self.assertTrue((self.src / ".ci-skip").exists())
 
-    def test_backend_builds_rolls_out_then_prunes_the_registry(self) -> None:
+    def test_backend_builds_then_rolls_out_with_the_runner_environment(self) -> None:
         (self.src / "api").mkdir()
         (self.src / "api" / "Dockerfile").write_text("FROM scratch\n")
         fake = Path(self.tmp.name) / "kaniko"
@@ -153,14 +148,17 @@ class WorkflowTest(unittest.TestCase):
         fake.chmod(0o755)
 
         def responder(method: str, path: str, headers: dict, body: bytes):
-            if path.endswith("/ci/token"):
-                return 200, {"token": "jwt"}
-            if path.startswith("/api/v1/packages") and method == "GET":
-                return 200, [{"name": "demo-atlas-5b51", "version": "1.0.3"}, {"name": "demo-atlas-5b51", "version": "1.0.2"}]
-            return 200, {}
+            return (200, {"token": "jwt"}) if path.endswith("/ci/token") else (200, {})
 
-        os.environ["KANIKO_EXECUTOR"] = str(fake)
-        self.addCleanup(os.environ.pop, "KANIKO_EXECUTOR", None)
+        runner_env = {
+            "KANIKO_EXECUTOR": str(fake),
+            "CI_REGISTRY_HOST": "git.demo.example",
+            "CI_REGISTRY_INSECURE": "true",
+            "CI_GITEA_URL": "http://gitea-http.prod-demo:3000",
+        }
+        os.environ.update(runner_env)
+        for key in runner_env:
+            self.addCleanup(os.environ.pop, key, None)
         with MockServer(responder) as server:
             context = {
                 "inputs.version": "1.0.3",
@@ -169,21 +167,31 @@ class WorkflowTest(unittest.TestCase):
                 "secrets.UP_CLIENT_SECRET": "topsecret",
                 "secrets.REGISTRY_USER": "ci",
                 "secrets.REGISTRY_TOKEN": "topsecret",
-                "gitea.server_url": server.url,
+                "gitea.server_url": "https://elsewhere.example",
                 "gitea.repository": "demo/Demo-Atlas-5b51",
                 "gitea.repository_owner": "demo",
             }
             self.run_steps("deploy-backend.yml", context)
-        host = server.url.split("://")[1]
-        self.assertIn(f"{host}/demo/demo-atlas-5b51:1.0.3", args_file.read_text().split())
-        self.assertIn("--insecure", args_file.read_text().split())
-        paths = [(c["method"], c["path"]) for c in server.calls]
-        self.assertIn(("POST", f"/admin/applications/{APP}/custom-component/deploy"), paths)
-        self.assertIn(("DELETE", "/api/v1/packages/demo/container/demo-atlas-5b51/1.0.2"), paths)
-        self.assertNotIn(("DELETE", "/api/v1/packages/demo/container/demo-atlas-5b51/1.0.3"), paths)
-        deploy_index = paths.index(("POST", f"/admin/applications/{APP}/custom-component/deploy"))
-        delete_index = paths.index(("DELETE", "/api/v1/packages/demo/container/demo-atlas-5b51/1.0.2"))
-        self.assertLess(deploy_index, delete_index)
+        kaniko_args = args_file.read_text().split()
+        self.assertIn("git.demo.example/demo/demo-atlas-5b51:1.0.3", kaniko_args)
+        self.assertIn("--insecure", kaniko_args)
+        self.assertEqual(
+            [(c["method"], c["path"]) for c in server.calls],
+            [("POST", "/ci/token"), ("POST", f"/admin/applications/{APP}/custom-component/deploy")],
+        )
+
+    def test_no_workflow_or_script_deletes_anything(self) -> None:
+        for path in list((ROOT / ".gitea" / "workflows").glob("*.yml")) + list((ROOT / ".gitea" / "scripts").glob("*.*")):
+            text = path.read_text()
+            for forbidden in ("DELETE", "prune", "registry_prune", "--keep"):
+                self.assertNotIn(forbidden, text, f"{forbidden} in {path.name}")
+
+    def test_only_allowed_platform_calls_are_made(self) -> None:
+        allowed = ("/ci/token", "/artifacts", "/backoffice-plugin/artifacts", "/custom-component/deploy")
+        text = "".join(p.read_text() for p in (ROOT / ".gitea" / "scripts").glob("up_api.py"))
+        for fragment in allowed[1:]:
+            self.assertIn(fragment, text)
+        self.assertNotIn("/api/v1/packages", "".join(p.read_text() for p in (ROOT / ".gitea" / "scripts").glob("*.py")))
 
     def test_workflows_declare_dispatch_runner_and_no_secret_in_build(self) -> None:
         for name in ("deploy-backend.yml", "deploy-frontend.yml", "deploy-plugin.yml"):

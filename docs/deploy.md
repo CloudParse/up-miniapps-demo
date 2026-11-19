@@ -48,9 +48,10 @@ miniapp: {dir: miniapp, build: npm ci && npm run build, out: dist}
 
 ### What the backend workflow does
 1. Validates `miniapp.yaml`.
-2. Builds the image with Kaniko from `<api.dir>/Dockerfile` (no Docker daemon), with `API_PORT` set to `api.port`, and pushes `<gitea host>/<owner>/<repository>:<version>`.
-3. Calls the platform to roll out the component. The platform set the new image tag before it started the workflow.
-4. Deletes every other image of the repository: only the latest image is kept.
+2. Builds the image with Kaniko from `<api.dir>/Dockerfile` (no Docker daemon), with `API_PORT` set to `api.port`, and pushes `<registry host>/<owner>/<repository>:<version>`.
+3. Calls the platform to roll out the component. The platform set the image and tag before it started the workflow.
+
+The workflow never deletes an image. The platform keeps only the latest one.
 
 The `Dockerfile` of this template runs as user `10001`, listens on `SERVER_PORT` (`api.port`) and sets `ENVIRONMENT=production`. In production the platform sets `HUB_APP_UUID` and `HUB_CLIENT_SECRET` and mounts the Hub's public key. The API refuses to start on the development defaults.
 
@@ -58,14 +59,12 @@ The `Dockerfile` of this template runs as user `10001`, listens on `SERVER_PORT`
 1. Reads `miniapp.yaml` (nothing to do without a `miniapp` section).
 2. Builds `miniapp` with its `build` command.
 3. Packs `miniapp-<version>.tar.gz`, the content of `out`.
-4. Publishes it with the version and an empty changelog.
-5. Calls the organisation API's `prune-old`: the 5 newest bundles are kept (the API's minimum).
+4. Publishes it with the version and an empty changelog. The organisation API keeps the 5 newest bundles itself: the workflow never deletes.
 
 ### What the plugin workflow does
 1. Reads `miniapp.yaml` (nothing to do without a `plugin` section).
 2. Builds `plugin` with its `build` command.
-3. Copies the module `out/<file>` as `plugin-<version>.mjs` and publishes it as the active plugin version, with an empty changelog.
-4. Deletes the plugin versions beyond the 5 newest.
+3. Copies the module `out/<file>` as `plugin-<version>.mjs` and publishes it as the active plugin version, with an empty changelog. The organisation API keeps the 5 newest versions itself.
 
 ## CI contract (set by the platform)
 
@@ -76,9 +75,16 @@ The platform writes these Actions secrets of the repository when it creates the 
 | `UP_API_URL` | Base of your organisation's API with `/api/v1`, e.g. `https://api.<organisation>.<domain>/api/v1` |
 | `UP_CLIENT_ID` | Client id of this mini-app |
 | `UP_CLIENT_SECRET` | Client secret of this mini-app |
-| `REGISTRY_USER`, `REGISTRY_TOKEN` | Account of the Gitea registry that pushes and prunes images (`write:package`) |
+| `REGISTRY_USER`, `REGISTRY_TOKEN` | Account of the Gitea registry that pushes images (`write:package`). Used to push only. |
 
-The scripts call the organisation API with a token obtained from `POST {UP_API_URL}/ci/token` (`{"clientId", "clientSecret"}`, answer `{"token", "expiresAt"}`). That token only works for this mini-app. The calls are `POST /admin/applications/<uuid>/artifacts`, `DELETE /admin/applications/artifacts/prune-old?keep=5`, `POST .../backoffice-plugin/artifacts` with `GET` and `DELETE` of that collection, and `POST /admin/applications/<uuid>/custom-component/deploy`.
+The runner of your organisation sets these variables for every job: `CI_GITEA_URL` (in-cluster address of Gitea, used to clone), `CI_REGISTRY_HOST` (registry host the nodes pull from, the host of the image), `CI_REGISTRY_INSECURE` (`true` on a local development cluster) and `CI_ORGANISATION_SLUG`. The runner image is `docker.io/cloudparse/up-ci-runner`.
+
+The scripts get a token from `POST {UP_API_URL}/ci/token` (`{"clientId", "clientSecret"}`, answer `{"token", "expiresAt"}`). It lasts 30 minutes, works for this mini-app only and allows exactly:
+- `POST /admin/applications/<uuid>/artifacts` (the mini-app bundle);
+- `POST /admin/applications/<uuid>/backoffice-plugin/artifacts` (a plugin version);
+- `POST /admin/applications/<uuid>/custom-component/deploy` (roll out the backend).
+
+It has no delete right, and the workflows call nothing else. Retention is the platform's: the organisation API keeps the 5 newest bundles and plugin versions after each publish, the super API keeps only the latest image.
 
 ## Scripts
 
@@ -87,9 +93,8 @@ All in `.gitea/scripts/`, standard library only (the runner has Python 3 and no 
 | File | Role |
 | --- | --- |
 | `miniapp_config.py` | Reads and validates `miniapp.yaml` (`validate`, `plan --target backend\|frontend\|plugin` prints `run` or `skip <reason>`, `get <key>`) |
-| `build-image.sh` | Kaniko build and push |
+| `build-image.sh` | Kaniko build and push (never deletes) |
 | `bundle.py` | Packs the mini-app `.tar.gz` and copies the plugin module |
-| `up_api.py` | Token, publish, prune (`prune-old` for the mini-app, one by one for the plugin), roll out the component |
-| `registry_prune.py` | Keeps only the current image in the Gitea registry |
+| `up_api.py` | Token, publish a bundle or a plugin version, roll out the component |
 
 Run the tests from the repository root with `.gitea/scripts/check.sh` (Python tests, the shell test and `shellcheck`).

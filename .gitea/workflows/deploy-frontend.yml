@@ -1,5 +1,5 @@
 # Deploys the mini-app bundle to production: builds <miniapp.dir>, packs the content of <miniapp.out> as a .tar.gz and publishes it
-# with the new version and an empty changelog. The 5 newest bundles are kept (the organisation API's minimum).
+# with the new version and an empty changelog. The organisation API keeps the 5 newest versions itself.
 # Started by its button of the platform (workflow_dispatch), which picks the version.
 # Secrets written by the platform: UP_API_URL, UP_CLIENT_ID, UP_CLIENT_SECRET.
 # You may delete this file when your mini-app has no such part; the platform then shows no button for it.
@@ -28,8 +28,10 @@ jobs:
           COMMIT: ${{ gitea.sha }}
         run: |
           set -euo pipefail
+          # CI_GITEA_URL is the in-cluster address of Gitea, set by the runner of the organisation.
+          git_url="${CI_GITEA_URL:-$SERVER_URL}"
           askpass="$(mktemp)"; printf '#!/bin/sh\necho "$GITEA_TOKEN"\n' >"$askpass"; chmod 700 "$askpass"
-          GIT_ASKPASS="$askpass" GIT_TERMINAL_PROMPT=0 git clone --quiet "$SERVER_URL/$REPOSITORY.git" src
+          GIT_ASKPASS="$askpass" GIT_TERMINAL_PROMPT=0 git clone --quiet "${git_url%/}/$REPOSITORY.git" src
           rm -f "$askpass"
           git -C src checkout --quiet "$COMMIT"
 
@@ -63,7 +65,7 @@ jobs:
           if [ -f .ci-skip ]; then echo "skipped: nothing to deploy"; exit 0; fi
           python3 .gitea/scripts/bundle.py miniapp --version "$VERSION" --out dist-ci
 
-      - name: Publish and prune
+      - name: Publish
         working-directory: src
         env:
           UP_API_URL: ${{ secrets.UP_API_URL }}
@@ -75,4 +77,3 @@ jobs:
           if [ -f .ci-skip ]; then echo "skipped: nothing to deploy"; exit 0; fi
           file="$(ls dist-ci/miniapp-"$VERSION".tar.gz)"
           python3 .gitea/scripts/up_api.py publish miniapp --version "$VERSION" --file "$file"
-          python3 .gitea/scripts/up_api.py prune miniapp --keep 5

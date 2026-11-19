@@ -16,7 +16,7 @@ chmod +x "$work/fake-kaniko"
 
 run() {
   (cd "$work" && FAKE_ARGS="$work/args" FAKE_CONFIG="$work/config" KANIKO_EXECUTOR="$work/fake-kaniko" \
-    IMAGE=git.demo.example/demo/demo-atlas-5b51 VERSION=1.0.3 API_DIR=api API_PORT=8000 \
+    REGISTRY_HOST=git.demo.example REPOSITORY=Demo/Demo-Atlas-5b51 VERSION=1.0.3 API_DIR=api API_PORT=8000 \
     REGISTRY_USER=ci REGISTRY_TOKEN=tok "$@" "$script")
 }
 fail() { echo "FAIL: $1" >&2; exit 1; }

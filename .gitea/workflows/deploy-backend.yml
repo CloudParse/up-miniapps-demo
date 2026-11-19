@@ -1,5 +1,6 @@
 # Deploys the API of the mini-app to production: builds <api.dir> into an image, pushes it to this organisation's Gitea
-# registry and rolls out the custom component linked to the mini-app.
+# registry and rolls out the custom component linked to the mini-app. The platform set the component's image and tag before
+# starting this run and deletes the old images itself: this workflow only pushes and rolls out.
 # Started by its button of the platform (workflow_dispatch), which picks the version.
 # Secrets written by the platform: UP_API_URL, UP_CLIENT_ID, UP_CLIENT_SECRET, REGISTRY_USER, REGISTRY_TOKEN.
 # You may delete this file when your mini-app has no such part; the platform then shows no button for it.
@@ -28,8 +29,10 @@ jobs:
           COMMIT: ${{ gitea.sha }}
         run: |
           set -euo pipefail
+          # CI_GITEA_URL is the in-cluster address of Gitea, set by the runner of the organisation.
+          git_url="${CI_GITEA_URL:-$SERVER_URL}"
           askpass="$(mktemp)"; printf '#!/bin/sh\necho "$GITEA_TOKEN"\n' >"$askpass"; chmod 700 "$askpass"
-          GIT_ASKPASS="$askpass" GIT_TERMINAL_PROMPT=0 git clone --quiet "$SERVER_URL/$REPOSITORY.git" src
+          GIT_ASKPASS="$askpass" GIT_TERMINAL_PROMPT=0 git clone --quiet "${git_url%/}/$REPOSITORY.git" src
           rm -f "$askpass"
           git -C src checkout --quiet "$COMMIT"
 
@@ -54,11 +57,13 @@ jobs:
         run: |
           set -euo pipefail
           if [ -f .ci-skip ]; then echo "skipped: nothing to deploy"; exit 0; fi
+          # CI_REGISTRY_HOST and CI_REGISTRY_INSECURE come from the runner of the organisation.
           host="${SERVER_URL#*://}"; host="${host%%/*}"
-          export IMAGE="$(printf '%s/%s' "$host" "$REPOSITORY" | tr '[:upper:]' '[:lower:]')"
+          export REGISTRY_HOST="${CI_REGISTRY_HOST:-$host}"
+          insecure=false; [ "${SERVER_URL%%://*}" = "http" ] && insecure=true
+          export REGISTRY_INSECURE="${CI_REGISTRY_INSECURE:-$insecure}"
           export API_DIR="$(python3 .gitea/scripts/miniapp_config.py get api.dir)"
           export API_PORT="$(python3 .gitea/scripts/miniapp_config.py get api.port)"
-          if [ "${SERVER_URL%%://*}" = "http" ]; then export REGISTRY_INSECURE=true; fi
           .gitea/scripts/build-image.sh
 
       - name: Roll out the component
@@ -71,17 +76,3 @@ jobs:
           set -euo pipefail
           if [ -f .ci-skip ]; then echo "skipped: nothing to deploy"; exit 0; fi
           python3 .gitea/scripts/up_api.py deploy-component
-
-      - name: Keep only this image
-        working-directory: src
-        env:
-          GITEA_SERVER_URL: ${{ gitea.server_url }}
-          REGISTRY_USER: ${{ secrets.REGISTRY_USER }}
-          REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
-          VERSION: ${{ inputs.version }}
-          OWNER: ${{ gitea.repository_owner }}
-          REPOSITORY: ${{ gitea.repository }}
-        run: |
-          set -euo pipefail
-          if [ -f .ci-skip ]; then echo "skipped: nothing to deploy"; exit 0; fi
-          python3 .gitea/scripts/registry_prune.py --owner "$OWNER" --name "${REPOSITORY#*/}" --keep-version "$VERSION"
