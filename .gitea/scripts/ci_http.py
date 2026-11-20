@@ -40,11 +40,22 @@ def _tls_context() -> ssl.SSLContext:
     context = ssl.create_default_context()
     extra = os.environ.get("UP_CI_EXTRA_CA_FILE", "")
     if extra:
-        context.load_verify_locations(cafile=extra)
+        try:
+            context.load_verify_locations(cafile=extra)
+        except (OSError, ssl.SSLError) as error:
+            raise ApiError(0, f"UP_CI_EXTRA_CA_FILE cannot be read as a certificate file: {error.__class__.__name__}") from error
     return context
 
 
-_OPENER = urllib.request.build_opener(_NoRedirect, urllib.request.HTTPSHandler(context=_tls_context()))
+_opener: urllib.request.OpenerDirector | None = None
+
+
+def _get_opener() -> urllib.request.OpenerDirector:
+    """Built on the first call, so that a bad UP_CI_EXTRA_CA_FILE is an ApiError the callers report, not a traceback at import."""
+    global _opener
+    if _opener is None:
+        _opener = urllib.request.build_opener(_NoRedirect, urllib.request.HTTPSHandler(context=_tls_context()))
+    return _opener
 
 
 def check_url(url: str) -> None:
@@ -103,7 +114,7 @@ def request(
     check_url(url)
     req = urllib.request.Request(url, data=body, method=method, headers=headers or {})  # noqa: S310
     try:
-        with _OPENER.open(req, timeout=timeout) as response:
+        with _get_opener().open(req, timeout=timeout) as response:
             raw = response.read()
     except urllib.error.HTTPError as error:
         with error:

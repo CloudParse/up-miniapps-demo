@@ -165,7 +165,18 @@ class ExtraCaTest(unittest.TestCase):
             context = ci_http._tls_context()
         self.assertTrue(context.verify_mode == ssl.CERT_REQUIRED)
 
-    def test_a_missing_file_fails_at_once(self) -> None:
+    def test_a_missing_or_bad_file_is_an_api_error_not_a_traceback(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            bad = Path(directory) / "not-a-cert.pem"
+            bad.write_text("this is not a certificate")
+            for path in ("/nonexistent/ca.crt", str(bad)):
+                with self.subTest(path), mock.patch.dict(os.environ, {"UP_CI_EXTRA_CA_FILE": path}):
+                    with self.assertRaises(ci_http.ApiError) as raised:
+                        ci_http._tls_context()
+                    self.assertEqual(raised.exception.status, 0)
+
+    def test_importing_the_module_never_reads_the_variable(self) -> None:
+        import importlib
+
         with mock.patch.dict(os.environ, {"UP_CI_EXTRA_CA_FILE": "/nonexistent/ca.crt"}):
-            with self.assertRaises(OSError):
-                ci_http._tls_context()
+            importlib.reload(ci_http)  # would raise at import if the context were built there

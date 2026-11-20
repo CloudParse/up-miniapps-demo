@@ -16,6 +16,11 @@ on:
         description: Semver of this deployment, e.g. 1.0.3
         required: true
 
+# The job token only reads this repository. Gitea Actions reads this key since 1.24 (not verified on the version in use: the scripts
+# never use gitea.token beyond the clone step either way).
+permissions:
+  contents: read
+
 concurrency:
   group: deploy-plugin
   cancel-in-progress: false
@@ -77,6 +82,7 @@ jobs:
           .gitea/scripts/run-build.sh plugin
 
       - name: Pack the bundle
+        id: pack
         if: steps.plan.outputs.skip != 'true'
         working-directory: src
         env:
@@ -84,7 +90,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 .gitea/scripts/bundle.py plugin --version "$VERSION" --out dist-ci
+          file="$(python3 .gitea/scripts/bundle.py plugin --version "$VERSION" --out dist-ci)"
+          echo "file=$file" >>"$GITHUB_OUTPUT"
 
       - name: Publish
         if: steps.plan.outputs.skip != 'true'
@@ -94,7 +101,8 @@ jobs:
           UP_CLIENT_ID: ${{ secrets.UP_CLIENT_ID }}
           UP_CLIENT_SECRET: ${{ secrets.UP_CLIENT_SECRET }}
           VERSION: ${{ inputs.version }}
+          PLUGIN_FILE: ${{ steps.pack.outputs.file }}
         shell: bash
         run: |
           set -euo pipefail
-          python3 .gitea/scripts/up_api.py publish plugin --version "$VERSION" --file "$(ls dist-ci/plugin-"$VERSION".*)"
+          python3 .gitea/scripts/up_api.py publish plugin --version "$VERSION" --file "$PLUGIN_FILE"

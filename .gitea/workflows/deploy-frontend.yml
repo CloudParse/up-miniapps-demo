@@ -16,6 +16,11 @@ on:
         description: Semver of this deployment, e.g. 1.0.3
         required: true
 
+# The job token only reads this repository. Gitea Actions reads this key since 1.24 (not verified on the version in use: the scripts
+# never use gitea.token beyond the clone step either way).
+permissions:
+  contents: read
+
 concurrency:
   group: deploy-frontend
   cancel-in-progress: false

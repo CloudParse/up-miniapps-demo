@@ -38,8 +38,14 @@ api:
   dir: api
   port: 8000
   healthPath: /healthz
-services: {postgres: true, cache: true, bucket: true}
-miniapp: {dir: miniapp, build: npm ci && npm run build, out: dist}
+services:
+  postgres: true
+  cache: true
+  bucket: true
+miniapp:
+  dir: miniapp
+  build: npm ci && npm run build
+  out: dist
 ```
 
 ## 2. Deploy
@@ -58,7 +64,7 @@ Which commit is built: the workflow checks out `gitea.sha`, the head of the defa
 3. Builds the image with Kaniko from `<api.dir>/Dockerfile`. There is no Docker daemon. `API_PORT` is set to `api.port`. It pushes `<registry host>/<owner>/<repository>:<version>`.
 4. Calls the platform to deploy: `POST .../custom-component/deploy` with `{"tag": "<version>"}`. The platform sets the tag only if the registry holds that version.
 
-The workflow never changes the component itself and never deletes an image. The platform keeps only the latest image.
+The workflow never changes the component itself and its scripts never delete an image. The platform deletes old images itself: it keeps the image the component runs and the 2 newest.
 
 The `Dockerfile` of this template pins its base images by tag and digest, runs as user `10001`, keeps `/app` read-only for that user, listens on `SERVER_PORT` (`api.port`) and sets `ENVIRONMENT=production`. It has no `HEALTHCHECK`: the platform probes `api.healthPath` through Kubernetes. In production the platform sets `HUB_APP_UUID` and `HUB_CLIENT_SECRET` and mounts the Hub's public key. The API refuses to start on the development defaults.
 
@@ -85,8 +91,9 @@ Read this before you give someone write access to the repository.
 The real limits are on the platform side:
 - The CI token (`POST {UP_API_URL}/ci/token`) lasts 30 minutes and works for this mini-app only.
 - It allows exactly three calls: publish a mini-app bundle, publish a plugin version, deploy the component with a tag. It has no delete right.
-- The platform deploys a tag only if the registry holds it. It keeps the 5 newest bundles and plugin versions and the latest image.
-- The registry account (`REGISTRY_USER`, `REGISTRY_TOKEN`) can push packages (`write:package`).
+- The platform deploys a tag only if the registry holds it. It keeps the 5 newest bundles and plugin versions, the image the component runs and the 2 newest images.
+- The registry account (`REGISTRY_USER`, `REGISTRY_TOKEN`) belongs to this mini-app only. It is a member of one team in the Gitea organisation of this mini-app. That team has the right on packages and on nothing else (no code, no issues).
+- With that right the token can push **and delete** the packages of this mini-app's Gitea organisation, and only those. It reaches no other mini-app and no other organisation.
 - Each organisation has its own runner, in its own namespace.
 
 What the scripts do on top, as hygiene:
@@ -95,7 +102,7 @@ What the scripts do on top, as hygiene:
 - Calls use https only (`UP_CI_ALLOW_HTTP=true` allows http on a local development cluster) and never follow a redirect.
 - Server error messages are cut to 200 characters and stripped of control characters before they reach the log.
 
-**Limit of the image build.** Kaniko runs the `RUN` steps of your `Dockerfile` as root inside the build, in the runner's container. They can read the registry login file while the build runs. That file is removed when the script ends.
+**Limit of the image build.** Kaniko runs the `RUN` steps of your `Dockerfile` as root inside the build, in the runner's container. They can read the registry login file while the build runs. They can also read `REGISTRY_TOKEN` from the environment of the Kaniko process. The login file is removed when the script ends.
 
 ## CI contract (set by the platform)
 
@@ -106,7 +113,7 @@ The platform writes these Actions secrets of the repository when it creates the 
 | `UP_API_URL` | Base of your organisation's API with `/api/v1`, for example `https://api.<organisation>.<domain>/api/v1` |
 | `UP_CLIENT_ID` | Client id of this mini-app |
 | `UP_CLIENT_SECRET` | Client secret of this mini-app |
-| `REGISTRY_USER`, `REGISTRY_TOKEN` | Account of the Gitea registry that pushes images. It pushes only. |
+| `REGISTRY_USER`, `REGISTRY_TOKEN` | Account of this mini-app in the Gitea registry. The scripts only push images. The account can also delete the packages of this mini-app's Gitea organisation. |
 
 The runner of your organisation sets these variables for every job:
 - `CI_GITEA_URL`: in-cluster address of Gitea, used to clone.
@@ -132,7 +139,7 @@ All are in `.gitea/scripts/`. The Python ones use the standard library only. Sec
 | --- | --- |
 | `miniapp_config.py` | Reads and validates `miniapp.yaml`: `validate`, `plan --target backend\|frontend\|plugin` (prints `run` or `skip <reason>`), `get <key>` |
 | `run-build.sh` | Runs the build command of a section with a scrubbed environment |
-| `build-image.sh` | Kaniko build and push (never deletes) |
+| `build-image.sh` | Kaniko build and push (the script never deletes) |
 | `bundle.py` | Packs the mini-app `.tar.gz` and copies the plugin module |
 | `up_api.py` | Token, publish a bundle or a plugin version, deploy the component with a tag |
 | `ci_http.py` | https-only HTTP helper with no redirects |

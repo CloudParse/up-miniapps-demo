@@ -123,7 +123,9 @@ def _plain(text: str, number: int) -> Any:
         return text == "true"
     if text in ("null", "~"):
         return None
-    if re.fullmatch(r"-?\d+", text):
+    # ASCII digits only and no leading zero: another YAML reader (yaml.v3, YAML 1.1) reads 01024 as octal and a non-ASCII digit as text,
+    # and the platform and this script must see the same value
+    if re.fullmatch(r"-?(?:0|[1-9][0-9]*)", text, re.ASCII):
         return int(text)
     return text
 

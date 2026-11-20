@@ -238,5 +238,28 @@ class SchemaParityTest(unittest.TestCase):
                 self.assertTrue(refused(text))
 
 
+class DocsAndNumbersTest(unittest.TestCase):
+    """What the docs show must be accepted by the CI's own reader, and numbers read the same everywhere."""
+
+    def test_every_yaml_block_of_the_docs_is_valid(self) -> None:
+        import re
+
+        text = (ROOT / "docs" / "deploy.md").read_text()
+        blocks = re.findall(r"```yaml\n(.*?)```", text, re.DOTALL)
+        self.assertTrue(blocks, "docs/deploy.md has a yaml block")
+        for block in blocks:
+            document = block if re.search(r"^version:", block, re.MULTILINE) else BASE + block
+            mc.validate(mc.parse(document))
+        mc.validate(mc.load(ROOT / "docs" / "miniapp.example.yaml"))
+
+    def test_a_number_is_ascii_digits_without_a_leading_zero(self) -> None:
+        self.assertEqual(mc.parse("a: 1024\n")["a"], 1024)
+        self.assertEqual(mc.parse("a: 0\n")["a"], 0)
+        for text in ("01024", "٨٠٨٠", "1_024", "+80"):
+            self.assertIsInstance(mc.parse(f"a: {text}\n")["a"], str, text)
+        self.assertTrue(refused(BASE + "api:\n  port: 01024\n"))
+        self.assertTrue(refused(BASE + "api:\n  port: ٨٠٨٠\n"))
+
+
 if __name__ == "__main__":
     unittest.main()

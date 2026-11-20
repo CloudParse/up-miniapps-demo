@@ -86,11 +86,12 @@ class WorkflowTest(unittest.TestCase):
                 continue
             out_file = Path(self.tmp.name) / "github_output"
             out_file.write_text("")
-            env = {**os.environ, **(extra_env or {}), **{k: expand(v, context) for k, v in step.get("env", {}).items()}}
+            step_context = {**context, **{f"steps.{key.split('.')[0]}.outputs.{key.split('.')[1]}": value for key, value in outputs.items()}}
+            env = {**os.environ, **(extra_env or {}), **{k: expand(v, step_context) for k, v in step.get("env", {}).items()}}
             env["GITHUB_OUTPUT"] = str(out_file)
             cwd = self.src if step.get("working-directory") == "src" else Path(self.tmp.name)
             self.assertEqual(step.get("shell"), "bash", f"{step['name']} must name its shell")
-            result = subprocess.run(["bash", "-c", expand(step["run"], context)], cwd=cwd, env=env, capture_output=True, text=True)  # noqa: S603, S607
+            result = subprocess.run(["bash", "-c", expand(step["run"], step_context)], cwd=cwd, env=env, capture_output=True, text=True)  # noqa: S603, S607
             log += result.stdout + result.stderr
             self.assertNotIn(SECRET, result.stdout + result.stderr, f"a secret was printed by {step['name']}")
             if result.returncode:

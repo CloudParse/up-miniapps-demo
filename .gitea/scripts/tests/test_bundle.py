@@ -4,6 +4,7 @@ import tarfile
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / ".gitea" / "scripts"))
@@ -94,6 +95,58 @@ class BundleTest(unittest.TestCase):
     def test_missing_plugin_build_refused(self) -> None:
         with self.assertRaisesRegex(mc.ConfigError, "did not produce"):
             bundle.pack_plugin(PLUGIN, "1.0.0", Path("dist-ci"))
+
+    def test_a_hard_link_in_the_output_is_refused(self) -> None:
+        self.make_miniapp()
+        os.link(self.root / "miniapp/dist/index.html", self.root / "miniapp/dist/copy.html")
+        with self.assertRaisesRegex(mc.ConfigError, "hard link"):
+            bundle.pack_miniapp(MINIAPP, "1.0.0", Path("dist-ci"))
+
+    def test_the_content_size_is_capped(self) -> None:
+        self.make_miniapp()
+        with mock.patch.object(bundle, "MAX_BUNDLE_BYTES", 5):
+            with self.assertRaisesRegex(mc.ConfigError, "MB"):
+                bundle.pack_miniapp(MINIAPP, "1.0.0", Path("dist-ci"))
+        self.assertFalse((self.root / "dist-ci" / "miniapp-1.0.0.tar.gz").exists(), "nothing is written when a limit is hit")
+
+    def test_the_file_count_is_capped_before_anything_is_sorted(self) -> None:
+        self.make_miniapp()
+        with mock.patch.object(bundle, "MAX_FILES", 1):
+            with self.assertRaisesRegex(mc.ConfigError, "more than 1 files"):
+                bundle.pack_miniapp(MINIAPP, "1.0.0", Path("dist-ci"))
+
+    def test_the_plugin_size_is_capped_and_hard_links_are_refused(self) -> None:
+        (self.root / "plugin/dist").mkdir(parents=True)
+        (self.root / "plugin/dist/plugin.mjs").write_text("export default {}")
+        with mock.patch.object(bundle, "MAX_PLUGIN_BYTES", 3):
+            with self.assertRaisesRegex(mc.ConfigError, "MB"):
+                bundle.pack_plugin(PLUGIN, "1.0.0", Path("dist-ci"))
+        os.link(self.root / "plugin/dist/plugin.mjs", self.root / "plugin/dist/other.mjs")
+        with self.assertRaisesRegex(mc.ConfigError, "hard link"):
+            bundle.pack_plugin(PLUGIN, "1.0.0", Path("dist-ci"))
+
+    def test_a_target_that_is_a_symbolic_link_is_never_written_through(self) -> None:
+        self.make_miniapp()
+        victim = self.root / "victim.txt"
+        victim.write_text("keep")
+        (self.root / "dist-ci").mkdir()
+        (self.root / "dist-ci" / "miniapp-1.0.0.tar.gz").symlink_to(victim)
+        with self.assertRaisesRegex(mc.ConfigError, "symbolic link"):
+            bundle.pack_miniapp(MINIAPP, "1.0.0", Path("dist-ci"))
+        self.assertEqual(victim.read_text(), "keep")
+        (self.root / "plugin/dist").mkdir(parents=True)
+        (self.root / "plugin/dist/plugin.mjs").write_text("x")
+        (self.root / "dist-ci" / "plugin-1.0.0.mjs").symlink_to(victim)
+        with self.assertRaisesRegex(mc.ConfigError, "symbolic link"):
+            bundle.pack_plugin(PLUGIN, "1.0.0", Path("dist-ci"))
+        self.assertEqual(victim.read_text(), "keep")
+
+    def test_an_existing_regular_target_is_replaced(self) -> None:
+        self.make_miniapp()
+        bundle.pack_miniapp(MINIAPP, "1.0.0", Path("dist-ci"))
+        target = bundle.pack_miniapp(MINIAPP, "1.0.0", Path("dist-ci"))
+        with tarfile.open(target) as archive:
+            self.assertIn("index.html", archive.getnames())
 
 
 if __name__ == "__main__":
