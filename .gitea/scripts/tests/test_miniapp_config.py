@@ -1,3 +1,5 @@
+import contextlib
+import io
 import json
 import sys
 import unittest
@@ -102,6 +104,15 @@ class ParseTest(unittest.TestCase):
         for target in ("backend", "frontend", "plugin"):
             with self.subTest(target), self.assertRaisesRegex(mc.ConfigError, "placeholder of the template"):
                 mc.plan(config, target)
+
+    def test_validate_and_get_name_the_placeholder_too(self) -> None:
+        for argv in (["validate"], ["get", "slug"], ["plan", "--target", "backend"]):
+            with self.subTest(argv[0]):
+                err = io.StringIO()
+                with contextlib.redirect_stderr(err), contextlib.redirect_stdout(io.StringIO()):
+                    code = mc.main([*argv, "--file", str(ROOT / "miniapp.yaml")])
+                self.assertEqual(code, 1)
+                self.assertIn("still the placeholder of the template", err.getvalue())
 
     def test_the_template_file_once_filled_plans_the_sections_it_has(self) -> None:
         config = mc.load(ROOT / "miniapp.yaml")
