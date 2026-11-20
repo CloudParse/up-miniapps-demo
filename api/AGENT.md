@@ -36,7 +36,13 @@ api/
 └── pyproject.toml
 ```
 
-Dependencies point one way: `routes -> services -> (schemas, core)`. A service never imports from `api/`; a route never contains business rules.
+The default architecture is MVC with a service layer. The skill `up-miniapp-api` details it.
+- Model: `models/` and `repositories/`, created with the first table.
+- View: `schemas/`, the JSON contract.
+- Controller: `api/routes/`.
+- Services: `services/`, the business rules.
+
+Dependencies point one way: `routes -> services -> (repositories, schemas, core)`. A service never imports from `api/`; a route never contains business rules.
 
 Add layers **when a use case needs them**, not before:
 

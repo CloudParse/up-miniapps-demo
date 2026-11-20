@@ -67,7 +67,7 @@
       "items": { "enum": ["PHONE", "TABLET", "DESKTOP", "TV", "WEB"] },
       "minItems": 1,
       "uniqueItems": true,
-      "description": "Devices the mini-app is shown on."
+      "description": "Devices the mini-app is shown on. PHONE: the Up app on iOS and Android. TABLET, DESKTOP, TV: the Up app on those devices. WEB: the page Apps of the Up website, which opens the published mini-app bundle (needs a deployed frontend). Several values may be combined, e.g. [PHONE, WEB]. The Studio value is the one applied (tab Réglages, field Appareils cibles, checked 2026-11-20). Keep this field equal to it."
     },
     "api": {
       "type": "object",

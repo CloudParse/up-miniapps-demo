@@ -60,4 +60,4 @@ Coder workspace (dev-<organisation>)
 
 - **The app URL is private.** It opens only for you, after the Coder sign-in. The platform blocks port sharing: Coder Community cannot limit a shared port to the organisation.
 - **The mini-app runs in the SDK simulator** in your browser. The Up app on a phone does not load it.
-- **Not deployed to production.** Production deployment of a mini-app project is not part of this setup.
+- **The workspace is not production.** Production is deployed from the Studio: [deploy.md](deploy.md).

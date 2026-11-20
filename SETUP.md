@@ -67,7 +67,8 @@ claude plugin install up-miniapps-sdk@up-miniapps
 `miniapp.yaml`, at the root of the repository, holds what the backoffice shows of the mini-app: its identity and how it looks.
 
 - The platform writes it with the values of the backoffice whenever it is missing and those values are known: when it creates the repository, and again if the file is deleted. It never overwrites it.
-- The file is the source of the backoffice settings of the mini-app. The platform reads its deployment sections at each deploy (`docs/deploy.md`). The display settings are not applied to the backoffice by CI yet.
+- The platform reads its deployment sections at each deploy (`docs/deploy.md`).
+- CI does not apply its display settings to the backoffice yet (2026-11-20). The value set in the Studio (the backoffice) is the one used. Keep both equal.
 - `deviceTypes` is left out (a comment instead) while the backoffice holds no known device.
 - Fields: `uuid` and `slug` (never change), `name`, `description`, `logo`, `cardStyle`, `darkTheme`, `deviceTypes`. `miniapp.schema.json` describes each one; editors that read the `yaml-language-server` comment check the file as you type.
 - `logo` is the path of a `.webp` image of this repository, for example `assets/logo.webp`; `null` keeps the logo set in the backoffice.

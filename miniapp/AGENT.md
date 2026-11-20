@@ -57,7 +57,7 @@ Look signatures up in the SDK README or its `.d.ts`; never guess a method name.
 src/
 ├── main.tsx            entry: SDK stylesheet (ships the Up fonts), Tailwind, maplibre worker
 ├── App.tsx             SDKProvider, boot gate, back-gesture ladder, tab shell, exit modal
-├── config/             env.ts (the ONLY reader of import.meta.env), tabs, demo data (POIs, feature highlights)
+├── config/             env.ts (reads import.meta.env, see Rules), tabs, demo data (POIs, feature highlights)
 ├── atoms/              one Jotai atom file per domain (context, boot, navigation, account, greeting, map, eventLog)
 ├── lib/                cn() with registered tokens, errors, loadState, layout (top-bar floor), store
 ├── services/           backend (createApiService), helloService, accountService, shellContext merge
@@ -95,7 +95,7 @@ scripts/generate-map-style.js   regenerates the two map styles from the CloudPar
 - **No `window.alert` / `confirm`**: use `Dialog` / `ConfirmModal`. Never render backend or user text as HTML.
 - **Payment demo**: enabled only in the simulator (`useIsMocked`). A real payment request charges a card.
 - **QR codes** go through `features/media/qrCodeCache.ts` (`sdk.qrCode.generate`), never a local QR library.
-- **Environment variables**: declared in `src/vite-env.d.ts` and `.env.template`, read only in `config/env.ts` (exception: `src/dev/devHub.ts` reads `import.meta.env.DEV`, see above). Dev-only values are blanked when `import.meta.env.PROD`.
+- **Environment variables**: declared in `src/vite-env.d.ts` and `.env.template`, read only in `config/env.ts`. Two exceptions read `import.meta.env.DEV`: `src/dev/devHub.ts` and `App.tsx`. Both guard the development tooling. Dev-only values are blanked when `import.meta.env.PROD`.
 - **Imports** use the `@app/*` alias. Biome sorts imports and keys: run `npm run check:write` before committing.
 - **Dependencies**: add one only when the SDK, React or the platform cannot do the job.
 - **Language**: UI text is French. Code, identifiers and comments are English.
