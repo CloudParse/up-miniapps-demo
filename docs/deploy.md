@@ -59,10 +59,21 @@ miniapp:
 Which commit is built: the workflow checks out `gitea.sha`, the head of the default branch when the run starts. It reads `miniapp.yaml` from that checkout. If you push between your click and the start of the run, the workflow's copy wins: it is the one that decides what is built.
 
 ### What the backend workflow does
+It has two jobs, `build` then `release`.
+
+Job `build`:
 1. Checks that the version is a plain semver (`1.2.3`).
 2. Reads `miniapp.yaml`.
 3. Builds the image with Kaniko from `<api.dir>/Dockerfile`. There is no Docker daemon. `API_PORT` is set to `api.port`. It pushes `<registry host>/<owner>/<repository>:<version>`.
-4. Calls the platform to deploy: `POST .../custom-component/deploy` with `{"tag": "<version>"}`. The platform sets the tag only if the registry holds that version.
+
+Job `release` (runs only when `build` built something):
+4. Checks the version again, then calls the platform to deploy: `POST .../custom-component/deploy` with `{"tag": "<version>"}`. The platform sets the tag only if the registry holds that version.
+
+Why two jobs: Kaniko unpacks the last stage of your `Dockerfile` over the file system of the runner container. After the build, that container holds the tools of your image (an Alpine image has no `bash`). The runner starts a fresh container for each job, so the call to the platform is a job of its own. Kaniko is the last step of `build`. Do not add a step after it.
+
+Two consequences:
+- The steps that run your `Dockerfile` never see `UP_CLIENT_SECRET`. The `release` job never sees `REGISTRY_TOKEN`.
+- Each job starts a new runner container. The second job waits for the container to restart, which can take a few minutes when deployments follow each other.
 
 The workflow never changes the component itself and its scripts never delete an image. The platform deletes old images itself: it keeps the image the component runs and the 2 newest.
 

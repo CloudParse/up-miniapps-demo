@@ -1,8 +1,12 @@
 # Deploys the API of the mini-app to production: builds <api.dir> into an image, pushes it to this organisation's Gitea
 # registry and asks the platform to deploy that version on the custom component linked to the mini-app. The platform deletes
 # the old images itself: this workflow never changes the component, it only pushes and then calls deploy with the tag.
+# TWO JOBS, on purpose: Kaniko unpacks the last stage of your Dockerfile over the file system of the runner container, so a step
+# after it in the same job would find the tools of YOUR image (no bash with an Alpine image). The runner container is restarted
+# between two jobs. `build` ends with Kaniko; `release` then calls the platform. A side effect: the steps that run your Dockerfile
+# never see UP_CLIENT_SECRET, and `release` never sees REGISTRY_TOKEN.
 # Started by its button of the platform (workflow_dispatch), which picks the version.
-# Secrets written by the platform: UP_API_URL, UP_CLIENT_ID, UP_CLIENT_SECRET, REGISTRY_USER, REGISTRY_TOKEN. They are read by the steps that need them and by no other step.
+# Secrets written by the platform: UP_API_URL, UP_CLIENT_ID, UP_CLIENT_SECRET, REGISTRY_USER, REGISTRY_TOKEN. Each is read by the one step that needs it and by no other step.
 # You may delete this file when your mini-app has no such part; the platform then shows no button for it.
 # Security model: docs/deploy.md. A writer of this repository can edit this file and read these secrets; the limits are on
 # the platform side (30-minute token, one mini-app, no delete right).
@@ -27,8 +31,10 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy-backend:
+  build:
     runs-on: up-ci
+    outputs:
+      skip: ${{ steps.plan.outputs.skip }}
     steps:
       # First step: nothing else runs on a version that is not a plain semver.
       - name: Check the version
@@ -74,6 +80,7 @@ jobs:
             echo "skip=true" >>"$GITHUB_OUTPUT"
           fi
 
+      # LAST step of the job: Kaniko replaces the file system of this container, nothing runs after it.
       - name: Build and push the image
         if: steps.plan.outputs.skip != 'true'
         working-directory: src
@@ -93,9 +100,40 @@ jobs:
           export API_DIR API_PORT
           .gitea/scripts/build-image.sh
 
-      # Last call, after the push: the platform sets the component's tag to this version only when the registry holds it.
+  # Last call, after the push: the platform sets the component's tag to this version only when the registry holds it.
+  # A new job, so a fresh runner container with its own tools.
+  release:
+    needs: build
+    if: needs.build.outputs.skip != 'true'
+    runs-on: up-ci
+    steps:
+      - name: Check the version
+        env:
+          VERSION: ${{ inputs.version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! "$VERSION" =~ ^(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})$ ]]; then
+            echo "the version must be a plain semver such as 1.2.3" >&2
+            exit 1
+          fi
+
+      - name: Check out the repository
+        env:
+          GITEA_TOKEN: ${{ gitea.token }}
+          SERVER_URL: ${{ gitea.server_url }}
+          REPOSITORY: ${{ gitea.repository }}
+          COMMIT: ${{ gitea.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git_url="${CI_GITEA_URL:-$SERVER_URL}"
+          askpass="$(mktemp)"; printf '#!/bin/sh\necho "$GITEA_TOKEN"\n' >"$askpass"; chmod 700 "$askpass"
+          GIT_ASKPASS="$askpass" GIT_TERMINAL_PROMPT=0 git clone --quiet "${git_url%/}/$REPOSITORY.git" src
+          rm -f "$askpass"
+          git -C src checkout --quiet "$COMMIT"
+
       - name: Deploy the component
-        if: steps.plan.outputs.skip != 'true'
         working-directory: src
         env:
           VERSION: ${{ inputs.version }}
