@@ -5,7 +5,7 @@ Read the root `AGENT.md` first (architecture, security rules, mandatory final re
 ## Stack
 
 - React 19, TypeScript (strict), Vite, Tailwind CSS v4, Jotai, Biome, MapLibre (`maplibre-gl`, `@vis.gl/react-maplibre`).
-- The CloudParse SDK [`@cloudparse/up-miniapps-sdk`](https://www.npmjs.com/package/@cloudparse/up-miniapps-sdk) `^0.16.0`.
+- The CloudParse SDK [`@cloudparse/up-miniapps-sdk`](https://www.npmjs.com/package/@cloudparse/up-miniapps-sdk) `^0.17.0`.
 - Typography: the SDK stylesheet ships the Up font pair. Figtree is the UI font (`font-sans`, the default). Bricolage Grotesque is for display text only (`font-display`: screen titles, section titles, card headlines, dialog titles, avatar initials).
 - Node.js 26 LTS (the SDK declares `engines.node >=26`).
 
