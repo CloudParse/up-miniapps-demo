@@ -2,11 +2,14 @@
 
 Secrets travel in headers and bodies, never in argv. Only https is used, and a redirect is never followed: a redirect
 would carry the Authorization header to another address. A development cluster without TLS sets UP_CI_ALLOW_HTTP=true.
+A development cluster whose TLS is signed by a local CA sets UP_CI_EXTRA_CA_FILE to that CA (a PEM file the runner mounts): it is
+added to the system trust, never replacing it.
 """
 
 import json
 import os
 import re
+import ssl
 import urllib.error
 import urllib.request
 import uuid
@@ -32,7 +35,16 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
-_OPENER = urllib.request.build_opener(_NoRedirect)
+def _tls_context() -> ssl.SSLContext:
+    """The default context, plus the local development CA when the runner mounts one (UP_CI_EXTRA_CA_FILE)."""
+    context = ssl.create_default_context()
+    extra = os.environ.get("UP_CI_EXTRA_CA_FILE", "")
+    if extra:
+        context.load_verify_locations(cafile=extra)
+    return context
+
+
+_OPENER = urllib.request.build_opener(_NoRedirect, urllib.request.HTTPSHandler(context=_tls_context()))
 
 
 def check_url(url: str) -> None:

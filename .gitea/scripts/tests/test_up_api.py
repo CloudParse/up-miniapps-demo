@@ -1,9 +1,11 @@
 import json
 import os
+import ssl
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT / ".gitea" / "scripts"))
@@ -152,3 +154,18 @@ class HttpsOnlyTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ExtraCaTest(unittest.TestCase):
+    """A local development CA is added to the system trust, never in place of it (UP_CI_EXTRA_CA_FILE)."""
+
+    def test_the_default_context_is_used_without_the_variable(self) -> None:
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("UP_CI_EXTRA_CA_FILE", None)
+            context = ci_http._tls_context()
+        self.assertTrue(context.verify_mode == ssl.CERT_REQUIRED)
+
+    def test_a_missing_file_fails_at_once(self) -> None:
+        with mock.patch.dict(os.environ, {"UP_CI_EXTRA_CA_FILE": "/nonexistent/ca.crt"}):
+            with self.assertRaises(OSError):
+                ci_http._tls_context()
