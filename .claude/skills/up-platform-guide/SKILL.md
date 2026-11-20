@@ -110,17 +110,15 @@ cd ~/<repository>/miniapp && npm run dev                         # terminal 2, p
 ```
 
 See the mini-app:
-1. In the Coder dashboard, open the workspace app **Mini-app** (port 21515). Only you can open it.
-2. No "Mini-app" app? Forward the port to your laptop. Then open `http://localhost:21515`.
+1. In the Coder dashboard, open the workspace app **Mini-app**. It opens `https://miniapp--main--<workspace>--<owner>--<organisation>.cloudparse.app`.
+2. Or open the forwarded port 21515 directly: `https://21515--main--<workspace>--<owner>--<organisation>.cloudparse.app`. The Coder dashboard lists it under "Open ports".
+3. Both URLs are private. They open only for you, after the Coder sign-in. The app is owner-only. The port URL stays owner-only because the platform refuses port sharing.
+4. The SDK simulator shows a phone frame. It asks for a test user. Pick one of the 15 DEV users.
+5. To change user, open the tab "Compte".
 
-   ```bash
-   coder port-forward <workspace> --tcp 21515:21515
-   ```
+`cloudparse.app` is the apps domain of the production platform, shared by every organisation's Coder.
 
-3. The SDK simulator shows a phone frame. It asks for a test user. Pick one of the 15 DEV users.
-4. To change user, open the tab "Compte".
-
-Limits in development (2026-11-19, `docs/coder.md`):
+Limits in development (2026-11-20, `docs/coder.md`):
 - The page runs in the browser simulator. The Up phone app does not load a workspace build.
 - The platform blocks port sharing. A colleague opens the app in their own workspace.
 - Only port 21515 is needed. Vite sends `/api/` to the API and `/hub/` to the DEV Hub.
@@ -190,7 +188,7 @@ The Studio value is the one the platform uses. The display settings of `miniapp.
 
 | Question | Answer |
 | --- | --- |
-| No "Mini-app" app in Coder | Run `coder port-forward <workspace> --tcp 21515:21515` on your laptop. |
+| No "Mini-app" app in Coder | The apps domain is off on your organisation's Coder. The app and the port URL both need it. Ask an admin of the organisation. |
 | Vite says "Blocked request. This host is not allowed" | Add the host to the shell variable `DEV_ALLOWED_HOSTS` (comma separated). Restart `npm run dev`. |
 | API calls fail with 401 | The token is missing, expired or for another mini-app. A call without the SDK client (curl, a hand-written `fetch`) has no token: use `services/`. An expired token: pick the test user again in the tab "Compte". |
 | API calls fail with 503 "Authentication is not configured" | `api/.env` has no Hub key. Run `up-project-setup`. Restart the API. |

@@ -12,7 +12,7 @@ Read the root `AGENT.md` first (architecture, security rules, mandatory final re
 ```bash
 npm install
 cp .env.template .env      # VITE_BACKEND_URL=/api/v1, proxied by Vite to the API on 127.0.0.1:21514
-npm run dev                # http://localhost:21515, runs in the SDK phone simulator (pick a test user)
+npm run dev                # port 21515: open the workspace app "Mini-app" (../docs/coder.md), runs in the SDK phone simulator (pick a test user)
 npm run check:write        # Biome: format + lint + organise imports
 npm run typecheck
 npm run build              # up-sdk build: ONE self-contained dist/index.html

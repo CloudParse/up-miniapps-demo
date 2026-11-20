@@ -90,7 +90,7 @@ cd api && uv run --env-file .env python -m app    # terminal 1
 cd miniapp && npm run dev                         # terminal 2
 ```
 
-Then open the app "Mini-app" of the workspace in the Coder dashboard (port `21515`) and pick a test user.
+Then open the app "Mini-app" of the workspace in the Coder dashboard (port `21515`) and pick a test user. The same page is on the forwarded port: `https://21515--main--<workspace>--<owner>--<organisation>.cloudparse.app` (`docs/coder.md`, "Where to open the mini-app").
 
 Ports:
 - `21514`: the API, bound to `127.0.0.1`.

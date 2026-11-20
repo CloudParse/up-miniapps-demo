@@ -8,7 +8,7 @@ The mini-app and its API both run **in your workspace**. They use your organisat
 
 ```text
 Your browser
-   │  app "Mini-app" of the workspace (port 21515, private: only you, after the Coder sign-in)
+   │  app "Mini-app" or port 21515 on *--<organisation>.cloudparse.app (private: only you, after the Coder sign-in)
    ▼
 Coder workspace (dev-<organisation>)
    ├─ miniapp/  Vite dev server, port 21515, live reload, SDK simulator
@@ -56,7 +56,14 @@ Coder workspace (dev-<organisation>)
 - `miniapp/.env` keeps `VITE_BACKEND_URL=/api/v1`. Vite forwards `/api/` to the API on `127.0.0.1:21514`, and `/hub/` to the DEV backend (`DEV_HUB_ORIGIN`, default `http://backend-service:8080`).
 - Vite answers only to hosts it knows. Coder sets `VSCODE_PROXY_URI` in the workspace: `miniapp/vite.config.ts` allows exactly the host of port 21515. Another host needs the shell variable `DEV_ALLOWED_HOSTS` (comma separated; `.example.com` allows every subdomain).
 
-## Limits (2026-11-19)
+## Where to open the mini-app (2026-11-20)
+
+- The app "Mini-app": `https://miniapp--main--<workspace>--<owner>--<organisation>.cloudparse.app`.
+- The forwarded port 21515: `https://21515--main--<workspace>--<owner>--<organisation>.cloudparse.app`.
+- `cloudparse.app` is the apps domain of the production platform, shared by every organisation's Coder.
+- Both open only for you, after the Coder sign-in. The app is owner-only. The port URL stays owner-only because the platform refuses port sharing (see Limits).
+
+## Limits (2026-11-20)
 
 - **The app URL is private.** It opens only for you, after the Coder sign-in. The platform blocks port sharing: Coder Community cannot limit a shared port to the organisation.
 - **The mini-app runs in the SDK simulator** in your browser. The Up app on a phone does not load it.

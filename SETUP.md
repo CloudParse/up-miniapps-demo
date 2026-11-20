@@ -40,7 +40,7 @@ npm run dev
 
 In the Coder dashboard, open the app **Mini-app** of your workspace (port 21515). The SDK simulator asks which test user to sign in as: pick one. Every save reloads the page.
 
-Without the app (no apps domain on your organisation's Coder), run on your laptop `coder port-forward <workspace> --tcp 21515:21515` and open `http://localhost:21515`.
+The same page is on the forwarded port 21515: `https://21515--main--<workspace>--<owner>--<organisation>.cloudparse.app`. It opens only for you, after the Coder sign-in.
 
 ## 4. Deploy to production
 
