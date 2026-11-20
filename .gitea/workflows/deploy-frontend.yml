@@ -1,10 +1,11 @@
 # Deploys the mini-app bundle to production: builds <miniapp.dir>, packs the content of <miniapp.out> as a .tar.gz and publishes it
 # with the new version and an empty changelog. The organisation API keeps the 5 newest versions itself.
 # Started by its button of the platform (workflow_dispatch), which picks the version.
-# Secrets written by the platform: UP_API_URL, UP_CLIENT_ID, UP_CLIENT_SECRET. They are read by the steps that need them and by no other step.
+# Secret written by the platform: UP_API_URL. The mini-app has NO secret in this repository: the publish step gives the platform the token of
+# its own job (gitea.token), and the platform checks it with Gitea.
 # You may delete this file when your mini-app has no such part; the platform then shows no button for it.
 # Security model: docs/deploy.md. A writer of this repository can edit this file and read these secrets; the limits are on
-# the platform side (30-minute token, one mini-app, no delete right).
+# the platform side (15-minute session, one mini-app, no delete right).
 name: deploy-frontend
 # The title of the run ends with the version: the platform reads the version of a run from it.
 run-name: deploy-frontend ${{ inputs.version }}
@@ -96,8 +97,9 @@ jobs:
         working-directory: src
         env:
           UP_API_URL: ${{ secrets.UP_API_URL }}
-          UP_CLIENT_ID: ${{ secrets.UP_CLIENT_ID }}
-          UP_CLIENT_SECRET: ${{ secrets.UP_CLIENT_SECRET }}
+          # the token of THIS job: Gitea made it, it dies with the job and opens this repository only
+          UP_JOB_TOKEN: ${{ gitea.token }}
+          UP_REPOSITORY: ${{ gitea.repository }}
           VERSION: ${{ inputs.version }}
         shell: bash
         run: |

@@ -4,12 +4,14 @@
 # TWO JOBS, on purpose: Kaniko unpacks the last stage of your Dockerfile over the file system of the runner container, so a step
 # after it in the same job would find the tools of YOUR image (no bash with an Alpine image). The runner container is restarted
 # between two jobs. `build` ends with Kaniko; `release` then calls the platform. A side effect: the steps that run your Dockerfile
-# never see UP_CLIENT_SECRET, and `release` never sees REGISTRY_TOKEN.
+# are not given the job token of the platform call, and `release` is not given REGISTRY_TOKEN (see docs/deploy.md: a limit on what a
+# step receives, not a sandbox).
 # Started by its button of the platform (workflow_dispatch), which picks the version.
-# Secrets written by the platform: UP_API_URL, UP_CLIENT_ID, UP_CLIENT_SECRET, REGISTRY_USER, REGISTRY_TOKEN. Each is read by the one step that needs it and by no other step.
+# Secrets written by the platform: UP_API_URL, REGISTRY_USER, REGISTRY_TOKEN. The mini-app has NO secret in this repository: the release step
+# gives the platform the token of its own job (gitea.token), and the platform checks it with Gitea. Each value is read by the one step that needs it.
 # You may delete this file when your mini-app has no such part; the platform then shows no button for it.
 # Security model: docs/deploy.md. A writer of this repository can edit this file and read these secrets; the limits are on
-# the platform side (30-minute token, one mini-app, no delete right).
+# the platform side (15-minute session, one mini-app, no delete right).
 name: deploy-backend
 # The title of the run ends with the version: the platform reads the version of a run from it.
 run-name: deploy-backend ${{ inputs.version }}
@@ -138,8 +140,9 @@ jobs:
         env:
           VERSION: ${{ inputs.version }}
           UP_API_URL: ${{ secrets.UP_API_URL }}
-          UP_CLIENT_ID: ${{ secrets.UP_CLIENT_ID }}
-          UP_CLIENT_SECRET: ${{ secrets.UP_CLIENT_SECRET }}
+          # the token of THIS job: Gitea made it, it dies with the job and opens this repository only
+          UP_JOB_TOKEN: ${{ gitea.token }}
+          UP_REPOSITORY: ${{ gitea.repository }}
         shell: bash
         run: |
           set -euo pipefail

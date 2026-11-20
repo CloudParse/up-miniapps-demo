@@ -17,6 +17,8 @@ import up_api  # noqa: E402
 from mock_server import MockServer  # noqa: E402
 
 APP = "5b5101d1-0f4c-4b7e-9a35-2d6f1f0c7a11"
+REPO = "demo/demo-atlas-5b51"
+JOB = "0123456789abcdef0123456789abcdef01234567"
 
 
 class LocalHttp(unittest.TestCase):
@@ -43,9 +45,9 @@ class UpApiTest(LocalHttp):
         with MockServer(token_or((201, {"uuid": "x"}))) as server, tempfile.TemporaryDirectory() as tmp:
             bundle = Path(tmp) / "miniapp-1.0.1.tar.gz"
             bundle.write_bytes(b"\x1f\x8bdata")
-            up_api.Client(server.url + "/api/v1", APP, "cid", "secret").publish("miniapp", "1.0.1", bundle)
+            up_api.Client(server.url + "/api/v1", APP, REPO, JOB).publish("miniapp", "1.0.1", bundle)
             token_call, publish = server.calls
-            self.assertEqual(json.loads(token_call["body"]), {"clientId": "cid", "clientSecret": "secret"})
+            self.assertEqual(json.loads(token_call["body"]), {"applicationUuid": APP, "repository": REPO, "jobToken": JOB})
             self.assertEqual(publish["path"], f"/api/v1/admin/applications/{APP}/artifacts")
             self.assertEqual(publish["headers"]["authorization"], "Bearer jwt-1")
             self.assertIn(b'name="version"\r\n\r\n1.0.1', publish["body"])
@@ -56,14 +58,14 @@ class UpApiTest(LocalHttp):
         with MockServer(token_or((201, {}))) as server, tempfile.TemporaryDirectory() as tmp:
             module = Path(tmp) / "plugin-1.0.1.mjs"
             module.write_text("export default {}")
-            up_api.Client(server.url, APP, "c", "s").publish("plugin", "1.0.1", module)
+            up_api.Client(server.url, APP, REPO, JOB).publish("plugin", "1.0.1", module)
             publish = server.calls[-1]
             self.assertEqual(publish["path"], f"/admin/applications/{APP}/backoffice-plugin/artifacts")
             self.assertIn(b'name="activate"\r\n\r\ntrue', publish["body"])
 
     def test_deploy_sends_the_tag_and_nothing_else(self) -> None:
         with MockServer(token_or((202, {}))) as server:
-            up_api.Client(server.url, APP, "c", "s").deploy_component("1.4.2")
+            up_api.Client(server.url, APP, REPO, JOB).deploy_component("1.4.2")
             call = server.calls[-1]
             self.assertEqual(call["path"], f"/admin/applications/{APP}/custom-component/deploy")
             self.assertEqual(json.loads(call["body"]), {"tag": "1.4.2"})
@@ -72,7 +74,7 @@ class UpApiTest(LocalHttp):
         with MockServer(token_or((201, {}))) as server, tempfile.TemporaryDirectory() as tmp:
             bundle = Path(tmp) / "b.tar.gz"
             bundle.write_bytes(b"x")
-            client = up_api.Client(server.url, APP, "c", "s")
+            client = up_api.Client(server.url, APP, REPO, JOB)
             for bad in ('1.0.0"; filename="x', "1.0.0\r\nX: y", "../1.0.0", "1.0", "latest", "1.0.0\n"):
                 with self.subTest(bad):
                     with self.assertRaises(miniapp_config.ConfigError):
@@ -94,7 +96,7 @@ class UpApiTest(LocalHttp):
         long = "tag not in the registry\x1b[31m" + "A" * 1000
         with MockServer(token_or((409, {"message": long}))) as server:
             with self.assertRaises(ci_http.ApiError) as raised:
-                up_api.Client(server.url, APP, "c", "s").deploy_component("1.0.0")
+                up_api.Client(server.url, APP, REPO, JOB).deploy_component("1.0.0")
             self.assertEqual(raised.exception.status, 409)
             self.assertNotIn("\x1b", str(raised.exception))
             self.assertLess(len(str(raised.exception)), 260)
@@ -102,7 +104,7 @@ class UpApiTest(LocalHttp):
     def test_token_refused(self) -> None:
         with MockServer(lambda *a: (401, {"message": "invalid client"})) as server:
             with self.assertRaisesRegex(ci_http.ApiError, "invalid client"):
-                up_api.Client(server.url, APP, "c", "bad").token()
+                up_api.Client(server.url, APP, REPO, "bad").token()
 
     def test_redirects_are_never_followed(self) -> None:
         def responder(method: str, path: str, headers: dict, body: bytes):
@@ -112,7 +114,7 @@ class UpApiTest(LocalHttp):
 
         with MockServer(responder) as server:
             with self.assertRaisesRegex(ci_http.ApiError, "redirect"):
-                up_api.Client(server.url, APP, "c", "s").token()
+                up_api.Client(server.url, APP, REPO, JOB).token()
             self.assertEqual([c["path"] for c in server.calls], ["/ci/token"])
 
     def test_non_json_answer_is_an_error(self) -> None:
@@ -121,15 +123,34 @@ class UpApiTest(LocalHttp):
 
         with MockServer(responder) as server:
             with self.assertRaises(ci_http.ApiError):
-                up_api.Client(server.url, APP, "c", "s").token()
+                up_api.Client(server.url, APP, REPO, JOB).token()
 
     def test_unreachable_server_and_missing_env(self) -> None:
         with self.assertRaisesRegex(ci_http.ApiError, "cannot reach"):
-            up_api.Client("http://127.0.0.1:9", APP, "c", "s").token()
+            up_api.Client("http://127.0.0.1:9", APP, REPO, JOB).token()
         with unittest.mock.patch.dict(os.environ, {}, clear=False):
             os.environ.pop("UP_API_URL", None)
             with self.assertRaisesRegex(ci_http.ApiError, "UP_API_URL is not set"):
                 up_api.Client.from_env(APP)
+
+    def test_the_environment_of_a_job(self) -> None:
+        env = {"UP_API_URL": "https://api.acme.example/api/v1", "UP_REPOSITORY": REPO, "UP_JOB_TOKEN": JOB}
+        with unittest.mock.patch.dict(os.environ, env):
+            client = up_api.Client.from_env(APP)
+            self.assertEqual(client._credentials, {"applicationUuid": APP, "repository": REPO, "jobToken": JOB})
+        for missing in ("UP_REPOSITORY", "UP_JOB_TOKEN"):
+            with unittest.mock.patch.dict(os.environ, {k: v for k, v in env.items() if k != missing}, clear=False):
+                os.environ.pop(missing, None)
+                with self.assertRaisesRegex(ci_http.ApiError, f"{missing} is not set"):
+                    up_api.Client.from_env(APP)
+
+    def test_a_bad_repository_or_token_never_reaches_the_server(self) -> None:
+        for bad in ("demo", "demo/", "/x", "demo/x/y", "../x", "demo/x y", "demo/x\n", ""):
+            with self.subTest(bad), self.assertRaises(ci_http.ApiError):
+                up_api.Client("https://api.acme.example/api/v1", APP, bad, JOB)
+        for bad in ("", "x" * 257):
+            with self.subTest(len(bad)), self.assertRaises(ci_http.ApiError):
+                up_api.Client("https://api.acme.example/api/v1", APP, REPO, bad)
 
     def test_the_client_only_offers_publish_and_deploy(self) -> None:
         names = {name for name in dir(up_api.Client) if not name.startswith("_")}
@@ -144,7 +165,7 @@ class HttpsOnlyTest(unittest.TestCase):
                 with self.subTest(url), self.assertRaises(ci_http.ApiError):
                     ci_http.check_url(url)
             with self.assertRaises(ci_http.ApiError):
-                up_api.Client("http://api.example/api/v1", APP, "c", "s")
+                up_api.Client("http://api.example/api/v1", APP, REPO, JOB)
             ci_http.check_url("https://api.example/api/v1")
         with unittest.mock.patch.dict(os.environ, {"UP_CI_ALLOW_HTTP": "true"}):
             ci_http.check_url("http://127.0.0.1:1")

@@ -1,10 +1,12 @@
-"""Calls of the deployment CI to the organisation API, authenticated with the credentials of the mini-app.
+"""Calls of the deployment CI to the organisation API, authenticated with the token of the running job.
 
-Environment (Gitea Actions secrets, never arguments):
-  UP_API_URL         base of the organisation API including /api/v1, e.g. https://api.<slug>.<domain>/api/v1
-  UP_CLIENT_ID       client id of the mini-app
-  UP_CLIENT_SECRET   client secret of the mini-app
-The mini-app uuid comes from miniapp.yaml.
+Environment (never arguments):
+  UP_API_URL     base of the organisation API including /api/v1, e.g. https://api.<slug>.<domain>/api/v1 (an Actions secret
+                 the platform writes)
+  UP_JOB_TOKEN   the token Gitea made for this job (`gitea.token`): it dies with the job and only works for this repository
+  UP_REPOSITORY  `owner/name` of this repository (`gitea.repository`)
+The mini-app uuid comes from miniapp.yaml. The mini-app has no secret here: the platform checks, with Gitea, that the job token
+belongs to a running job of the project repository of that mini-app, and answers with a short session.
 
 Usage: up_api.py publish miniapp|plugin --version 1.2.3 --file <path>
        up_api.py deploy-component --version 1.2.3   (the image <registry>/<owner>/<repo>:1.2.3 is already pushed)
@@ -14,6 +16,7 @@ server's (the organisation API keeps the newest 5 versions after each publish).
 
 import argparse
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Any
@@ -22,27 +25,32 @@ import ci_http
 import miniapp_config
 
 KINDS = ("miniapp", "plugin")
+REPOSITORY = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,38}/[A-Za-z0-9][A-Za-z0-9._-]{0,99}")
 
 
 def _env(name: str) -> str:
     value = os.environ.get(name, "").strip()
     if not value:
-        raise ci_http.ApiError(0, f"{name} is not set: the platform writes it as an Actions secret of this repository")
+        raise ci_http.ApiError(0, f"{name} is not set: the workflow passes it to this step")
     return value
 
 
 class Client:
-    def __init__(self, api_url: str, app_uuid: str, client_id: str, client_secret: str) -> None:
+    def __init__(self, api_url: str, app_uuid: str, repository: str, job_token: str) -> None:
         ci_http.check_url(api_url)
         self.api = api_url.rstrip("/")
         miniapp_config.check_uuid(app_uuid)
         self.app_uuid = app_uuid
-        self._credentials = {"clientId": client_id, "clientSecret": client_secret}
+        if not REPOSITORY.fullmatch(repository):
+            raise ci_http.ApiError(0, "UP_REPOSITORY must be owner/name")
+        if not job_token or len(job_token) > 256:
+            raise ci_http.ApiError(0, "UP_JOB_TOKEN is empty or too long")
+        self._credentials = {"applicationUuid": app_uuid, "repository": repository, "jobToken": job_token}
         self._token = ""
 
     @classmethod
     def from_env(cls, app_uuid: str) -> "Client":
-        return cls(_env("UP_API_URL"), app_uuid, _env("UP_CLIENT_ID"), _env("UP_CLIENT_SECRET"))
+        return cls(_env("UP_API_URL"), app_uuid, _env("UP_REPOSITORY"), _env("UP_JOB_TOKEN"))
 
     def token(self) -> str:
         if not self._token:

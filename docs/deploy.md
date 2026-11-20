@@ -72,8 +72,8 @@ Job `release` (runs only when `build` built something):
 Why two jobs: Kaniko unpacks the last stage of your `Dockerfile` over the file system of the runner container. After the build, that container holds the tools of your image (an Alpine image has no `bash`). The runner starts a fresh container for each job, so the call to the platform is a job of its own. Kaniko is the last step of `build`. Do not add a step after it.
 
 Two consequences:
-- The steps that run your `Dockerfile` do not receive `UP_CLIENT_SECRET` in their environment. The `release` job does not receive `REGISTRY_TOKEN`.
-- This is a limit on what a step is given, not a sandbox. The `RUN` steps of a `Dockerfile` run as root in the container of the runner, so a malicious `RUN` step can read what the runner process holds in memory. The platform limits the damage: the session it issues lasts 30 minutes and reaches this one mini-app.
+- The steps that run your `Dockerfile` are not given the job token in their environment. The `release` job does not receive `REGISTRY_TOKEN`.
+- This is a limit on what a step is given, not a sandbox. The `RUN` steps of a `Dockerfile` run as root in the container of the runner, so a malicious `RUN` step can read what the runner process holds in memory. The platform limits the damage: the token of a job works only while the job runs and only for this repository, and the session it buys lasts 15 minutes and reaches this one mini-app.
 - Each job starts a new runner container. The second job waits for the container to restart, which can take a few minutes when deployments follow each other.
 
 The workflow never changes the component itself and its scripts never delete an image. The platform deletes old images itself: it keeps the image the component runs and the 2 newest.
@@ -98,10 +98,10 @@ The packing step refuses a symbolic link, a path that leaves the repository, an 
 
 Read this before you give someone write access to the repository.
 
-**Whoever can push to this repository controls its CI.** The workflows, the scripts in `.gitea/scripts/` and `miniapp.yaml` are all in the repository. A writer can edit a workflow to print or send the secrets that the deploy steps receive (`UP_CLIENT_SECRET`, `REGISTRY_TOKEN`) or to read the runner's login file. Nothing in this repository prevents that. The checks in the scripts protect you from mistakes and from malformed input. They do not protect you from a writer.
+**Whoever can push to this repository controls its CI.** The workflows, the scripts in `.gitea/scripts/` and `miniapp.yaml` are all in the repository. A writer can edit a workflow to print or send what the deploy steps receive (the job token, `REGISTRY_TOKEN`) or to read the runner's login file. The mini-app itself has no secret in this repository: its client secret never leaves the organisation's backend. Nothing in this repository prevents that. The checks in the scripts protect you from mistakes and from malformed input. They do not protect you from a writer.
 
 The real limits are on the platform side:
-- The CI token (`POST {UP_API_URL}/ci/token`) lasts 30 minutes and works for this mini-app only.
+- The job asks for its session with `POST {UP_API_URL}/ci/token`, giving the token Gitea made for that job. The platform asks the organisation's Gitea whether that token belongs to a **running job of the project repository of this mini-app**. A token of a person, of another repository, of another mini-app or of a job that ended gets a 401. The session lasts 15 minutes and works for this mini-app only.
 - It allows exactly three calls: publish a mini-app bundle, publish a plugin version, deploy the component with a tag. It has no delete right.
 - The platform deploys a tag only if the registry holds it. It keeps the 5 newest bundles and plugin versions, the image the component runs and the 2 newest images.
 - The registry account (`REGISTRY_USER`, `REGISTRY_TOKEN`) belongs to this mini-app only. It is a member of one team in the Gitea organisation of this mini-app. That team has the right on packages and on nothing else (no code, no issues).
@@ -110,7 +110,7 @@ The real limits are on the platform side:
 
 What the scripts do on top, as hygiene:
 - Build commands run through `run-build.sh` with `env -i`: only `PATH`, a fresh `HOME`, `TMPDIR` and `CI` are set. The runner variables and the secrets are not in their environment. This is **not a boundary**: a writer can change `run-build.sh`.
-- Secrets are referenced only by the steps that need them: the registry login by the image build, the CI token credentials by the publish and deploy steps.
+- Secrets are referenced only by the steps that need them: the registry login by the image build, the job token by the checkout and by the publish and deploy steps.
 - Calls use https only (`UP_CI_ALLOW_HTTP=true` allows http on a local development cluster) and never follow a redirect.
 - Server error messages are cut to 200 characters and stripped of control characters before they reach the log.
 
@@ -118,13 +118,11 @@ What the scripts do on top, as hygiene:
 
 ## CI contract (set by the platform)
 
-The platform writes these Actions secrets of the repository when it creates the project. Do not edit them.
+The platform writes these Actions secrets of the repository at every deployment click. Do not edit them. The mini-app has no client id or client secret among them: earlier projects had `UP_CLIENT_ID` and `UP_CLIENT_SECRET`, which the platform now deletes.
 
 | Secret | Content |
 | --- | --- |
 | `UP_API_URL` | Base of your organisation's API with `/api/v1`, for example `https://api.<organisation>.<domain>/api/v1` |
-| `UP_CLIENT_ID` | Client id of this mini-app |
-| `UP_CLIENT_SECRET` | Client secret of this mini-app |
 | `REGISTRY_USER`, `REGISTRY_TOKEN` | Account of this mini-app in the Gitea registry. The scripts only push images. The account can also delete the packages of this mini-app's Gitea organisation. |
 
 The runner of your organisation sets these variables for every job:
@@ -136,7 +134,7 @@ The runner of your organisation sets these variables for every job:
 The runner image is `docker.io/cloudparse/up-ci-runner`. It has Python 3 without PyYAML, Node, `git`, `tar` and `/kaniko/executor`.
 
 The calls the workflows make to the platform:
-- `POST /ci/token` with `{"clientId", "clientSecret"}`, answer `{"token", "expiresAt"}`.
+- `POST /ci/token` with `{"applicationUuid", "repository", "jobToken"}` (the uuid of `miniapp.yaml`, `gitea.repository`, `gitea.token`), answer `{"token", "expiresAt"}`.
 - `POST /admin/applications/<uuid>/artifacts` (the mini-app bundle).
 - `POST /admin/applications/<uuid>/backoffice-plugin/artifacts` (a plugin version).
 - `POST /admin/applications/<uuid>/custom-component/deploy` with `{"tag": "<version>"}`.

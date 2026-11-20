@@ -133,8 +133,6 @@ class WorkflowTest(unittest.TestCase):
         return {
             "inputs.version": version,
             "secrets.UP_API_URL": server.url,
-            "secrets.UP_CLIENT_ID": "cid",
-            "secrets.UP_CLIENT_SECRET": SECRET,
             "secrets.REGISTRY_USER": "ci",
             "secrets.REGISTRY_TOKEN": SECRET,
             "gitea.repository": "demo/Demo-Atlas-5b51",
@@ -280,7 +278,7 @@ class WorkflowTest(unittest.TestCase):
             f"build: env > {probe} && mkdir -p dist && echo hello > dist/index.html",
         )
         (self.src / "miniapp.yaml").write_text(config)
-        leak = {"CI_REGISTRY_HOST": "leak", "CI_GITEA_URL": "leak", "UP_CLIENT_SECRET": "leak", "GITEA_TOKEN": "leak", "REGISTRY_TOKEN": "leak"}
+        leak = {"CI_REGISTRY_HOST": "leak", "CI_GITEA_URL": "leak", "UP_JOB_TOKEN": "leak", "GITEA_TOKEN": "leak", "REGISTRY_TOKEN": "leak"}
         with self.platform() as server:
             result = self.run_workflow("deploy-frontend.yml", self.context(server), extra_env=leak)
         self.assertTrue(result.ok, result.log)
@@ -307,10 +305,39 @@ class WorkflowTest(unittest.TestCase):
     def test_the_build_job_never_sees_the_platform_credentials_and_the_release_job_never_sees_the_registry_token(self) -> None:
         build = json.dumps(jobs_of("deploy-backend.yml")["build"])
         release = json.dumps(jobs_of("deploy-backend.yml")["release"])
-        for word in ("UP_CLIENT_SECRET", "UP_CLIENT_ID", "UP_API_URL"):
-            self.assertNotIn(word, build, "the steps that run your Dockerfile must not see the platform credentials")
+        for word in ("UP_JOB_TOKEN", "UP_REPOSITORY", "UP_API_URL"):
+            self.assertNotIn(word, build, "the steps that run your Dockerfile are not given the platform call")
         for word in ("REGISTRY_TOKEN", "REGISTRY_USER"):
             self.assertNotIn(word, release)
+
+    def test_the_job_token_goes_to_the_checkout_and_to_the_platform_call_only(self) -> None:
+        """The job token is the only credential of the mini-app: no secret of the mini-app is in the repository any more."""
+        allowed = {
+            "deploy-backend.yml": {"Check out the repository", "Deploy the component"},
+            "deploy-frontend.yml": {"Check out the repository", "Publish"},
+            "deploy-plugin.yml": {"Check out the repository", "Publish"},
+        }
+        for name, steps_allowed in allowed.items():
+            for job in jobs_of(name):
+                for step in steps_of(name, job):
+                    uses = "gitea.token" in json.dumps(step) or "github.token" in json.dumps(step)
+                    if step["name"] in steps_allowed:
+                        continue
+                    self.assertFalse(uses, f"{name}/{job}: step {step['name']!r} must not be given the job token")
+            text = (ROOT / ".gitea" / "workflows" / name).read_text()
+            for word in ("UP_CLIENT_ID", "UP_CLIENT_SECRET", "clientSecret", "secrets.GITEA_TOKEN"):
+                self.assertNotIn(word, text, f"{name}: the mini-app has no secret of its own in the repository")
+
+    def test_the_platform_gets_the_job_token_and_the_repository_of_the_job(self) -> None:
+        with self.platform() as server:
+            result = self.run_workflow("deploy-frontend.yml", self.context(server))
+            self.assertTrue(result.ok, result.log)
+            token_call = next(c for c in server.calls if c["path"].endswith("/ci/token"))
+        body = json.loads(token_call["body"])
+        self.assertEqual(body["jobToken"], SECRET)
+        self.assertEqual(body["repository"], "demo/Demo-Atlas-5b51")
+        self.assertEqual(set(body), {"applicationUuid", "repository", "jobToken"})
+        self.assertNotIn(SECRET, result.log, "the token is never printed")
 
     # --- the two jobs of the backend workflow -----------------------------------------------------------------
 
