@@ -85,7 +85,7 @@ Ports:
 - `21515`: the Vite dev server, bound to `127.0.0.1` (Coder reaches it there). Through its proxy, the API's `/api/` routes are reachable on that port too.
 - Before adding a port anywhere, check it does not clash with another project.
 
-### Production deployment (story 029)
+### Production deployment (story 040)
 
 `miniapp.yaml` (`version: 2`) configures the deployment: `api` (dir, port, healthPath, command, publicIngress), `services` (postgres, cache, bucket), `miniapp`, `plugin`. The platform's buttons (backend, frontend, plugin) start one Gitea workflow each. A workflow whose section is absent from `miniapp.yaml` ends successfully with a notice and builds nothing (`miniapp_config.py plan`); a developer may delete a workflow they do not use. Rules for anyone changing this part:
 - The workflows and scripts only read secrets from the environment (`UP_API_URL`, `UP_CLIENT_ID`, `UP_CLIENT_SECRET`, `REGISTRY_USER`, `REGISTRY_TOKEN`), never from arguments, and never print them. Only the steps that need a secret reference it. Build commands run through `run-build.sh` with `env -i`. That is hygiene, not a boundary: a writer of the repository controls the CI and can read its secrets (`docs/deploy.md`, "Security model"). The real limits are the platform's: a 30-minute token for one mini-app, no delete right.
