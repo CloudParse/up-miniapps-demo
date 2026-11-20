@@ -351,6 +351,17 @@ class WorkflowTest(unittest.TestCase):
                 self.assertNotIn("build-image.sh", json.dumps(other))
                 self.assertNotIn("kaniko", json.dumps(other).lower())
 
+    def test_the_job_that_asks_the_platform_for_a_session_has_the_name_the_platform_expects(self) -> None:
+        """The platform (up/backend giteaaccess.CIJobs) gives a session only to this job of each workflow: the name is part of the contract."""
+        expected = {"deploy-backend.yml": "release", "deploy-frontend.yml": "deploy-frontend", "deploy-plugin.yml": "deploy-plugin"}
+        for workflow, job in expected.items():
+            with self.subTest(workflow=workflow):
+                steps = jobs_of(workflow)[job]["steps"]
+                self.assertTrue(any("UP_JOB_TOKEN" in json.dumps(step.get("env", {})) for step in steps), "the job asks the platform with its token")
+        for job, body in jobs_of("deploy-backend.yml").items():
+            if job != "release":
+                self.assertNotIn("UP_JOB_TOKEN", json.dumps(body), "no other job of the backend workflow holds the platform token")
+
     def test_the_release_job_runs_after_the_build_and_only_when_it_built(self) -> None:
         release = jobs_of("deploy-backend.yml")["release"]
         self.assertEqual(release["needs"], "build")

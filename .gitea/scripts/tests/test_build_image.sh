@@ -10,12 +10,13 @@ touch "$work/api/Dockerfile"
 cat >"$work/fake-kaniko" <<'FAKE'
 #!/usr/bin/env bash
 printf '%s\n' "$@" >"$FAKE_ARGS"
+env >"$FAKE_ENV"
 cp "$DOCKER_CONFIG/config.json" "$FAKE_CONFIG"
 FAKE
 chmod +x "$work/fake-kaniko"
 
 run() {
-  (cd "$work" && FAKE_ARGS="$work/args" FAKE_CONFIG="$work/config" KANIKO_EXECUTOR="$work/fake-kaniko" \
+  (cd "$work" && FAKE_ARGS="$work/args" FAKE_ENV="$work/env" FAKE_CONFIG="$work/config" KANIKO_EXECUTOR="$work/fake-kaniko" \
     KANIKO_DOCKER_CONFIG="$work/docker" REGISTRY_HOST=git.demo.example REPOSITORY=Demo/Demo-Atlas-5b51 VERSION=1.0.3 \
     API_DIR=api API_PORT=8000 REGISTRY_USER=ci REGISTRY_TOKEN=tok "$@" "$script")
 }
@@ -35,6 +36,10 @@ grep -q 'dir://.*/api$' "$work/args" || fail "wrong context"
 grep -q '"git.demo.example"' "$work/config" || fail "registry host missing in the login file"
 ! grep -q 'tok' "$work/args" || fail "token leaked into arguments"
 [[ ! -e "$work/docker/config.json" ]] || fail "the login file was left behind"
+
+# the tokens of Gitea Actions never reach the processes of the Dockerfile
+run env GITEA_TOKEN=jobtok GITHUB_TOKEN=jobtok ACTIONS_RUNTIME_TOKEN=rt ACTIONS_ID_TOKEN_REQUEST_TOKEN=idt >/dev/null
+! grep -q -E 'jobtok|^ACTIONS_RUNTIME_TOKEN=|^ACTIONS_ID_TOKEN_REQUEST_TOKEN=|^GITEA_TOKEN=|^GITHUB_TOKEN=' "$work/env" || fail "a token of Gitea Actions reached the build"
 
 run env REGISTRY_INSECURE=true >/dev/null
 grep -qx -- '--insecure' "$work/args" || fail "insecure not set"

@@ -4,8 +4,8 @@
 # TWO JOBS, on purpose: Kaniko unpacks the last stage of your Dockerfile over the file system of the runner container, so a step
 # after it in the same job would find the tools of YOUR image (no bash with an Alpine image). The runner container is restarted
 # between two jobs. `build` ends with Kaniko; `release` then calls the platform. A side effect: the steps that run your Dockerfile
-# are not given the job token of the platform call, and `release` is not given REGISTRY_TOKEN (see docs/deploy.md: a limit on what a
-# step receives, not a sandbox).
+# are not given the job token (build-image.sh removes it from the environment of Kaniko), the platform refuses the token of the
+# `build` job, and `release` is not given REGISTRY_TOKEN (see docs/deploy.md: a limit on what a step receives, not a sandbox).
 # Started by its button of the platform (workflow_dispatch), which picks the version.
 # Secrets written by the platform: UP_API_URL, REGISTRY_USER, REGISTRY_TOKEN. The mini-app has NO secret in this repository: the release step
 # gives the platform the token of its own job (gitea.token), and the platform checks it with Gitea. Each value is read by the one step that needs it.
@@ -23,8 +23,8 @@ on:
         description: Semver of this deployment, e.g. 1.0.3
         required: true
 
-# The job token only reads this repository. Gitea Actions reads this key since 1.24 (not verified on the version in use: the scripts
-# never use gitea.token beyond the clone step either way).
+# The job token (gitea.token) lives only while its job runs and reads only this repository (checked on Gitea 1.27, 2026-11-20).
+# The platform gives the session to the job named `release` of this workflow on the default branch, and to no other job.
 permissions:
   contents: read
 

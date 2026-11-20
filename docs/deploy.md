@@ -72,7 +72,7 @@ Job `release` (runs only when `build` built something):
 Why two jobs: Kaniko unpacks the last stage of your `Dockerfile` over the file system of the runner container. After the build, that container holds the tools of your image (an Alpine image has no `bash`). The runner starts a fresh container for each job, so the call to the platform is a job of its own. Kaniko is the last step of `build`. Do not add a step after it.
 
 Two consequences:
-- The steps that run your `Dockerfile` are not given the job token in their environment. The `release` job does not receive `REGISTRY_TOKEN`.
+- The steps that run your `Dockerfile` are not given the job token in their environment. `build-image.sh` removes it before Kaniko starts. The platform also refuses the token of the `build` job: it gives a session only to the job `release` (`deploy-frontend` and `deploy-plugin` for the two other workflows) of the default branch. The `release` job does not receive `REGISTRY_TOKEN`.
 - This is a limit on what a step is given, not a sandbox. The `RUN` steps of a `Dockerfile` run as root in the container of the runner, so a malicious `RUN` step can read what the runner process holds in memory. The platform limits the damage: the token of a job works only while the job runs and only for this repository, and the session it buys lasts 15 minutes and reaches this one mini-app.
 - Each job starts a new runner container. The second job waits for the container to restart, which can take a few minutes when deployments follow each other.
 

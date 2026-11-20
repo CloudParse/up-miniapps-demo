@@ -61,5 +61,9 @@ if [[ "${REGISTRY_INSECURE:-false}" == "true" ]]; then
   args+=(--insecure --insecure-registry "$REGISTRY_HOST" --skip-tls-verify-registry "$REGISTRY_HOST")
 fi
 
+# The Dockerfile's RUN steps are children of this process and inherit its environment. Nothing of Gitea Actions that holds a
+# credential may reach them: the job token of this job (GITEA_TOKEN, GITHUB_TOKEN) and the tokens of the runner services.
+unset GITEA_TOKEN GITHUB_TOKEN ACTIONS_RUNTIME_TOKEN ACTIONS_ID_TOKEN_REQUEST_TOKEN ACTIONS_ID_TOKEN_REQUEST_URL ACTIONS_CACHE_URL
+
 echo "build-image: building $image:$VERSION"
 "$executor" "${args[@]}"
