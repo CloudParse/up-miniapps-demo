@@ -6,6 +6,8 @@
 # Security model: docs/deploy.md. A writer of this repository can edit this file and read these secrets; the limits are on
 # the platform side (30-minute token, one mini-app, no delete right).
 name: deploy-frontend
+# The title of the run ends with the version: the platform reads the version of a run from it.
+run-name: deploy-frontend ${{ inputs.version }}
 
 on:
   workflow_dispatch:
