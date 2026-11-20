@@ -1,0 +1,52 @@
+# yaml-language-server: $schema=./miniapp.schema.json
+#
+# miniapp.yaml: everything the Up platform needs to know about this mini-app. It sits at the root of this repository.
+#
+# You do NOT fill the first block by hand. When the mini-app is created, the platform replaces the values of
+# `uuid`, `slug`, `name`, `description`, `cardStyle`, `darkTheme` and `deviceTypes` with the ones of your mini-app
+# (the ones you chose in Studio). Everything else below stays as written here: comments, sections and values.
+# After that the file is yours. The platform never rewrites it again.
+#
+# Never put a secret or an environment variable in this file. Secrets are set in Studio.
+# Format: miniapp.schema.json. Guide: docs/deploy.md.
+
+version: 2                                   # 2: the project can be deployed from the platform (1: identity and display only)
+
+# ---- Identity and display: filled by the platform when the mini-app is created --------------------------------------
+uuid: 00000000-0000-0000-0000-000000000000   # PLACEHOLDER (the platform writes the real one). It never changes.
+slug: my-mini-app                            # PLACEHOLDER. Chosen at creation, never changes.
+name: "My mini-app"                          # PLACEHOLDER. Name shown in the shell.
+description: "Describe your mini-app in one sentence."   # PLACEHOLDER.
+logo: null                                   # a .webp image of this repository (e.g. assets/logo.webp); null keeps the one set in Studio
+cardStyle: navy                              # navy | blush | night | mist | violet
+darkTheme: null                              # true, false, or null (null: the shell follows the mini-app)
+deviceTypes: [PHONE, WEB]                    # PHONE | TABLET | DESKTOP | TV | WEB. WEB: the page Apps of the Up website
+
+# ---- Deployment: every section is optional. Delete the ones you do not use (no section, no build, never an error) ----
+
+# Backend. Built from <dir>/Dockerfile and deployed as the component linked to the mini-app.
+api:
+  dir: api                                   # folder with the Dockerfile (the build context)
+  port: 8000                                 # the port the container listens on (1024 to 65535)
+  healthPath: /healthz                       # answers 200 when the API is healthy
+  publicIngress: false                       # true: the API gets a public address
+  # command: ["python", "-m", "app"]         # only to override the image's own entrypoint
+
+# What the API needs. The platform provisions each one and hands its settings to the API at start. Needs `api`.
+services:
+  postgres: true                             # DATABASE_URL
+  cache: true                                # CACHE_URL, CACHE_KEY_PREFIX
+  bucket: true                               # STORAGE_*
+
+# The mini-app shown in the Up shell: built, packed as a .tar.gz of the content of `out`, published.
+miniapp:
+  dir: miniapp                               # folder of the mini-app
+  build: npm ci && npm run build             # shell command run in `dir`
+  out: dist                                  # build output, relative to `dir`
+
+# The backoffice plugin (optional): published as ONE ES module, `file`, relative to `out`.
+# plugin:
+#   dir: plugin
+#   build: npm ci && npm run build
+#   out: dist
+#   file: plugin.js

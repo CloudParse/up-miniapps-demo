@@ -94,12 +94,21 @@ class ParseTest(unittest.TestCase):
         config = mc.parse('a: "x # y"\nb: plain # comment\nc: [ "p # q", r ] # tail\n')
         self.assertEqual((config["a"], config["b"], config["c"]), ("x # y", "plain", ["p # q", "r"]))
 
-    def test_example_in_docs_is_valid(self) -> None:
-        config = mc.load(ROOT / "docs" / "miniapp.example.yaml")
+    def test_the_miniapp_yaml_of_the_template_is_valid_but_not_deployable_until_the_platform_fills_it(self) -> None:
+        config = mc.load(ROOT / "miniapp.yaml")
         mc.validate(config)
+        self.assertEqual(config["uuid"], mc.PLACEHOLDER_UUID)
+        self.assertEqual(config["deviceTypes"], ["PHONE", "WEB"])
+        for target in ("backend", "frontend", "plugin"):
+            with self.subTest(target), self.assertRaisesRegex(mc.ConfigError, "placeholder of the template"):
+                mc.plan(config, target)
+
+    def test_the_template_file_once_filled_plans_the_sections_it_has(self) -> None:
+        config = mc.load(ROOT / "miniapp.yaml")
+        config["uuid"] = "5b5101d1-0f4c-4b7e-9a35-2d6f1f0c7a11"
         self.assertEqual(mc.plan(config, "backend"), "run")
         self.assertEqual(mc.plan(config, "frontend"), "run")
-        self.assertTrue(mc.plan(config, "plugin").startswith("skip "))  # the example's plugin section is commented out
+        self.assertTrue(mc.plan(config, "plugin").startswith("skip "))  # the plugin section is commented out
 
     def test_invalid_utf8_is_refused(self) -> None:
         path = ROOT / ".gitea" / "scripts" / "tests" / "_bad_utf8.yaml"
@@ -209,7 +218,7 @@ class SchemaParityTest(unittest.TestCase):
             BASE + "plugin:\n  dir: p\n  build: b\n  out: dist\n  file: a.mjs\n",
             BASE + "miniapp:\n  dir: m\n  build: b\n  out: dist\n",
             BASE + "cardStyle: navy\ndarkTheme: null\ndeviceTypes: [PHONE, TV]\nlogo: assets/logo.webp\n",
-            (ROOT / "docs" / "miniapp.example.yaml").read_text(),
+            (ROOT / "miniapp.yaml").read_text(),
         ]
         bad = [
             BASE.replace("version: 2", "version: 1") + "api:\n  dir: api\n  port: 8080\n",
@@ -250,7 +259,7 @@ class DocsAndNumbersTest(unittest.TestCase):
         for block in blocks:
             document = block if re.search(r"^version:", block, re.MULTILINE) else BASE + block
             mc.validate(mc.parse(document))
-        mc.validate(mc.load(ROOT / "docs" / "miniapp.example.yaml"))
+        mc.validate(mc.load(ROOT / "miniapp.yaml"))
 
     def test_a_number_is_ascii_digits_without_a_leading_zero(self) -> None:
         self.assertEqual(mc.parse("a: 1024\n")["a"], 1024)

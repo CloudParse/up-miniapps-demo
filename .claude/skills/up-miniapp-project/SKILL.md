@@ -41,7 +41,7 @@ Start:
   - `services`: `postgres`, `cache`, `bucket`.
   - `miniapp`: `dir`, `build`, `out`.
   - `plugin`: `dir`, `build`, `out`, `file` (one `.js` or `.mjs` module).
-- Example: `docs/miniapp.example.yaml`.
+- Example: the `miniapp.yaml` of the project root (placeholders and a comment on every line; the platform fills the identity values when the mini-app is created).
 - Never put a secret or an environment variable in it.
 
 ## Deploying

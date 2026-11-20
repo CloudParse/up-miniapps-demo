@@ -44,7 +44,7 @@ Without the app (no apps domain on your organisation's Coder), run on your lapto
 
 ## 4. Deploy to production
 
-Set `version: 2` in `miniapp.yaml` and add the `api`, `services`, `miniapp` and `plugin` sections you need (example: `docs/miniapp.example.yaml`). Commit, push, then press **Déployer le backend**, **Déployer le frontend** and/or **Déployer le plugin** in the platform. A part with no section in `miniapp.yaml` has nothing to deploy: delete its workflow in `.gitea/workflows/` if you want. Details and the CI contract: `docs/deploy.md`.
+`miniapp.yaml` is already a deployable `version: 2` file with the `api`, `services` and `miniapp` sections: adjust them, delete the ones you do not use, add `plugin` if you have one (a commented example is in the file). Commit, push, then press **Déployer le backend**, **Déployer le frontend** and/or **Déployer le plugin** in the platform. A part with no section in `miniapp.yaml` has nothing to deploy: delete its workflow in `.gitea/workflows/` if you want. Details and the CI contract: `docs/deploy.md`.
 
 ## 5. Start Claude Code
 

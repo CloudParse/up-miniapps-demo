@@ -36,7 +36,7 @@ VERSION = re.compile(VERSION_PATTERN)
 KEY = re.compile(r"^([A-Za-z][A-Za-z0-9]*):(?: +(.*))?$")
 
 CARD_STYLES = ("navy", "blush", "night", "mist", "violet")
-DEVICE_TYPES = ("PHONE", "TABLET", "DESKTOP", "TV")
+DEVICE_TYPES = ("PHONE", "TABLET", "DESKTOP", "TV", "WEB")
 SERVICES = ("postgres", "cache", "bucket")
 MIN_PORT = 1024  # the image runs as a non-root user
 
@@ -289,6 +289,18 @@ def _check_api(api: dict[str, Any]) -> None:
         raise ConfigError("api.publicIngress: must be true or false")
 
 
+PLACEHOLDER_UUID = "00000000-0000-0000-0000-000000000000"
+
+
+def check_filled(config: dict[str, Any]) -> None:
+    """Refuse the file of the template that the platform did not fill with the identity of the mini-app."""
+    if config.get("uuid") == PLACEHOLDER_UUID:
+        raise ConfigError(
+            "uuid: still the placeholder of the template. The platform writes the uuid, slug and name of your mini-app "
+            "into this file when it creates the mini-app: copy them from Studio, or ask an administrator to run the Git synchronisation"
+        )
+
+
 def _check_identity(config: dict[str, Any]) -> None:
     if config.get("version") not in (1, 2) or isinstance(config.get("version"), bool):
         raise ConfigError("version: must be 1 or 2")
@@ -347,6 +359,7 @@ def plan(config: dict[str, Any], target: str) -> str:
     if target not in TARGETS:
         raise ConfigError(f"target must be one of {', '.join(TARGETS)}")
     validate(config)
+    check_filled(config)
     section = SECTION_OF_TARGET[target]
     if section in config:
         return "run"
@@ -391,10 +404,12 @@ def main(argv: list[str]) -> int:
         config = load(Path(args.file))
         if args.command == "validate":
             validate(config)
+            check_filled(config)
         elif args.command == "plan":
             print(plan(config, args.target))
         else:
             validate(config)
+            check_filled(config)
             print(_format(get(config, args.key)))
     except ConfigError as error:
         print(f"miniapp.yaml: {error}", file=sys.stderr)

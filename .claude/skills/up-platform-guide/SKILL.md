@@ -134,7 +134,7 @@ Who does what (checked 2026-11-20):
 Steps:
 1. Open `miniapp.yaml` at the repository root. The platform wrote it.
 2. Set `version: 2`.
-3. Add the sections you need. Copy them from `docs/miniapp.example.yaml`.
+3. Adjust the sections you need in `miniapp.yaml` (they are already there with defaults) and delete the ones you do not use.
    - `api`: `dir`, `port`. Optional: `healthPath`, `publicIngress`, `command`.
    - `services`: `postgres`, `cache`, `bucket`.
    - `miniapp`: `dir`, `build`, `out`.

@@ -56,10 +56,9 @@ In development `VITE_BACKEND_URL` is `/api/v1`. The Vite dev server forwards `/a
 | `api/` | Mini-app API, `up-miniapps-demo-api`. Python + FastAPI. Verifies the Hub's user tokens and serves your own data. Instructions: `api/AGENT.md`. |
 | `docs/coder.md` | How the demo runs in a Coder workspace: the services it uses, the settings, the limits. |
 | `SETUP.md` | The commands, in order. |
-| `miniapp.yaml` | In a project repository only (written by the platform whenever it is missing, never overwritten; not in this template): the backoffice settings of the mini-app (name, description, logo, card style, theme, devices). Never a secret nor an environment variable. |
+| `miniapp.yaml` | The settings of the mini-app: identity and display (name, description, logo, card style, theme, devices) and the deployment sections. The template holds it with placeholders and a comment on every line; when a mini-app is created the platform replaces the identity and display values only (`uuid`, `slug`, `name`, `description`, `cardStyle`, `darkTheme`, `deviceTypes`), once, and never rewrites the file after. A file that still holds the placeholder `uuid` is refused by the CI. Never a secret nor an environment variable. |
 | `miniapp.schema.json` | The format of `miniapp.yaml` (versions 1 and 2). |
 | `docs/deploy.md` | Production deployment: the buttons, `miniapp.yaml` sections, the workflows, the CI contract with the platform. |
-| `docs/miniapp.example.yaml` | A complete deployable `miniapp.yaml` to copy from (the template itself holds no `miniapp.yaml`). |
 | `api/Dockerfile` | Production image of the API (pinned bases, non-root, `/app` read-only, `API_PORT` build argument, port 1024 or more). Built by the CI with Kaniko. |
 | `.gitea/workflows/` | `deploy-backend.yml`, `deploy-frontend.yml` (mini-app bundle only) and `deploy-plugin.yml`, started by the platform (`workflow_dispatch`, input `version`), run on the organisation's runner `up-ci`. |
 | `.gitea/scripts/` | The CI scripts (standard library Python and one shell script) and their tests: run `.gitea/scripts/check.sh`. |
@@ -108,7 +107,7 @@ Ports:
 - Retention is the platform's: the organisation API keeps the 5 newest bundles and plugin versions after each publish, the super API keeps the image the component runs and the 2 newest. The CI session (15 minutes, `/ci/token`, bought with the token of the running job) has no delete right: it calls only token, publish and component deploy. The registry account (`REGISTRY_TOKEN`) is per mini-app, in the Gitea organisation of this mini-app, with the right on packages only: it can push and delete packages there, and nowhere else. No workflow, script or test file of this template deletes anything (a test enforces it).
 - The runner environment `CI_REGISTRY_HOST` (required, no fallback) and `CI_REGISTRY_INSECURE` (the only source of the insecure mode) are read by the image build. `CI_GITEA_URL` is the clone address; the Gitea server URL is its only fallback.
 - The plugin is one ES module (`.js` or `.mjs`): the organisation API refuses anything else.
-- The schema, `miniapp_config.py` and `docs/miniapp.example.yaml` change together; `.gitea/scripts/tests/test_miniapp_config.py` checks that the validator and the schema agree.
+- The schema, `miniapp_config.py` and the root `miniapp.yaml` change together; `.gitea/scripts/tests/test_miniapp_config.py` checks that the validator and the schema agree.
 - The runner has no Docker daemon, no PyYAML: standard library only, Kaniko for images. The tests need PyYAML and jsonschema (`check.sh` installs them with `uv`) and fail without them.
 
 ## 4. General conventions
