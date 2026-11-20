@@ -12,11 +12,11 @@
 
 version: 2                                   # 2: the project can be deployed from the platform (1: identity and display only)
 
-# ---- Identity and display: filled by the platform when the mini-app is created --------------------------------------
-uuid: 00000000-0000-0000-0000-000000000000   # PLACEHOLDER (the platform writes the real one). It never changes.
-slug: my-mini-app                            # PLACEHOLDER. Chosen at creation, never changes.
-name: "My mini-app"                          # PLACEHOLDER. Name shown in the shell.
-description: "Describe your mini-app in one sentence."   # PLACEHOLDER.
+# ---- Identity and display: the platform replaces these values when the mini-app is created ----------------------------
+uuid: 00000000-0000-0000-0000-000000000000   # identity of the mini-app, written by the platform, never changes
+slug: my-mini-app                            # short name chosen at creation, never changes
+name: "My mini-app"                          # name shown in the shell
+description: "Describe your mini-app in one sentence."   # one sentence, shown in the shell
 logo: null                                   # a .webp image of this repository (e.g. assets/logo.webp); null keeps the one set in Studio
 cardStyle: navy                              # navy | blush | night | mist | violet
 darkTheme: null                              # true, false, or null (null: the shell follows the mini-app)
