@@ -1,27 +1,34 @@
 """Pack what the build produced into the file the platform stores.
 
-Usage: bundle.py miniapp --version 1.2.3 --out dist-ci     -> dist-ci/miniapp-1.2.3.tar.gz (the content of miniapp.out)
+Usage: bundle.py miniapp --version 1.2.3 --out dist-ci     -> dist-ci/miniapp-1.2.3.base64.gz (the index.base64.gz of miniapp.out)
        bundle.py plugin  --version 1.2.3 --out dist-ci     -> dist-ci/plugin-1.2.3.mjs (the one ES module the backoffice loads)
 Prints the path of the file written. Reads miniapp.yaml of the current directory (the repository root).
+The mini-app file is the one `up-sdk build` writes next to dist/index.html: gzip(base64(the single-file HTML)). The shell and the web
+launcher read exactly that format, and the platform stores the file as it is (its SHA-256 is the artifact checksum), so it is checked and
+copied, never rebuilt.
 Refuses a symbolic link anywhere on the way, a path that leaves the repository, an output folder inside the sources, a hard link,
-more than MAX_FILES files, more than MAX_BUNDLE_BYTES bytes of content (MAX_PLUGIN_BYTES for the plugin module), and a target file
-that is a symbolic link.
+a mini-app file that is not a complete gzip of base64 of UTF-8 text (or is over MAX_COMPRESSED_BYTES compressed, MAX_HTML_BYTES decoded),
+more than MAX_PLUGIN_BYTES for the plugin module, and a target file that is a symbolic link.
 """
 
 import argparse
+import base64
+import binascii
 import os
+import re
 import shutil
-import stat
 import sys
-import tarfile
+import zlib
 from pathlib import Path
 from typing import Any
 
 import miniapp_config
 
-MAX_FILES = 20000
-MAX_BUNDLE_BYTES = 100 * 1024 * 1024  # the content of the mini-app output, before compression
-MAX_PLUGIN_BYTES = 10 * 1024 * 1024  # the one ES module of a plugin
+MINIAPP_FILE = "index.base64.gz"  # written by `up-sdk build`, read by the shell and the web launcher
+MAX_COMPRESSED_BYTES = 18 * 1024 * 1024  # what is uploaded: the organisation API refuses a request body over 20 MB
+MAX_HTML_BYTES = 64 * 1024 * 1024  # the HTML once decoded: the web launcher refuses more
+MAX_PLUGIN_BYTES = 5 * 1024 * 1024  # the one ES module of a plugin: the organisation API refuses more (maxBackofficePluginSize)
+_WHITESPACE = re.compile(rb"\s+")
 
 
 def _inside_repository(relative: str, root: Path, what: str) -> Path:
@@ -56,49 +63,57 @@ def _open_new(target: Path) -> int:
     return os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o644)
 
 
-def _entries(source: Path) -> list[Path]:
-    """Every entry under source, at most MAX_FILES (the walk stops at the first one over the limit)."""
-    entries: list[Path] = []
-    for entry in source.rglob("*"):
-        entries.append(entry)
-        if len(entries) > MAX_FILES:
-            raise miniapp_config.ConfigError(f"miniapp: more than {MAX_FILES} files in the build output")
-    return sorted(entries)
-
-
-def _fixed(info: tarfile.TarInfo) -> tarfile.TarInfo:
-    info.uid = info.gid = 0
-    info.uname = info.gname = ""
-    info.mtime = 0
-    info.mode = 0o755 if info.isdir() else 0o644
-    return info
+def _check_miniapp_file(data: bytes) -> None:
+    """The bytes are one complete gzip stream of base64 text that decodes to non-empty UTF-8 HTML (what the launcher decodes)."""
+    if data[:2] != b"\x1f\x8b":
+        raise miniapp_config.ConfigError(f"miniapp: {MINIAPP_FILE} is not a gzip file")
+    limit = MAX_HTML_BYTES * 4 // 3 + 16  # base64 text of the largest accepted HTML
+    inflater = zlib.decompressobj(16 + zlib.MAX_WBITS)
+    try:
+        text = inflater.decompress(data, limit + 1)
+        complete = inflater.eof and not inflater.unused_data
+    except zlib.error as error:
+        raise miniapp_config.ConfigError(f"miniapp: {MINIAPP_FILE} is not a valid gzip file ({error})") from None
+    if len(text) > limit or inflater.unconsumed_tail:
+        raise miniapp_config.ConfigError(f"miniapp: {MINIAPP_FILE} holds more than {MAX_HTML_BYTES // (1024 * 1024)} MB of HTML")
+    if not complete:
+        raise miniapp_config.ConfigError(f"miniapp: {MINIAPP_FILE} is a truncated gzip file or has data after the gzip stream")
+    try:
+        html = base64.b64decode(_WHITESPACE.sub(b"", text), validate=True).decode("utf-8")
+    except (binascii.Error, UnicodeDecodeError, ValueError):
+        raise miniapp_config.ConfigError(f"miniapp: {MINIAPP_FILE} does not hold the base64 of UTF-8 HTML") from None
+    if not html.strip():
+        raise miniapp_config.ConfigError(f"miniapp: {MINIAPP_FILE} holds an empty page")
+    if len(html.encode("utf-8")) > MAX_HTML_BYTES:
+        raise miniapp_config.ConfigError(f"miniapp: {MINIAPP_FILE} holds more than {MAX_HTML_BYTES // (1024 * 1024)} MB of HTML")
 
 
 def pack_miniapp(config: dict[str, Any], version: str, out_dir: Path, root: Path | None = None) -> Path:
     miniapp_config.check_version(version)
     root = (root or Path.cwd()).resolve()
     section = config["miniapp"]
-    source = _inside_repository(f"{section['dir']}/{section['out']}", root, "miniapp.out")
-    target_dir = _output_folder(out_dir, root, [source])
-    if not source.is_dir() or not any(source.iterdir()):
-        raise miniapp_config.ConfigError(f"miniapp: the build produced nothing in {section['dir']}/{section['out']}")
+    relative = f"{section['dir']}/{section['out']}/{MINIAPP_FILE}"
+    folder = _inside_repository(f"{section['dir']}/{section['out']}", root, "miniapp.out")
+    source = _inside_repository(relative, root, "miniapp.out")
+    target_dir = _output_folder(out_dir, root, [folder])
+    if not source.is_file():
+        raise miniapp_config.ConfigError(
+            f"miniapp: the build did not write {MINIAPP_FILE} in {section['dir']}/{section['out']}: "
+            "the miniapp build must run `up-sdk build` (npm run build of a mini-app made with @cloudparse/up-miniapps-sdk)"
+        )
+    info = source.lstat()
+    if info.st_nlink > 1:
+        raise miniapp_config.ConfigError(f"miniapp: {relative} is a hard link")
+    if info.st_size == 0:
+        raise miniapp_config.ConfigError(f"miniapp: {relative} is empty")
+    if info.st_size > MAX_COMPRESSED_BYTES:
+        raise miniapp_config.ConfigError(f"miniapp: {relative} is more than {MAX_COMPRESSED_BYTES // (1024 * 1024)} MB")
+    data = source.read_bytes()
+    _check_miniapp_file(data)
     target_dir.mkdir(parents=True, exist_ok=True)
-    target = target_dir / f"miniapp-{version}.tar.gz"
-    entries = _entries(source)
-    total = 0
-    for entry in entries:  # everything is checked before the tarball is made
-        info = entry.lstat()
-        if stat.S_ISLNK(info.st_mode) or not (stat.S_ISREG(info.st_mode) or stat.S_ISDIR(info.st_mode)):
-            raise miniapp_config.ConfigError(f"miniapp: {entry.relative_to(source)} is not a regular file or folder")
-        if stat.S_ISREG(info.st_mode):
-            if info.st_nlink > 1:
-                raise miniapp_config.ConfigError(f"miniapp: {entry.relative_to(source)} is a hard link")
-            total += info.st_size
-            if total > MAX_BUNDLE_BYTES:
-                raise miniapp_config.ConfigError(f"miniapp: the build output is more than {MAX_BUNDLE_BYTES // (1024 * 1024)} MB")
-    with os.fdopen(_open_new(target), "wb") as raw, tarfile.open(fileobj=raw, mode="w:gz") as archive:
-        for entry in entries:
-            archive.add(entry, arcname=entry.relative_to(source).as_posix(), recursive=False, filter=_fixed)
+    target = target_dir / f"miniapp-{version}.base64.gz"
+    with os.fdopen(_open_new(target), "wb") as dst:
+        dst.write(data)
     return target
 
 

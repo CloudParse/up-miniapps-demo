@@ -85,7 +85,7 @@ The `Dockerfile` of this template pins its base images by tag and digest, runs a
 ### What the frontend workflow does
 1. Checks the version and reads `miniapp.yaml` (nothing to do without a `miniapp` section).
 2. Builds `miniapp` with its `build` command.
-3. Packs `miniapp-<version>.tar.gz`, the content of `out`.
+3. Checks `index.base64.gz` in `out` (written by `up-sdk build`: gzip of the base64 of the single-file HTML, the format of the shell and of the web launcher) and copies it as `miniapp-<version>.base64.gz`. The build must run `up-sdk build` (`npm run build` of a mini-app made with `@cloudparse/up-miniapps-sdk`); without that file the job fails with a message saying so.
 4. Publishes it with the version and an empty changelog.
 
 ### What the plugin workflow does
@@ -94,7 +94,7 @@ The `Dockerfile` of this template pins its base images by tag and digest, runs a
 3. Copies the module `out/<file>` as `plugin-<version>.mjs`.
 4. Publishes it as the active plugin version, with an empty changelog.
 
-The packing step refuses a symbolic link, a path that leaves the repository, an output folder that overlaps the sources, and more than 20000 files.
+The packing step refuses a symbolic link, a path that leaves the repository, an output folder that overlaps the sources, a hard link, an `index.base64.gz` that is over 18 MB, that is not one complete gzip stream, or whose content is not the base64 of UTF-8 HTML of at most 64 MB. The plugin module must be a `.js` or `.mjs` file of at most 5 MB (the limit of the organisation API).
 
 ## Security model
 
@@ -152,7 +152,7 @@ All are in `.gitea/scripts/`. The Python ones use the standard library only. Sec
 | `miniapp_config.py` | Reads and validates `miniapp.yaml`: `validate`, `plan --target backend\|frontend\|plugin` (prints `run` or `skip <reason>`), `get <key>` |
 | `run-build.sh` | Runs the build command of a section with a scrubbed environment |
 | `build-image.sh` | Kaniko build and push (the script never deletes) |
-| `bundle.py` | Packs the mini-app `.tar.gz` and copies the plugin module |
+| `bundle.py` | Checks and copies the mini-app `index.base64.gz` and copies the plugin module |
 | `up_api.py` | Token, publish a bundle or a plugin version, deploy the component with a tag |
 | `ci_http.py` | https-only HTTP helper with no redirects |
 

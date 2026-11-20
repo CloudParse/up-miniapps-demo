@@ -149,7 +149,7 @@ Steps:
 
 What each button does:
 - **Déployer le backend**: builds `api/Dockerfile`, pushes the image to the Gitea registry, deploys that version.
-- **Déployer le frontend**: builds `miniapp/`, publishes `miniapp-<version>.tar.gz` for the Up app.
+- **Déployer le frontend**: builds `miniapp/`, publishes the `index.base64.gz` of `up-sdk build` (gzip of the base64 of the single-file HTML) for the Up app and the web.
 - **Déployer le plugin**: publishes one ES module for the organisation's backoffice. The button shows only when `miniapp.yaml` has a `plugin` section.
 
 Rules:
@@ -172,7 +172,7 @@ Rules:
 
 - There is no iOS-only or Android-only value.
 - Values combine, for example `deviceTypes: [PHONE, WEB]`.
-- A mini-app created in the Studio starts with `PHONE` only.
+- A mini-app created in the Studio starts with `PHONE` and `WEB`.
 
 Turn on the web:
 1. Check that the mini-app works in a desktop browser. A feature that needs the phone (camera, location, haptics) needs a fallback.

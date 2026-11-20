@@ -49,7 +49,7 @@ Start:
 - An admin of the organisation presses the Studio buttons "Déployer le backend", "Déployer le frontend" and "Déployer le plugin".
 - Each button starts one workflow of `.gitea/workflows/`: `deploy-backend.yml`, `deploy-frontend.yml`, `deploy-plugin.yml`. They run on the organisation's runner.
 - The backend workflow builds `api/Dockerfile` with the port `api.port`.
-- The frontend workflow publishes `miniapp-<version>.tar.gz`.
+- The frontend workflow publishes the `index.base64.gz` of `up-sdk build` as `miniapp-<version>.base64.gz`.
 - The plugin workflow publishes the plugin module.
 - A workflow whose section is missing from `miniapp.yaml` does nothing and ends green. You may delete the workflows you do not use.
 - The platform picks the version: patch + 1.

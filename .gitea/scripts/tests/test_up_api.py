@@ -43,7 +43,7 @@ def token_or(answer):
 class UpApiTest(LocalHttp):
     def test_token_then_publish_miniapp_with_form_fields(self) -> None:
         with MockServer(token_or((201, {"uuid": "x"}))) as server, tempfile.TemporaryDirectory() as tmp:
-            bundle = Path(tmp) / "miniapp-1.0.1.tar.gz"
+            bundle = Path(tmp) / "miniapp-1.0.1.base64.gz"
             bundle.write_bytes(b"\x1f\x8bdata")
             up_api.Client(server.url + "/api/v1", APP, REPO, JOB).publish("miniapp", "1.0.1", bundle)
             token_call, publish = server.calls
@@ -52,7 +52,7 @@ class UpApiTest(LocalHttp):
             self.assertEqual(publish["headers"]["authorization"], "Bearer jwt-1")
             self.assertIn(b'name="version"\r\n\r\n1.0.1', publish["body"])
             self.assertNotIn(b'name="changelog"', publish["body"])
-            self.assertIn(b'filename="miniapp-1.0.1.tar.gz"', publish["body"])
+            self.assertIn(b'filename="miniapp-1.0.1.base64.gz"', publish["body"])
 
     def test_publish_plugin_activates(self) -> None:
         with MockServer(token_or((201, {}))) as server, tempfile.TemporaryDirectory() as tmp:
@@ -72,7 +72,7 @@ class UpApiTest(LocalHttp):
 
     def test_a_bad_version_never_reaches_the_server(self) -> None:
         with MockServer(token_or((201, {}))) as server, tempfile.TemporaryDirectory() as tmp:
-            bundle = Path(tmp) / "b.tar.gz"
+            bundle = Path(tmp) / "b.base64.gz"
             bundle.write_bytes(b"x")
             client = up_api.Client(server.url, APP, REPO, JOB)
             for bad in ('1.0.0"; filename="x', "1.0.0\r\nX: y", "../1.0.0", "1.0", "latest", "1.0.0\n"):

@@ -135,7 +135,7 @@
         "build",
         "out"
       ],
-      "description": "The mini-app bundle shown in the Up shell. Omit when there is none. Published as a .tar.gz of the content of out.",
+      "description": "The mini-app bundle shown in the Up shell. Omit when there is none. Published as the index.base64.gz that `up-sdk build` writes in out (gzip of the base64 of the single-file HTML).",
       "properties": {
         "dir": {
           "type": "string",

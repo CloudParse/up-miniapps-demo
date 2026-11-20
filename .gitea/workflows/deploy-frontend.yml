@@ -1,4 +1,4 @@
-# Deploys the mini-app bundle to production: builds <miniapp.dir>, packs the content of <miniapp.out> as a .tar.gz and publishes it
+# Deploys the mini-app bundle to production: builds <miniapp.dir>, takes the index.base64.gz that `up-sdk build` writes in <miniapp.out> and publishes it
 # with the new version and an empty changelog. The organisation API keeps the 5 newest versions itself.
 # Started by its button of the platform (workflow_dispatch), which picks the version.
 # Secret written by the platform: UP_API_URL. The mini-app has NO secret in this repository: the publish step gives the platform the token of
@@ -104,4 +104,4 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 .gitea/scripts/up_api.py publish miniapp --version "$VERSION" --file "dist-ci/miniapp-$VERSION.tar.gz"
+          python3 .gitea/scripts/up_api.py publish miniapp --version "$VERSION" --file "dist-ci/miniapp-$VERSION.base64.gz"

@@ -38,7 +38,7 @@ services:
   cache: true                                # CACHE_URL, CACHE_KEY_PREFIX
   bucket: true                               # STORAGE_*
 
-# The mini-app shown in the Up shell: built, packed as a .tar.gz of the content of `out`, published.
+# The mini-app shown in the Up shell: built, then the `index.base64.gz` that `up-sdk build` writes in `out` is published.
 miniapp:
   dir: miniapp                               # folder of the mini-app
   build: npm ci && npm run build             # shell command run in `dir`

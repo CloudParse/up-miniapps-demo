@@ -1,6 +1,7 @@
+import base64
+import gzip
 import os
 import sys
-import tarfile
 import tempfile
 import unittest
 from pathlib import Path
@@ -25,34 +26,75 @@ class BundleTest(unittest.TestCase):
         os.chdir(self.root)
         self.addCleanup(os.chdir, self.cwd)
 
-    def make_miniapp(self) -> None:
-        (self.root / "miniapp/dist/assets").mkdir(parents=True)
-        (self.root / "miniapp/dist/index.html").write_text("<html/>")
-        (self.root / "miniapp/dist/assets/a.js").write_text("1")
+    def make_miniapp(self, html: str = "<html><body>é</body></html>") -> bytes:
+        """What `up-sdk build` writes: dist/index.html and dist/index.base64.gz = gzip(base64(html))."""
+        (self.root / "miniapp/dist").mkdir(parents=True)
+        (self.root / "miniapp/dist/index.html").write_text(html)
+        packed = gzip.compress(base64.b64encode(html.encode("utf-8")))
+        (self.root / "miniapp/dist/index.base64.gz").write_bytes(packed)
+        return packed
 
-    def test_miniapp_tarball_holds_the_content_of_out(self) -> None:
-        self.make_miniapp()
+    def write_miniapp_file(self, data: bytes) -> None:
+        (self.root / "miniapp/dist").mkdir(parents=True, exist_ok=True)
+        (self.root / "miniapp/dist/index.base64.gz").write_bytes(data)
+
+    def test_miniapp_file_is_copied_as_it_is(self) -> None:
+        packed = self.make_miniapp()
         target = bundle.pack_miniapp(MINIAPP, "1.2.3", Path("dist-ci"))
-        self.assertEqual(target.name, "miniapp-1.2.3.tar.gz")
-        with tarfile.open(target) as archive:
-            self.assertEqual(sorted(archive.getnames()), ["assets", "assets/a.js", "index.html"])
-            self.assertTrue(all(m.uid == 0 and m.mtime == 0 for m in archive.getmembers()))
+        self.assertEqual(target.name, "miniapp-1.2.3.base64.gz")
+        self.assertEqual(target.read_bytes(), packed, "the platform checksum is the one of the file the SDK wrote")
+
+    def test_a_real_up_sdk_output_with_wrapped_base64_is_accepted(self) -> None:
+        html = "<html>" + "x" * 500 + "</html>"
+        wrapped = base64.encodebytes(html.encode())  # lines of 76 characters, like the base64 tool
+        self.write_miniapp_file(gzip.compress(wrapped))
+        self.assertTrue(bundle.pack_miniapp(MINIAPP, "1.0.0", Path("dist-ci")).exists())
+
+    def test_a_missing_file_says_to_run_up_sdk_build(self) -> None:
+        (self.root / "miniapp/dist").mkdir(parents=True)
+        (self.root / "miniapp/dist/index.html").write_text("<html/>")
+        with self.assertRaisesRegex(mc.ConfigError, r"did not write index\.base64\.gz.*up-sdk build"):
+            bundle.pack_miniapp(MINIAPP, "1.0.0", Path("dist-ci"))
+
+    def test_a_file_that_is_not_what_the_launcher_reads_is_refused(self) -> None:
+        cases = {
+            "not gzip": (b"<html/>", "not a gzip file"),
+            "a tar.gz of the folder": (gzip.compress(b"index.html\x00" + b"0" * 600), "base64"),
+            "gzip of raw html": (gzip.compress(b"<html><body>hello world</body></html>"), "base64"),
+            "base64 of bytes that are not UTF-8": (gzip.compress(base64.b64encode(b"\xff\xfe\xfd")), "UTF-8"),
+            "empty page": (gzip.compress(base64.b64encode(b"   ")), "empty page"),
+            "truncated gzip": (gzip.compress(base64.b64encode(b"<html>" + b"a" * 2000 + b"</html>"))[:-12], "truncated"),
+            "data after the stream": (gzip.compress(base64.b64encode(b"<html/>")) + b"junk", "after the gzip stream"),
+            "bad gzip body": (b"\x1f\x8b" + b"\x00" * 20, "valid gzip"),
+        }
+        for name, (data, message) in cases.items():
+            with self.subTest(name):
+                self.write_miniapp_file(data)
+                with self.assertRaisesRegex(mc.ConfigError, message):
+                    bundle.pack_miniapp(MINIAPP, "1.0.0", Path("dist-ci"))
+                self.assertFalse(list((self.root / "dist-ci").glob("miniapp-*")), "nothing is written when the file is refused")
 
     def test_version_is_checked(self) -> None:
         self.make_miniapp()
-        for bad in ("../x", "1.2", 'a".tar.gz', "1.2.3\n"):
+        for bad in ("../x", "1.2", 'a".base64.gz', "1.2.3\n"):
             with self.subTest(bad), self.assertRaises(mc.ConfigError):
                 bundle.pack_miniapp(MINIAPP, bad, Path("dist-ci"))
 
     def test_empty_output_refused(self) -> None:
         (self.root / "miniapp/dist").mkdir(parents=True)
-        with self.assertRaisesRegex(mc.ConfigError, "produced nothing"):
+        with self.assertRaisesRegex(mc.ConfigError, "did not write"):
+            bundle.pack_miniapp(MINIAPP, "1.0.0", Path("dist-ci"))
+        self.write_miniapp_file(b"")
+        with self.assertRaisesRegex(mc.ConfigError, "empty"):
             bundle.pack_miniapp(MINIAPP, "1.0.0", Path("dist-ci"))
 
-    def test_symlink_inside_the_output_is_refused(self) -> None:
-        self.make_miniapp()
-        os.symlink("/etc/passwd", self.root / "miniapp/dist/link")
-        with self.assertRaisesRegex(mc.ConfigError, "not a regular file"):
+    def test_a_symlinked_miniapp_file_is_refused(self) -> None:
+        packed = self.make_miniapp()
+        (self.root / "miniapp/dist/index.base64.gz").unlink()
+        real = self.root / "real.gz"
+        real.write_bytes(packed)
+        os.symlink(real, self.root / "miniapp/dist/index.base64.gz")
+        with self.assertRaisesRegex(mc.ConfigError, "symbolic link"):
             bundle.pack_miniapp(MINIAPP, "1.0.0", Path("dist-ci"))
 
     def test_symlinked_dir_out_and_file_are_refused(self) -> None:
@@ -61,6 +103,8 @@ class BundleTest(unittest.TestCase):
         self.addCleanup(outside.rmdir)
         (outside / "index.html").write_text("x")
         self.addCleanup((outside / "index.html").unlink)
+        (outside / "index.base64.gz").write_bytes(gzip.compress(base64.b64encode(b"<html/>")))
+        self.addCleanup((outside / "index.base64.gz").unlink)
         (self.root / "miniapp").symlink_to(outside)
         with self.assertRaisesRegex(mc.ConfigError, "symbolic link"):
             bundle.pack_miniapp({"miniapp": {"dir": "miniapp", "out": "."}}, "1.0.0", Path("dist-ci"))
@@ -98,21 +142,24 @@ class BundleTest(unittest.TestCase):
 
     def test_a_hard_link_in_the_output_is_refused(self) -> None:
         self.make_miniapp()
-        os.link(self.root / "miniapp/dist/index.html", self.root / "miniapp/dist/copy.html")
+        os.link(self.root / "miniapp/dist/index.base64.gz", self.root / "miniapp/dist/copy.gz")
         with self.assertRaisesRegex(mc.ConfigError, "hard link"):
             bundle.pack_miniapp(MINIAPP, "1.0.0", Path("dist-ci"))
 
-    def test_the_content_size_is_capped(self) -> None:
+    def test_the_sizes_are_capped(self) -> None:
         self.make_miniapp()
-        with mock.patch.object(bundle, "MAX_BUNDLE_BYTES", 5):
+        with mock.patch.object(bundle, "MAX_COMPRESSED_BYTES", 5):
             with self.assertRaisesRegex(mc.ConfigError, "MB"):
                 bundle.pack_miniapp(MINIAPP, "1.0.0", Path("dist-ci"))
-        self.assertFalse((self.root / "dist-ci" / "miniapp-1.0.0.tar.gz").exists(), "nothing is written when a limit is hit")
+        with mock.patch.object(bundle, "MAX_HTML_BYTES", 8):
+            with self.assertRaisesRegex(mc.ConfigError, "more than 0 MB of HTML"):
+                bundle.pack_miniapp(MINIAPP, "1.0.0", Path("dist-ci"))
+        self.assertFalse(list((self.root / "dist-ci").glob("miniapp-*")), "nothing is written when a limit is hit")
 
-    def test_the_file_count_is_capped_before_anything_is_sorted(self) -> None:
-        self.make_miniapp()
-        with mock.patch.object(bundle, "MAX_FILES", 1):
-            with self.assertRaisesRegex(mc.ConfigError, "more than 1 files"):
+    def test_a_gzip_bomb_is_stopped_while_inflating(self) -> None:
+        self.write_miniapp_file(gzip.compress(b"A" * (3 * 1024 * 1024)))
+        with mock.patch.object(bundle, "MAX_HTML_BYTES", 1024):
+            with self.assertRaisesRegex(mc.ConfigError, "of HTML"):
                 bundle.pack_miniapp(MINIAPP, "1.0.0", Path("dist-ci"))
 
     def test_the_plugin_size_is_capped_and_hard_links_are_refused(self) -> None:
@@ -130,7 +177,7 @@ class BundleTest(unittest.TestCase):
         victim = self.root / "victim.txt"
         victim.write_text("keep")
         (self.root / "dist-ci").mkdir()
-        (self.root / "dist-ci" / "miniapp-1.0.0.tar.gz").symlink_to(victim)
+        (self.root / "dist-ci" / "miniapp-1.0.0.base64.gz").symlink_to(victim)
         with self.assertRaisesRegex(mc.ConfigError, "symbolic link"):
             bundle.pack_miniapp(MINIAPP, "1.0.0", Path("dist-ci"))
         self.assertEqual(victim.read_text(), "keep")
@@ -142,11 +189,10 @@ class BundleTest(unittest.TestCase):
         self.assertEqual(victim.read_text(), "keep")
 
     def test_an_existing_regular_target_is_replaced(self) -> None:
-        self.make_miniapp()
+        packed = self.make_miniapp()
         bundle.pack_miniapp(MINIAPP, "1.0.0", Path("dist-ci"))
         target = bundle.pack_miniapp(MINIAPP, "1.0.0", Path("dist-ci"))
-        with tarfile.open(target) as archive:
-            self.assertIn("index.html", archive.getnames())
+        self.assertEqual(target.read_bytes(), packed)
 
 
 if __name__ == "__main__":

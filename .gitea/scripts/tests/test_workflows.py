@@ -6,7 +6,8 @@ import re
 import shutil
 import subprocess
 import sys
-import tarfile
+import base64
+import gzip
 import tempfile
 import unittest
 import unittest.mock
@@ -29,7 +30,7 @@ api:
   port: 8000
 miniapp:
   dir: miniapp
-  build: mkdir -p dist && echo hello > dist/index.html
+  build: "mkdir -p dist && printf '<html>hello</html>' > dist/index.html && base64 < dist/index.html | gzip > dist/index.base64.gz"
   out: dist
 plugin:
   dir: plugin
@@ -164,8 +165,8 @@ class WorkflowTest(unittest.TestCase):
             result = self.run_workflow("deploy-frontend.yml", self.context(server))
         self.assertTrue(result.ok, result.log)
         self.assertEqual(self.calls(server), [("POST", "/ci/token"), ("POST", f"/admin/applications/{APP}/artifacts")])
-        with tarfile.open(self.src / "dist-ci" / "miniapp-1.0.4.tar.gz") as archive:
-            self.assertEqual(archive.getnames(), ["index.html"])
+        published = (self.src / "dist-ci" / "miniapp-1.0.4.base64.gz").read_bytes()
+        self.assertEqual(base64.b64decode(gzip.decompress(published)), b"<html>hello</html>", "what the shell and the web launcher decode")
         self.assertFalse(list((self.src / "dist-ci").glob("plugin-*")))
 
     def test_plugin_calls_token_then_publish_and_nothing_else(self) -> None:
@@ -274,8 +275,8 @@ class WorkflowTest(unittest.TestCase):
     def test_builds_run_with_a_scrubbed_environment(self) -> None:
         probe = Path(self.tmp.name) / "env.txt"
         config = CONFIG.replace(
-            "build: mkdir -p dist && echo hello > dist/index.html",
-            f"build: env > {probe} && mkdir -p dist && echo hello > dist/index.html",
+            "build: \"mkdir -p dist && printf '<html>hello</html>' > dist/index.html && base64 < dist/index.html | gzip > dist/index.base64.gz\"",
+            f"build: env > {probe} && mkdir -p dist && printf hello > dist/index.html && base64 < dist/index.html | gzip > dist/index.base64.gz",
         )
         (self.src / "miniapp.yaml").write_text(config)
         leak = {"CI_REGISTRY_HOST": "leak", "CI_GITEA_URL": "leak", "UP_JOB_TOKEN": "leak", "GITEA_TOKEN": "leak", "REGISTRY_TOKEN": "leak"}
