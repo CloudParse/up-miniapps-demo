@@ -365,7 +365,7 @@ def plan(config: dict[str, Any], target: str) -> str:
         return "run"
     return (
         f"skip miniapp.yaml has no `{section}` section: nothing to deploy for the {target}. "
-        "Add the section with `version: 2`, or delete this workflow."
+        "Add the section with `version: 2` to deploy it."
     )
 
 

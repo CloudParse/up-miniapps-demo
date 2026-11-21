@@ -3,7 +3,7 @@
 # Started by its button of the platform (workflow_dispatch), which picks the version.
 # Secret written by the platform: UP_API_URL. The mini-app has NO secret in this repository: the publish step gives the platform the token of
 # its own job (gitea.token), and the platform checks it with Gitea.
-# You may delete this file when your mini-app has no such part; the platform then shows no button for it.
+# Do not change or delete this file (AGENT.md section 5.1): without its section in miniapp.yaml it ends green and builds nothing.
 # Security model: docs/deploy.md. A writer of this repository can edit this file and read these secrets; the limits are on
 # the platform side (15-minute session, one mini-app, no delete right).
 name: deploy-plugin

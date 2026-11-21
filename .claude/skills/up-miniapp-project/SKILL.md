@@ -1,6 +1,6 @@
 ---
 name: up-miniapp-project
-description: Start here for any change in this Up mini-app project. Where things run, the settings file miniapp.yaml, deployment, test users, how to add a feature, the checks and the mandatory review. Points to the deeper skills up-platform-guide, up-miniapp-frontend and up-miniapp-api.
+description: Start here for any change in this Up mini-app project. Where things run, the settings file miniapp.yaml, deployment, test users, how to add a feature, the checks and the mandatory review. Points to the mandatory skill up-miniapp-ci-contract (protected files, forbidden actions, CI rules), the security agent up-security-reviewer, and the deeper skills up-platform-guide, up-miniapp-frontend and up-miniapp-api.
 ---
 
 # Up mini-app project
@@ -12,6 +12,7 @@ Read first:
 Those files are the rules. This skill is the short path through them.
 
 Deeper skills of this repository:
+- `up-miniapp-ci-contract`: **mandatory for every change**. What the deployment CI relies on and must never change.
 - `up-platform-guide`: questions about Up, roles, development, deployment, the web.
 - `up-miniapp-frontend`: code in `miniapp/`.
 - `up-miniapp-api`: code in `api/`.
@@ -31,7 +32,7 @@ Start:
 
 ## Settings of the mini-app (`miniapp.yaml`)
 
-- In a project repository, `miniapp.yaml` sits at the root. This template holds none. Its format is `miniapp.schema.json`.
+- `miniapp.yaml` sits at the root. This template holds it with placeholders. Its format is `miniapp.schema.json`.
 - The platform writes it when it is missing. It never overwrites it.
 - Identity fields: `uuid` and `slug`. Never change them.
 - Display fields: `name`, `description`, `logo` (a `.webp` of the repository, or `null`), `cardStyle`, `darkTheme`, `deviceTypes`.
@@ -51,9 +52,9 @@ Start:
 - The backend workflow builds `api/Dockerfile` with the port `api.port`.
 - The frontend workflow publishes the `index.base64.gz` of `up-sdk build` as `miniapp-<version>.base64.gz`.
 - The plugin workflow publishes the plugin module.
-- A workflow whose section is missing from `miniapp.yaml` does nothing and ends green. You may delete the workflows you do not use.
+- A workflow whose section is missing from `miniapp.yaml` does nothing and ends green. Never change or delete a workflow (`AGENT.md` section 5.1).
 - The platform picks the version: patch + 1.
-- Never put a secret in a workflow. Change the CI scripts only with their tests: `.gitea/scripts/check.sh`.
+- Never change `.gitea/`: only the maintainers of the template do.
 - Details: `docs/deploy.md`.
 
 ## Users and tokens in development
@@ -86,11 +87,13 @@ Start:
 
 ```bash
 # from the repository root
-(cd api && uv run ruff format . && uv run ruff check . && uv run mypy app tests && uv run pytest)
+(cd api && uv lock --check && uv run ruff format . && uv run ruff check . && uv run mypy app tests && uv run pytest)
 (cd miniapp && npm run check:write && npm run typecheck && npm run build)
 ```
 
 Then:
 1. Run the mandatory final review of `AGENT.md` section 7 on the whole diff.
-2. Fix every finding. Report the review.
-3. Commit with your own Gitea account. The repository belongs to the mini-app.
+2. Check the frozen items of `up-miniapp-ci-contract`.
+3. Launch the subagent `up-security-reviewer` on the whole diff (security double check).
+4. Fix every finding. Report both reviews.
+5. Commit with your own Gitea account. The repository belongs to the mini-app.

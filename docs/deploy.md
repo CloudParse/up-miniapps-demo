@@ -8,7 +8,7 @@ A mini-app goes to production from the Up platform, with buttons. Everything the
 
 Each button starts one Gitea Actions workflow of this repository: `.gitea/workflows/deploy-backend.yml`, `deploy-frontend.yml` or `deploy-plugin.yml`. They run on your organisation's own CI runner (label `up-ci`).
 
-**Every part is optional.** A mini-app may have no API, no mini-app bundle or no plugin. When the section is absent from `miniapp.yaml`, the workflow ends successfully with one notice and builds nothing. You can delete the workflow files you do not use.
+**Every part is optional.** A mini-app may have no API, no mini-app bundle or no plugin. When the section is absent from `miniapp.yaml`, the workflow ends successfully with one notice and builds nothing. Keep the workflow files you do not use: never change or delete them (`AGENT.md` section 5.1).
 
 **An invalid `miniapp.yaml` is different.** It fails the run, for every workflow. The file is never read as "nothing to do".
 

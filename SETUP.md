@@ -44,7 +44,7 @@ The same page is on the forwarded port 21515: `https://21515--main--<workspace>-
 
 ## 4. Deploy to production
 
-`miniapp.yaml` is already a deployable `version: 2` file with the `api`, `services` and `miniapp` sections: adjust them, delete the ones you do not use, add `plugin` if you have one (a commented example is in the file). Commit, push, then press **Déployer le backend**, **Déployer le frontend** and/or **Déployer le plugin** in the platform. A part with no section in `miniapp.yaml` has nothing to deploy: delete its workflow in `.gitea/workflows/` if you want. Details and the CI contract: `docs/deploy.md`.
+`miniapp.yaml` is already a deployable `version: 2` file with the `api`, `services` and `miniapp` sections: adjust them, delete the ones you do not use, add `plugin` if you have one (a commented example is in the file). Commit, push, then press **Déployer le backend**, **Déployer le frontend** and/or **Déployer le plugin** in the platform. A part with no section in `miniapp.yaml` has nothing to deploy: keep its workflow, it ends green and builds nothing (`AGENT.md` section 5.1). Details and the CI contract: `docs/deploy.md`.
 
 ## 5. Start Claude Code
 

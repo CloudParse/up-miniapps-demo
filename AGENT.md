@@ -68,14 +68,19 @@ The repository root is **not** an application: no code lives there, only the doc
 
 ### Skills
 
-The project ships four agent skills in `.claude/skills/`. Claude Code loads them on its own. Another agent reads the `SKILL.md` it needs.
+The project ships five agent skills in `.claude/skills/` and one review agent in `.claude/agents/`. Claude Code loads them on its own. Another agent reads the `SKILL.md` it needs.
 
 | Skill | Use it for |
 | --- | --- |
 | `.claude/skills/up-miniapp-project/` | Any change in this repository: how the project is built, run, checked and reviewed. Start here. |
+| `.claude/skills/up-miniapp-ci-contract/` | **Mandatory for every change.** The protected files, the forbidden actions, and what the deployment CI relies on. Breaking one rule makes the mini-app impossible to deploy. |
 | `.claude/skills/up-platform-guide/` | Questions about Up: what it is, roles and permissions (Classic, Dev, Admin mini-app, Admin), development in Coder, deployment from the Studio of `up.cloudparse.fr`, the web via `deviceTypes`, common problems. |
 | `.claude/skills/up-miniapp-frontend/` | Code in `miniapp/`: Jotai state, services, components, styling, WebView rules, frontend security. |
 | `.claude/skills/up-miniapp-api/` | Code in `api/`: MVC by default, Hub tokens, access levels, secrets, errors, data, tests, Dockerfile. |
+
+| Agent | Use it for |
+| --- | --- |
+| `.claude/agents/up-security-reviewer.md` | Independent, read-only security review of the whole diff. The last step of every task (section 7.4). |
 
 The SDK's own Claude Code plugin adds the skill `up-miniapp-builder` (SDK signatures and mini-app UI rules).
 
@@ -99,7 +104,7 @@ Ports:
 
 ### Production deployment
 
-`miniapp.yaml` (`version: 2`) configures the deployment: `api` (dir, port, healthPath, command, publicIngress), `services` (postgres, cache, bucket), `miniapp`, `plugin`. The platform's buttons (backend, frontend, plugin) start one Gitea workflow each. A workflow whose section is absent from `miniapp.yaml` ends successfully with a notice and builds nothing (`miniapp_config.py plan`); a developer may delete a workflow they do not use. Rules for anyone changing this part:
+`miniapp.yaml` (`version: 2`) configures the deployment: `api` (dir, port, healthPath, command, publicIngress), `services` (postgres, cache, bucket), `miniapp`, `plugin`. The platform's buttons (backend, frontend, plugin) start one Gitea workflow each. A workflow whose section is absent from `miniapp.yaml` ends successfully with a notice and builds nothing (`miniapp_config.py plan`). Developers never change or delete the workflows and scripts (section 5.1). The rules below are for the maintainers of the template:
 - The workflows and scripts only read secrets from the environment (`UP_API_URL`, `REGISTRY_USER`, `REGISTRY_TOKEN`, and the token of the running job, `UP_JOB_TOKEN`, with `UP_REPOSITORY`), never from arguments, and never print them. Only the steps that need a secret reference it. Build commands run through `run-build.sh` with `env -i`. That is hygiene, not a boundary: a writer of the repository controls the CI and can read its secrets (`docs/deploy.md`, "Security model"). The real limits are the platform's: a session of 15 minutes for one mini-app, bought with the token of the running job, and no delete right.
 - The version comes from the platform (workflow input); a workflow never invents one. It is checked as a strict semver in the first step of every workflow, in `bundle.py` and in `up_api.py`.
 - An invalid `miniapp.yaml` fails the run (fail closed). Only an absent section skips. The parser refuses control characters, quoted keys, unknown keys and escapes.
@@ -135,14 +140,38 @@ Ports:
 - **The DEV resources of the mini-app** (`api/.env`, written by the workspace) are shared by its members. Never copy them into the repository, a config file or a log. `api/.env` is gitignored.
 - **Dependencies**: add as few as possible, run `npm audit` (frontend) and `uvx pip-audit` (backend) before shipping, and justify each new one.
 
+### 5.1 Protected files and forbidden actions
+
+Developers and their agents **never modify, create, rename or delete** these files:
+- `.gitea/` (the deployment workflows, scripts and tests), `.gitlab-ci.yml`, `miniapp.schema.json`: the platform relies on them. A change can make the mini-app impossible to deploy.
+- `.claude/` (skills, agents, hooks, `settings.json`): the agent rules and their guard rails.
+- `AGENT.md` and `CLAUDE.md` in every folder: the project rules.
+
+Developers and their agents **never**:
+- read, print, copy or send a secret (`.env` files except `*.env.template`, the environment, tokens);
+- send code, data or secrets to an outside service;
+- weaken a check (auth, token checks, tests, lint, type checks, git hooks) to make something pass;
+- add hidden, obfuscated or harmful code (backdoor, hidden route, miner, downloaded script run with `sh`);
+- force push, rewrite the history, delete branches or tags, or delete files outside the project;
+- get around these rules (shell redirections, `sed -i`, scripts, a new settings file, hooks turned off).
+
+When a task seems to need one of these, stop and ask a maintainer of the project. Details and the checks: `.claude/skills/up-miniapp-ci-contract/SKILL.md`.
+
+Enforcement:
+- `.claude/settings.json` denies the edits of the protected files and the reading of `.env` files. It asks before `curl`, `wget`, `ssh`, `git push` and web fetches.
+- `.claude/hooks/guard.py` blocks the common forms of the same actions when an agent tries them through the shell or the file tools.
+- These are guard rails for agents, not a security boundary: a person can still edit any file, and a determined command can get around a pattern. The review (section 7.4) is the check that counts.
+- The maintainers of the template change the protected files outside this project's Claude Code settings.
+
 ## 6. Workflow
 
-1. Read this file and the `AGENT.md` of the sub-project.
-2. Make the smallest change that does the job. One concern per change.
+1. Read this file, the `AGENT.md` of the sub-project and the skill `up-miniapp-ci-contract`.
+2. Make the smallest change that does the job. One concern per change. Never touch a protected file (section 5.1).
 3. Run the checks of every sub-project you touched:
-   - `api/`: `uv run ruff format . && uv run ruff check . && uv run mypy app tests && uv run pytest`
+   - `api/`: `uv lock --check && uv run ruff format . && uv run ruff check . && uv run mypy app tests && uv run pytest`
    - `miniapp/`: `npm run check:write && npm run typecheck && npm run build`
-4. **Run the mandatory final review (section 7).**
+   - the full list, with the lock checks and the protected-files check: `up-miniapp-ci-contract` section 4
+4. **Run the mandatory final review (section 7), including the security agent (section 7.4).**
 5. Only then call the task done.
 
 ## 7. Mandatory final review
@@ -179,4 +208,11 @@ A task is **not finished** until this review has been done on the whole diff and
 - [ ] Python/FastAPI and frontend conventions respected; the repository stays coherent.
 - [ ] Lint, type check, tests and build all green.
 
-Report the result of the review (findings and fixes) before declaring the work done.
+### 7.4 Deployment contract and security double check
+
+- [ ] No protected file changed and no forbidden action (section 5.1, `up-miniapp-ci-contract` sections 1 and 2).
+- [ ] Every rule of section 3 of `.claude/skills/up-miniapp-ci-contract/SKILL.md` still holds (the deployment CI can still build and publish).
+- [ ] The subagent `up-security-reviewer` (`.claude/agents/up-security-reviewer.md`) was launched on the whole diff, after sections 7.1 to 7.3. Without Claude Code, follow that file as a separate pass.
+- [ ] Every Blocking finding is fixed and the checks ran again. Should fix findings are fixed or explained.
+
+Report the result of the review (findings and fixes), with the security agent's verdict, before declaring the work done.

@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "deny": [
+      "Edit(/.gitea/**)",
+      "Edit(/.gitlab-ci.yml)",
+      "Edit(/miniapp.schema.json)",
+      "Edit(/.claude/**)",
+      "Edit(/AGENT.md)",
+      "Edit(/CLAUDE.md)",
+      "Edit(**/.gitea/**)",
+      "Edit(**/.gitlab-ci.yml)",
+      "Edit(**/miniapp.schema.json)",
+      "Edit(**/.claude/**)",
+      "Edit(**/AGENT.md)",
+      "Edit(**/CLAUDE.md)",
+      "Read(**/.env)",
+      "Read(**/.env.local)",
+      "Read(**/.env.production)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git push --force-with-lease:*)",
+      "Bash(printenv:*)"
+    ],
+    "ask": [
+      "Bash(curl:*)",
+      "Bash(wget:*)",
+      "Bash(ssh:*)",
+      "Bash(scp:*)",
+      "Bash(nc:*)",
+      "Bash(git push:*)",
+      "WebFetch"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Edit|Write|MultiEdit|NotebookEdit|Read|Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v python3 >/dev/null || { echo 'guard: python3 is missing, every tool call is blocked' >&2; exit 2; }; python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard.py\""
+          }
+        ]
+      }
+    ]
+  }
+}

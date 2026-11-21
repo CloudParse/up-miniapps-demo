@@ -18,7 +18,7 @@ How to use this skill:
 ```bash
 uv sync
 uv run --env-file .env python -m app        # 127.0.0.1:21514, docs on /docs
-uv run ruff format . && uv run ruff check . && uv run mypy app tests && uv run pytest
+uv lock --check && uv run ruff format . && uv run ruff check . && uv run mypy app tests && uv run pytest
 ```
 
 ## 2. Architecture: MVC by default
