@@ -216,8 +216,15 @@ def flatten(text: str, check_inner) -> str:
             index += 1
             continue
         if char == "\\" and index + 1 < len(text):
-            out.append(text[index : index + 2])
+            if not quote and text[index + 1] in "()":
+                out.append(" FIND_OPEN " if text[index + 1] == "(" else " FIND_CLOSE ")
+            else:
+                out.append(text[index : index + 2])
             index += 2
+            continue
+        if not quote and text[index : index + 3] in {"'('", "')'", '"("', '")"'}:
+            out.append(" FIND_OPEN " if text[index + 1] == "(" else " FIND_CLOSE ")
+            index += 3
             continue
         if not quote and text.startswith('$"', index):
             index += 1
@@ -636,8 +643,7 @@ def find_test(word: str, value: str, path: Path, shown: str) -> bool | None:
         fold = FIND_PATH_FILTERS[word]
         return fnmatch(shown.lower() if fold else shown, value.lower() if fold else value)
     if word in FIND_REGEX_FILTERS:
-        if re.search(r"\\[(){}|]", value):
-            return True  # basic or emacs regex groups: not translated, counted as a match
+        value = re.sub(r"\\([(){}|])", r"\1", value)  # basic and emacs groups, written as extended
         try:
             return re.fullmatch(value, shown, re.IGNORECASE if FIND_REGEX_FILTERS[word] else 0) is not None
         except re.error:
@@ -696,6 +702,7 @@ def find_starts(rest: list[str]) -> list[str]:
 def check_find(rest: list[str], base: Path, root: Path) -> None:
     """Checks each `-exec` command as a command, with `{}` standing for a file of the searched folder. When find
     deletes or changes files, blocks it if its tests may select a protected file under a start folder."""
+    rest = ["(" if word == "FIND_OPEN" else ")" if word == "FIND_CLOSE" else word for word in rest]
     starts = find_starts(rest)
     commands: list[list[str]] = []
     index = 0

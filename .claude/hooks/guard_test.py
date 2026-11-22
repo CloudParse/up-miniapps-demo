@@ -133,6 +133,8 @@ ALLOWED = [bash(command) for command in [
     "find . -name '*.pyc' -o -name '*.pyo' -delete",
     "find . -name '*.pyc' -not -path './node_modules/*' -delete",
     "find . -name '*.pyc' ! -path '*/node_modules/*' -delete",
+    "find . \\( -name '*.pyc' -o -name '*.pyo' \\) -delete",
+    "find . -regex '.*\\.\\(pyc\\|pyo\\)' -delete",
     "find miniapp/src -name '*.tmp' -delete",
     "find . -name '*.md' -exec grep -l TODO {} +",
     "python3 -c \"print(open('api/AGENT.md').read())\"",
@@ -316,6 +318,9 @@ BLOCKED = [bash(command) for command in [
     "find -E /tmp/../etc -name x -delete",
     "find -x / -name x -delete",
     "find . -name x -fprint AGENT.md",
+    "find . \\( -name '*.yml' -o -name '*.md' \\) -delete",
+    "find . -name '*.yml' -not \\( -path './node_modules/*' \\) -delete",
+    "find . '(' -name '*.md' ')' -delete",
     "echo 'unclosed",
 ]] + [
     tool("Edit", str(ROOT / ".gitea/workflows/deploy-backend.yml")),
