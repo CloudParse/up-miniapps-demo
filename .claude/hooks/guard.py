@@ -56,9 +56,10 @@ SAFE_ENV_PROGRAMS = {"test", "[", "[[", "ls", "stat", "echo", "printf"}
 
 WRITE_IN_CODE = re.compile(
     r"\b(unlink|rename|symlink|rm|rmdir|cp|copyFile|writeFile|appendFile|truncate|ftruncate)(Sync)?\b"
-    r"|\b(write_text|write_bytes|rmtree|createWriteStream)\b|\bos\.(remove|removedirs)\b|\.unlink\("
+    r"|\b(write_text|write_bytes|rmtree|createWriteStream)\b|\bos\.(remove|removedirs)\b"
     r"|\bshutil\.(copy\w*|move)\b|\bos\.(replace|link|truncate)\b"
-    r"|\bopen\([^,)]*,\s*(mode\s*=\s*)?['\"](r\+|[wax])"
+    r"|\bopen\([^,)]*,\s*(mode\s*=\s*)?['\"](r\+|[wax])|\.open\(\s*(mode\s*=\s*)?['\"](r\+|[wax])|\bmode\s*=\s*['\"](r\+|[wax])"
+    r"|\bopen\(.*\)\s*,\s*['\"](r\+|[wax])"
 )
 ENV_IN_CODE = re.compile(r"os\.environ\b(?!\s*\[|\.get)|process\.env\b(?![.\[])|\bENV\.to_h\b|%ENV\b")
 GLOB_CHARS = re.compile(r"[*?\[]")
@@ -598,15 +599,86 @@ def check_simple(words: list[str], base: Path, root: Path, piped_from: list[str]
 
 
 FIND_EXEC = {"-exec", "-execdir", "-ok", "-okdir"}
-FIND_FILTERS = {"-name", "-iname", "-path", "-ipath", "-regex", "-iregex", "-wholename"}
-FIND_NEGATIONS = {"-not", "!", "-o", "-or", "-prune"}
+FIND_NAME_FILTERS = {"-name": False, "-iname": True}
+FIND_PATH_FILTERS = {"-path": False, "-ipath": True, "-wholename": False, "-iwholename": True}
+FIND_REGEX_FILTERS = {"-regex": False, "-iregex": True}
+SKIPPED_FOLDERS = {"node_modules", ".venv", ".git", "dist", "dist-ci", "__pycache__"}
+
+
+def protected_files_under(folder: Path, root: Path) -> list[Path]:
+    """The protected files and folders that exist under `folder` (the folder itself included)."""
+    found: list[Path] = []
+    if not folder.is_dir():
+        return found
+    for current, folders, files in os.walk(folder):
+        folders[:] = [name for name in folders if name not in SKIPPED_FOLDERS]
+        for name in [*folders, *files, ""]:
+            path = Path(current, name) if name else Path(current)
+            try:
+                relative = path.resolve().relative_to(root).as_posix()
+            except ValueError:
+                continue
+            if PROTECTED_PATH.search(relative):
+                found.append(path)
+    return found
+
+
+def find_test(word: str, value: str, path: Path, shown: str) -> bool | None:
+    """The result of one name, path or regex test on `path`, or None when `word` is not such a test."""
+    if word in FIND_NAME_FILTERS:
+        fold = FIND_NAME_FILTERS[word]
+        return fnmatch(path.name.lower() if fold else path.name, value.lower() if fold else value)
+    if word in FIND_PATH_FILTERS:
+        fold = FIND_PATH_FILTERS[word]
+        return fnmatch(shown.lower() if fold else shown, value.lower() if fold else value)
+    if word in FIND_REGEX_FILTERS:
+        try:
+            return re.fullmatch(value, shown, re.IGNORECASE if FIND_REGEX_FILTERS[word] else 0) is not None
+        except re.error:
+            return True
+    return None
+
+
+def find_selects(path: Path, start: str, folder: Path, rest: list[str]) -> bool:
+    """Whether the find expression may run its action on `path`.
+    Without parentheses, the action applies to the `-o` branch that holds it, when every test of that branch matches.
+    With parentheses, any matching test counts (conservative)."""
+    shown = start.rstrip("/") + "/" + path.relative_to(folder).as_posix() if path != folder else start
+    if "(" in rest:
+        results = [find_test(word, rest[i + 1], path, shown) for i, word in enumerate(rest[:-1])]
+        tests = [result for result in results if result is not None]
+        return not tests or any(tests)
+    branches: list[list[str]] = [[]]
+    for word in rest:
+        if word in {"-o", "-or"}:
+            branches.append([])
+        else:
+            branches[-1].append(word)
+    for branch in branches:
+        if not ({"-delete"} | FIND_EXEC) & set(branch):
+            continue
+        results = [find_test(word, branch[i + 1], path, shown) for i, word in enumerate(branch[:-1])]
+        if all(result is not False for result in results):
+            return True
+    return False
+
+
+def find_starts(rest: list[str]) -> list[str]:
+    """The start folders of a find command, after its -L, -H, -P, -D and -O options."""
+    index = 0
+    while index < len(rest) and rest[index] in {"-L", "-H", "-P", "-D", "-O"} or (index < len(rest) and re.fullmatch(r"-O\d", rest[index])):
+        index += 2 if rest[index] in {"-D", "-O"} else 1
+    starts: list[str] = []
+    while index < len(rest) and not rest[index].startswith("-") and rest[index] not in {"!", "("}:
+        starts.append(rest[index])
+        index += 1
+    return starts or ["."]
 
 
 def check_find(rest: list[str], base: Path, root: Path) -> None:
-    """`find -delete`, and `-exec` commands that change files, need a positive name filter on a folder that holds protected files.
-    Every `-exec` command is also checked as a command, with `{}` standing for a file of the searched folder."""
-    start = rest[0] if rest and not rest[0].startswith("-") and rest[0] not in {"!", "("} else "."
-    folder = resolve(start, base)
+    """Checks each `-exec` command as a command, with `{}` standing for a file of the searched folder. When find
+    deletes or changes files, blocks it if its tests may select a protected file under a start folder."""
+    starts = find_starts(rest)
     commands: list[list[str]] = []
     index = 0
     while index < len(rest):
@@ -623,14 +695,17 @@ def check_find(rest: list[str], base: Path, root: Path) -> None:
         program = program_of(command)
         in_place = program in {"sed", "perl", "ruby"} and any(re.fullmatch(r"-[a-zA-Z]*i\S*", word) for word in command)
         changes |= program in WRITE_PROGRAMS | COPY_PROGRAMS | {"mv"} or in_place
-        check_simple([str(folder / "FIND_RESULT") if word == "{}" else word for word in command], base, root)
+        check_simple([str(resolve(starts[0], base) / "FIND_RESULT") if word == "{}" else word for word in command], base, root)
     if not changes:
         return
-    if is_outside(start, base, root, root_allowed=True):
-        block("the command deletes or changes files outside the project")
-    holds_protected = folder == root or (folder / "AGENT.md").exists() or (folder / "CLAUDE.md").exists() or PROTECTED_PATH.search(folder.as_posix())
-    if holds_protected and (not FIND_FILTERS & set(rest) or FIND_NEGATIONS & set(rest)):
-        block("the command may delete or change protected files: use a positive -name or -path filter")
+    negated = {"-not", "!"} & set(rest)
+    for start in starts:
+        if is_outside(start, base, root, root_allowed=True):
+            block("the command deletes or changes files outside the project")
+        folder = resolve(start, base)
+        for path in protected_files_under(folder, root):
+            if negated or find_selects(path, start, folder, rest):
+                block(f"the command may delete or change the protected file `{path.relative_to(root).as_posix() or '.'}`")
 
 
 def piped_text(words: list[str]) -> list[str]:
