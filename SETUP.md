@@ -12,7 +12,7 @@ When an admin of your organisation created the mini-app and added you to it:
 At every start, that workspace:
 
 1. clones the repository into `~/<repository>`, once;
-2. writes `api/.env` (never commit it) with your mini-app's own DEV database, cache and bucket, and the DEV backend's public key;
+2. writes `api/.env` (never commit it) with your mini-app's own DEV database, cache and bucket (`DATABASE_URL`, `CACHE_URL`, `CACHE_KEY_PREFIX`, `STORAGE_ENDPOINT`, `STORAGE_ACCESS_KEY`, `STORAGE_SECRET_KEY`, `STORAGE_BUCKET`: the names production gives too, table in `README.md`), and the DEV backend's public key (`HUB_PUBLIC_KEY_PATH`);
 3. installs the dependencies of `api/` (`uv sync`, Python 3.14) and of `miniapp/` (`npm ci`);
 4. installs the SDK's Claude Code plugin.
 
