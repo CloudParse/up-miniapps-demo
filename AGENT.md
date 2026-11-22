@@ -161,7 +161,7 @@ When a task seems to need one of these, stop and ask a maintainer of the project
 Enforcement:
 - `.claude/settings.json` denies the edits of the protected files and the reading of `.env` files. It asks before `curl`, `wget`, `ssh`, `git push` and web fetches.
 - `.claude/hooks/guard.py` blocks the common forms of the same actions when an agent tries them through the shell or the file tools. It parses each shell command (quotes, `$(...)`, heredocs, `;`, `&&`, `|`) before checking it. Its tests: `python3 .claude/hooks/guard_test.py`.
-- Known limits: variable indirection (`X=api/.env; cat $X`), `xargs`, brace expansion and similar forms are not followed.
+- Known limits: variable indirection (`X=api/.env; cat $X`), `xargs`, brace expansion, recursive searches (`grep -r`, `rg -uu`) that also read `.env` files, and dotenv loaders (`npx dotenv`, `dotenv_values()`) are not caught.
 - These are guard rails for agents, not a security boundary: a person can still edit any file, and a determined command can get around a pattern. The review (section 7.4) is the check that counts.
 - The maintainers of the template change the protected files outside this project's Claude Code settings.
 

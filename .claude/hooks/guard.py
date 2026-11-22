@@ -45,15 +45,21 @@ USER_SETTINGS_PATH = re.compile(r"(^|/)\.claude/settings(\.[\w-]+)?\.json$|(^|/)
 
 SEPARATORS = {";", "&&", "||", "|", "&", "|&", ";;", "(", ")", "{", "}"}
 REDIRECTS = {">", ">>", ">|", "&>", "&>>", "<>"}
+SHELL_KEYWORDS = {"if", "then", "else", "elif", "while", "until", "do", "!", "{"}
 WRAPPERS = {"sudo", "doas", "time", "nice", "nohup", "command", "exec", "builtin", "xargs", "timeout", "stdbuf"}
 SHELLS = {"sh", "bash", "zsh", "dash", "ksh"}
 INTERPRETERS = {"python", "python3", "node", "perl", "ruby", "deno", "bun"}
 WRITE_PROGRAMS = {"tee", "rm", "rmdir", "mv", "ln", "chmod", "chown", "truncate", "touch", "unlink", "mkdir", "patch", "shred"}
 COPY_PROGRAMS = {"cp", "install", "rsync", "dd"}
-GIT_PATH_WRITES = {"rm", "mv", "checkout", "restore", "apply", "am", "add", "commit", "update-index", "stash"}
+GIT_PATH_WRITES = {"rm", "mv", "checkout", "restore", "apply", "am", "commit", "update-index", "stash"}
 SAFE_ENV_PROGRAMS = {"test", "[", "[[", "ls", "stat", "echo", "printf"}
 
-WRITE_IN_CODE = re.compile(r"\b(write_text|write_bytes|writeFile|writeFileSync|appendFile|appendFileSync|copyFile|copyFileSync|unlink|rmSync|rmtree|remove|rename|symlink)\b|\bshutil\.(copy\w*|move)\b|\bos\.(replace|link)\b|\bopen\([^)]*['\"][wax+]")
+WRITE_IN_CODE = re.compile(
+    r"\b(unlink|rename|symlink|rm|rmdir|cp|copyFile|writeFile|appendFile|truncate|ftruncate)(Sync)?\b"
+    r"|\b(write_text|write_bytes|rmtree|remove|removedirs|createWriteStream)\b"
+    r"|\bshutil\.(copy\w*|move)\b|\bos\.(replace|link|truncate)\b"
+    r"|\bopen\([^)]*['\"](r\+|[wax])"
+)
 ENV_IN_CODE = re.compile(r"os\.environ\b(?!\s*\[|\.get)|process\.env\b(?![.\[])|\bENV\.to_h\b|%ENV\b")
 GLOB_CHARS = re.compile(r"[*?\[]")
 
@@ -218,7 +224,11 @@ def flatten(text: str, check_inner) -> str:
                 end += 2 if text[end] == "\\" else 1
             if end >= len(text):
                 block("the command has an unclosed quote")
-            out.append("ANSI_STRING")
+            try:
+                decoded = text[index + 2 : end].encode().decode("unicode_escape")
+            except UnicodeDecodeError:
+                decoded = text[index + 2 : end]
+            out.append(shlex.quote(decoded))
             index = end + 1
             continue
         if text.startswith("$((", index):
@@ -347,7 +357,7 @@ def strip_leading(args: list[str]) -> list[str]:
     """Drops variable assignments and wrappers in front of the program."""
     while args:
         word = args[0]
-        if re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", word):
+        if re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", word) or word in SHELL_KEYWORDS:
             args = args[1:]
         elif os.path.basename(word) in WRAPPERS:
             args = args[1:]
@@ -373,7 +383,7 @@ def long_options(words: list[str], known: set[str]) -> set[str]:
         if not word.startswith("--"):
             continue
         name = word.split("=", 1)[0]
-        found |= {option for option in known if option == name or (len(name) >= 5 and option.startswith(name))}
+        found |= {option for option in known if option == name or (len(name) >= 4 and option.startswith(name))}
     return found
 
 
@@ -513,6 +523,7 @@ def check_simple(words: list[str], base: Path, root: Path, piped_from: list[str]
     program = os.path.basename(args[0])
     rest = args[1:]
     heredoc_bodies = [HEREDOCS[word] for word in words if word in HEREDOCS]
+    heredoc_bodies += [words[index + 1] for index, word in enumerate(words[:-1]) if word == "<<<"]
 
     if program in {"cd", "pushd"}:
         folders = [word for word in rest if not word.startswith("-")]
@@ -582,6 +593,10 @@ def check_simple(words: list[str], base: Path, root: Path, piped_from: list[str]
         roots = [word for word in rest if not word.startswith("-")][:1] or ["."]
         if is_outside(roots[0], base, root, root_allowed=True) or any(is_protected(word, base, root) for word in operands):
             block("the command deletes or changes files outside the project or protected files")
+        folder = resolve(roots[0], base)
+        holds_protected = folder == root or (folder / "AGENT.md").exists() or (folder / "CLAUDE.md").exists() or PROTECTED_PATH.search(folder.as_posix())
+        if holds_protected and not {"-name", "-iname", "-path", "-ipath", "-regex", "-iregex"} & set(rest):
+            block("the command may delete protected files: add a -name or -path filter")
     return base
 
 
@@ -595,6 +610,14 @@ def piped_text(words: list[str]) -> list[str]:
     return texts
 
 
+def runs_module_or_script(words: list[str]) -> bool:
+    """True when an interpreter runs a module (-m) or a script file: its standard input is then data, not code."""
+    args = strip_leading(words)[1:]
+    if "-m" in args:
+        return True
+    return any(not word.startswith("-") for word in args)
+
+
 def check_command(command: str, base: Path, root: Path) -> None:
     flat = flatten(command, lambda inner: check_command(inner, base, root))
     previous_words: list[str] = []
@@ -602,7 +625,8 @@ def check_command(command: str, base: Path, root: Path) -> None:
     for words, separator in split_commands(tokenize(flat)):
         program = program_of(split_redirects(words)[0])
         piped = previous_separator in {"|", "|&"}
-        if piped and program_of(split_redirects(previous_words)[0]) in {"curl", "wget"} and (program in SHELLS or program in INTERPRETERS):
+        runs_stdin = program in SHELLS or (program in INTERPRETERS and not runs_module_or_script(split_redirects(words)[0]))
+        if piped and program_of(split_redirects(previous_words)[0]) in {"curl", "wget"} and runs_stdin:
             block("the command runs a downloaded script")
         base = check_simple(words, base, root, piped_text(previous_words) if piped else None)
         previous_words, previous_separator = words, separator
@@ -628,6 +652,7 @@ def check_event(event: object) -> None:
     if not isinstance(tool_input, dict):
         block("the hook received an invalid event")
     if tool == "Bash":
+        HEREDOCS.clear()
         root = project_root(event)
         check_command(str(tool_input.get("command", "")), Path(str(event.get("cwd") or root)).resolve(), root)
     elif tool in {"Edit", "Write", "MultiEdit", "NotebookEdit"}:
