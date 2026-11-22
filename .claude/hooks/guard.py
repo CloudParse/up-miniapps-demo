@@ -45,7 +45,7 @@ USER_SETTINGS_PATH = re.compile(r"(^|/)\.claude/settings(\.[\w-]+)?\.json$|(^|/)
 
 SEPARATORS = {";", "&&", "||", "|", "&", "|&", ";;", "(", ")", "{", "}"}
 REDIRECTS = {">", ">>", ">|", "&>", "&>>", "<>"}
-SHELL_KEYWORDS = {"if", "then", "else", "elif", "while", "until", "do", "!", "{"}
+SHELL_KEYWORDS = {"if", "then", "else", "elif", "while", "until", "do", "!", "{", "coproc"}
 WRAPPERS = {"sudo", "doas", "time", "nice", "nohup", "command", "exec", "builtin", "xargs", "timeout", "stdbuf"}
 SHELLS = {"sh", "bash", "zsh", "dash", "ksh"}
 INTERPRETERS = {"python", "python3", "node", "perl", "ruby", "deno", "bun"}
@@ -56,9 +56,9 @@ SAFE_ENV_PROGRAMS = {"test", "[", "[[", "ls", "stat", "echo", "printf"}
 
 WRITE_IN_CODE = re.compile(
     r"\b(unlink|rename|symlink|rm|rmdir|cp|copyFile|writeFile|appendFile|truncate|ftruncate)(Sync)?\b"
-    r"|\b(write_text|write_bytes|rmtree|remove|removedirs|createWriteStream)\b"
+    r"|\b(write_text|write_bytes|rmtree|createWriteStream)\b|\bos\.(remove|removedirs)\b|\.unlink\("
     r"|\bshutil\.(copy\w*|move)\b|\bos\.(replace|link|truncate)\b"
-    r"|\bopen\([^)]*['\"](r\+|[wax])"
+    r"|\bopen\([^,)]*,\s*(mode\s*=\s*)?['\"](r\+|[wax])"
 )
 ENV_IN_CODE = re.compile(r"os\.environ\b(?!\s*\[|\.get)|process\.env\b(?![.\[])|\bENV\.to_h\b|%ENV\b")
 GLOB_CHARS = re.compile(r"[*?\[]")
@@ -218,6 +218,9 @@ def flatten(text: str, check_inner) -> str:
             out.append(text[index : index + 2])
             index += 2
             continue
+        if not quote and text.startswith('$"', index):
+            index += 1
+            continue
         if not quote and text.startswith("$'", index):
             end = index + 2
             while end < len(text) and text[end] != "'":
@@ -225,7 +228,7 @@ def flatten(text: str, check_inner) -> str:
             if end >= len(text):
                 block("the command has an unclosed quote")
             try:
-                decoded = text[index + 2 : end].encode().decode("unicode_escape")
+                decoded = text[index + 2 : end].encode("latin-1", "backslashreplace").decode("unicode_escape")
             except UnicodeDecodeError:
                 decoded = text[index + 2 : end]
             out.append(shlex.quote(decoded))
@@ -589,15 +592,45 @@ def check_simple(words: list[str], base: Path, root: Path, piped_from: list[str]
             block("the command may change a protected file (deployment CI, agent setup or rules)")
     if program == "dd" and any(word.startswith("of=") and is_protected(word[3:], base, root) for word in rest):
         block("the command may change a protected file (deployment CI, agent setup or rules)")
-    if program == "find" and {"-delete", "-exec", "-execdir", "-ok"} & set(rest):
-        roots = [word for word in rest if not word.startswith("-")][:1] or ["."]
-        if is_outside(roots[0], base, root, root_allowed=True) or any(is_protected(word, base, root) for word in operands):
-            block("the command deletes or changes files outside the project or protected files")
-        folder = resolve(roots[0], base)
-        holds_protected = folder == root or (folder / "AGENT.md").exists() or (folder / "CLAUDE.md").exists() or PROTECTED_PATH.search(folder.as_posix())
-        if holds_protected and not {"-name", "-iname", "-path", "-ipath", "-regex", "-iregex"} & set(rest):
-            block("the command may delete protected files: add a -name or -path filter")
+    if program == "find":
+        check_find(rest, base, root)
     return base
+
+
+FIND_EXEC = {"-exec", "-execdir", "-ok", "-okdir"}
+FIND_FILTERS = {"-name", "-iname", "-path", "-ipath", "-regex", "-iregex", "-wholename"}
+FIND_NEGATIONS = {"-not", "!", "-o", "-or", "-prune"}
+
+
+def check_find(rest: list[str], base: Path, root: Path) -> None:
+    """`find -delete`, and `-exec` commands that change files, need a positive name filter on a folder that holds protected files.
+    Every `-exec` command is also checked as a command, with `{}` standing for a file of the searched folder."""
+    start = rest[0] if rest and not rest[0].startswith("-") and rest[0] not in {"!", "("} else "."
+    folder = resolve(start, base)
+    commands: list[list[str]] = []
+    index = 0
+    while index < len(rest):
+        if rest[index] in FIND_EXEC:
+            end = index + 1
+            while end < len(rest) and rest[end] not in {";", "+"}:
+                end += 1
+            commands.append(rest[index + 1 : end])
+            index = end + 1
+        else:
+            index += 1
+    changes = "-delete" in rest
+    for command in commands:
+        program = program_of(command)
+        in_place = program in {"sed", "perl", "ruby"} and any(re.fullmatch(r"-[a-zA-Z]*i\S*", word) for word in command)
+        changes |= program in WRITE_PROGRAMS | COPY_PROGRAMS | {"mv"} or in_place
+        check_simple([str(folder / "FIND_RESULT") if word == "{}" else word for word in command], base, root)
+    if not changes:
+        return
+    if is_outside(start, base, root, root_allowed=True):
+        block("the command deletes or changes files outside the project")
+    holds_protected = folder == root or (folder / "AGENT.md").exists() or (folder / "CLAUDE.md").exists() or PROTECTED_PATH.search(folder.as_posix())
+    if holds_protected and (not FIND_FILTERS & set(rest) or FIND_NEGATIONS & set(rest)):
+        block("the command may delete or change protected files: use a positive -name or -path filter")
 
 
 def piped_text(words: list[str]) -> list[str]:
