@@ -55,7 +55,7 @@ Coder workspace (dev-<organisation>)
 ## Settings that make it work
 
 - `miniapp/.env` keeps `VITE_BACKEND_URL=/api/v1`. Vite forwards `/api/` to the API on `127.0.0.1:21514`, and `/hub/` to the DEV backend (`DEV_HUB_ORIGIN`, default `http://backend-service:8080`).
-- Vite answers only to hosts it knows. Coder sets `VSCODE_PROXY_URI` in the workspace: `miniapp/vite.config.ts` allows exactly two hosts: the port URL of 21515 (`21515--<agent>--<workspace>--<owner>--<org>.<apps domain>`) and the link of the dashboard button "Mini-app" (`miniapp--<workspace>--<owner>--<org>.<apps domain>`). Another host needs the shell variable `DEV_ALLOWED_HOSTS` (comma separated; `.example.com` allows every subdomain).
+- Vite answers only to hosts it knows. Coder sets `VSCODE_PROXY_URI` in the workspace: `miniapp/vite.config.ts` allows exactly two hosts (`plugin/vite.dev.config.ts` does the same with the button **Plugin**: `plugin--<workspace>--<owner>--<org>.<apps domain>`): the port URL of 21515 (`21515--<agent>--<workspace>--<owner>--<org>.<apps domain>`) and the link of the dashboard button "Mini-app" (`miniapp--<workspace>--<owner>--<org>.<apps domain>`). Another host needs the shell variable `DEV_ALLOWED_HOSTS` (comma separated; `.example.com` allows every subdomain).
 
 - The Vite dev server (21515), the plugin's development page (21516, `docs/plugin.md`) and the API (21514) listen on `0.0.0.0`. Coder lists only the ports that listen on every interface in "Open ports". The two Vite servers answer 403 to any Host header that is not the Coder port URL, `DEV_ALLOWED_HOSTS` or a loopback name, IP addresses included (`dev-tools/hostGuard.ts`; Vite 8 alone lets IP Host headers through `allowedHosts`). The API (`api/configs/config.toml`, `server.host`) has no such check. On a laptop (shared Wi-Fi, a café), the API on `0.0.0.0` has no Host check: anyone on the network can read `/docs`, `/openapi.json`, `GET /api/v1/demo` and the public routes. Authenticated routes still need a Hub-signed token. Set `SERVER_HOST=127.0.0.1` to keep it local. A deployed container sets `SERVER_HOST=0.0.0.0` itself (`api/Dockerfile`), so production is unchanged.
 - `api/.env` is read by `python -m app` itself (`api/app/core/dotenv.py`), with or without `uv run`. A variable already set in the shell wins over the file. `python -m app` gives the same result as `uv run --env-file` only for plain `KEY=VALUE` values (quotes, comments, `export`). Not supported: `$VAR` expansion and multi-line values. A skipped line is logged by its number, never by its value.
@@ -64,7 +64,7 @@ Coder workspace (dev-<organisation>)
 
 - The app "Mini-app": `https://miniapp--main--<workspace>--<owner>--<organisation>.cloudparse.app`.
 - The forwarded port 21515: `https://21515--main--<workspace>--<owner>--<organisation>.cloudparse.app`.
-- The plugin's development page: the same URL with port 21516.
+- The app "API" (port 21514) and the app "Plugin" (port 21516, the development page of `plugin/`): same URL shape with `api--` and `plugin--`. The three buttons (Mini-app, API, Plugin) hide their ports from "Open ports". The Plugin button needs `npm run dev` running in `plugin/`.
 - `cloudparse.app` is the apps domain of the production platform, shared by every organisation's Coder.
 - Both open only for you, after the Coder sign-in. The app is owner-only. The port URL stays owner-only because the platform refuses port sharing (see Limits).
 

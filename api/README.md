@@ -70,7 +70,7 @@ Defaults for everything else: `configs/config.toml`.
 | 21515 | the mini-app (`../miniapp`) |
 | 21516 | the plugin dev page (`../plugin`) |
 
-In Coder, open the API with the button **API** of your workspace. Coder lists the ports without a button in "Open ports". It hides the ports of apps that have a button, so the API, the mini-app and the plugin are under their buttons (**API**, **Mini-app**, **Plugin**), not in "Open ports".
+In Coder, open the API with the button **API**, the mini-app with **Mini-app** and the plugin with **Plugin**. Coder hides the ports of apps that have a button from "Open ports". The **Plugin** button works only while `plugin/` runs (`npm run dev`).
 
 The API listens on `0.0.0.0`. On a shared network, set `SERVER_HOST=127.0.0.1` to keep it on your machine.
 
@@ -85,15 +85,12 @@ uv run pytest
 
 ## Production image
 
-`api/Dockerfile` builds the image the platform deploys. What it does:
+`api/Dockerfile` builds the image the platform deploys. It has two stages:
 
-1. Copies `uv` and runs `uv sync --frozen --no-dev` (only the packages of `uv.lock`, no dev tools).
-2. Copies `app/` and `configs/` into a clean `python:3.14-slim` image.
-3. Runs as the user `10001`, not root. `/app` is read-only for that user.
-4. Sets `ENVIRONMENT=production` and `SERVER_HOST=0.0.0.0`.
-5. Starts `python -m app` on the port `SERVER_PORT`, which is the build argument `API_PORT` (default 8000).
+1. Build stage (`python:3.14-slim`, pinned by tag and digest): copies `uv`, runs `uv sync --frozen --no-dev --no-install-project` (only the packages of `uv.lock`, in `/app/.venv`), then copies `app/` and `configs/`.
+2. Final stage (the same pinned base): copies the whole `/app` of the build stage (`.venv`, `app/`, `configs/`), puts `/app/.venv/bin` first in `PATH`, and runs as the user `10001`, not root. `/app` is read-only for that user.
 
-`api.port` in `../miniapp.yaml` is the port the CI passes as `API_PORT`.
+It sets `ENVIRONMENT=production`, `SERVER_HOST=0.0.0.0` and `SERVER_PORT=<API_PORT>` (build argument, default 8000), then starts `python -m app`. `api.port` in `../miniapp.yaml` is the `API_PORT` the CI passes.
 
 Build and run it on your machine (needs Docker):
 
@@ -107,7 +104,7 @@ docker run --rm -p 8000:8000 \
 curl localhost:8000/healthz
 ```
 
-`ENVIRONMENT=development` is only for this local test. With `ENVIRONMENT=production` the API refuses to start on the default Hub identity: the platform sets `HUB_APP_UUID` and `HUB_CLIENT_SECRET` itself. The platform also sets `DATABASE_URL`, `CACHE_URL` and the other variables of `../miniapp.yaml` `services`, and mounts the Hub public key at `/etc/up-platform/jwt/public.pem`.
+`ENVIRONMENT=development` is only for this local test: it also turns on auto-reload inside the container. With `ENVIRONMENT=production` the API refuses to start on the default Hub identity: the platform sets `HUB_APP_UUID` and `HUB_CLIENT_SECRET` itself. The platform also sets `DATABASE_URL`, `CACHE_URL` and the other variables of `../miniapp.yaml` `services`, and mounts the Hub public key at `/etc/up-platform/jwt/public.pem`.
 
 ## Deploy from Studio
 
@@ -126,5 +123,3 @@ Details: [`../docs/deploy.md`](../docs/deploy.md).
 | `permission denied for schema public` when creating `demo_visits` | The API connects with the wrong database account. In a Coder workspace, the shell exports a read-only `DATABASE_URL` (`~/.config/up/env`) that wins over `api/.env` | `unset DATABASE_URL PGUSER PGPASSWORD`, then start the API again. The log says `DATABASE_URL is already set in the environment and differs from .env` |
 | `503 Authentication is not configured` | The Hub public key is not found (`HUB_PUBLIC_KEY_PATH` missing or wrong) | Check that `api/.env` has `HUB_PUBLIC_KEY_PATH` and that the file exists. Run `up-project-setup` again |
 | `connection refused` or timeout on the database | Not in the Coder workspace, or the DEV resources are not ready | Run `up-project-setup`. The demo retries 5 times at start |
-| Vite `Blocked request. This host is not allowed` (mini-app or plugin page) | You opened the page with a host the dev server does not know | Open it from the Coder button. Else `DEV_ALLOWED_HOSTS=your.host npm run dev` |
-| Plugin page: `The API refuses this account` (403) | The test user is not a mini-app administrator | Open the page with `?user=<local number>` of an admin test user (`../docs/plugin.md`) |

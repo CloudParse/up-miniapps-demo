@@ -74,6 +74,28 @@ export function devAllowedHosts(
   return [...hosts, ...extra];
 }
 
+/**
+ * The host of the Coder app button of this port: `<slug>--<workspace>--<owner>--<org>.<apps domain>`.
+ * It is the port URL host (`<port>--<agent>--<workspace>--...`, from `VSCODE_PROXY_URI`) without the agent name.
+ * Returns [] without `VSCODE_PROXY_URI`, or when it does not have that shape.
+ */
+export function appButtonHosts(
+  port: number,
+  slug: string,
+  env: Record<string, string | undefined> = process.env,
+): string[] {
+  const coderProxy = env.VSCODE_PROXY_URI;
+  if (!coderProxy) return [];
+  try {
+    const portHost = new URL(coderProxy.replace("{{port}}", String(port)))
+      .hostname;
+    const appHost = portHost.replace(/^\d+--[^.]+?--/, `${slug}--`);
+    return appHost === portHost ? [] : [appHost];
+  } catch {
+    return [];
+  }
+}
+
 /** Vite plugin: 403 for every request whose Host header is not allowed. */
 export function hostGuard(allowed: readonly string[]) {
   return {

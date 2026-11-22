@@ -95,7 +95,7 @@ cd plugin
 npm run dev          # terminal 3, port 21516
 ```
 
-Open it from the Coder dashboard ("Open ports", port 21516) or at the port URL:
+Open it with the button **Plugin** of the Coder dashboard (it works only while `npm run dev` runs in `plugin/`; Coder hides port 21516 from "Open ports" because the button exists) or at the port URL:
 
 ```text
 https://<port>--<agent>--<workspace>--<owner>--<org>.<apps domain>
@@ -103,7 +103,7 @@ https://21516--main--<workspace>--<owner>--<organisation>.cloudparse.app
 ```
 
 The page needs the API (terminal 1, port 21514) and the DEV backend. How it works:
-- `plugin/vite.dev.config.ts` listens on `0.0.0.0` so Coder lists the port. It answers 403 to any Host header that is not the host of port 21516 (read from `VSCODE_PROXY_URI`), `DEV_ALLOWED_HOSTS` (comma separated) or a loopback name, IP addresses included. The guard is `dev-tools/hostGuard.ts`, shared with `miniapp/vite.config.ts`.
+- `plugin/vite.dev.config.ts` listens on `0.0.0.0` so Coder lists the port. It answers 403 to any Host header that is not the host of port 21516 (read from `VSCODE_PROXY_URI`), the host of the **Plugin** button (`plugin--<workspace>--<owner>--<org>...`), `DEV_ALLOWED_HOSTS` (comma separated) or a loopback name, IP addresses included. The guard is `dev-tools/hostGuard.ts`, shared with `miniapp/vite.config.ts`.
 - It forwards `/api/` to the API on `127.0.0.1:21514` and `/hub/` to the DEV backend (`DEV_HUB_ORIGIN`).
 - `plugin/dev/main.tsx` builds a stand-in for the Studio: the plugin's `miniappApi` is an `ApiService` with an admin scoped token for a DEV test user. It is development code and is not part of the bundle.
 

@@ -103,12 +103,14 @@ problemBox.setAttribute("role", "alert");
 problemBox.style.cssText =
   "display:none;margin:16px auto;max-width:64rem;padding:12px 16px;border-radius:8px;background:#fef2f2;color:#991b1b;font:14px sans-serif";
 rootElement.before(problemBox);
-apiProblem(urls.api).then((problem) => {
-  if (problem) {
-    problemBox.textContent = problem;
-    problemBox.style.display = "block";
-  }
-});
+// Checked again every few seconds: the message goes away when the API starts.
+async function refreshProblem(): Promise<void> {
+  const problem = await apiProblem(urls.api);
+  problemBox.textContent = problem ?? "";
+  problemBox.style.display = problem ? "block" : "none";
+}
+void refreshProblem();
+setInterval(() => void refreshProblem(), 4000);
 
 createRoot(rootElement).render(
   <StrictMode>

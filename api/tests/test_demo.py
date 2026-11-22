@@ -121,7 +121,9 @@ def test_the_cache_key_starts_with_the_prefix(
         def close(self) -> None:
             return None
 
-    monkeypatch.setattr(demo_service.redis.Redis, "from_url", lambda *_a, **_k: Stub())
+    monkeypatch.setattr(
+        "app.services.demo_service.redis.Redis.from_url", lambda *_a, **_k: Stub()
+    )
 
     demo_service._record_cache("redis://x", "dev_ab12:", "user")
 
@@ -145,7 +147,9 @@ def test_the_object_key_is_the_visitors_own(
             assert kwargs["Key"] == puts[-1]
             return {"Body": Body()}
 
-    monkeypatch.setattr(demo_service.boto3, "client", lambda *_a, **_k: Stub())
+    monkeypatch.setattr(
+        "app.services.demo_service.boto3.client", lambda *_a, **_k: Stub()
+    )
     storage = _storage("http://bucket-svc:9000")
     cfg = config.model_copy(update={"storage": storage})
 
@@ -158,7 +162,7 @@ def test_the_table_is_created_once_at_startup_with_retries(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(demo_service, "SCHEMA_PAUSE_SECONDS", 0)
-    monkeypatch.setattr(demo_service.time, "sleep", lambda _s: None)
+    monkeypatch.setattr("app.services.demo_service.time.sleep", lambda _s: None)
     calls: list[int] = []
 
     def flaky() -> None:
@@ -184,7 +188,9 @@ def test_a_concurrent_table_creation_is_not_an_error(
         def execute(self, *_a: object) -> None:
             raise pg_errors.UniqueViolation("pg_type_typname_nsp_index")
 
-    monkeypatch.setattr(demo_service.psycopg, "connect", lambda *_a, **_k: Connection())
+    monkeypatch.setattr(
+        "app.services.demo_service.psycopg.connect", lambda *_a, **_k: Connection()
+    )
 
     demo_service._ensure_schema("postgres://x")  # must not raise
 

@@ -7,7 +7,7 @@ The architecture and the coding rules are in [`AGENT.md`](AGENT.md). This file i
 ## Prerequisites
 
 - In a Coder workspace: nothing to install. `up-project-setup` already ran `npm ci` and copied `.env.template` to `.env`.
-- On a laptop: Node.js 22 or newer and npm.
+- On a laptop: Node.js 22.18 or newer and npm.
 
 ## Install
 

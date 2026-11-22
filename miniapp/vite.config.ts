@@ -4,7 +4,11 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import { viteSingleFile } from "vite-plugin-singlefile";
-import { devAllowedHosts, hostGuard } from "../dev-tools/hostGuard";
+import {
+  appButtonHosts,
+  devAllowedHosts,
+  hostGuard,
+} from "../dev-tools/hostGuard";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -25,17 +29,11 @@ const DEV_HUB_ORIGIN =
 // server's port is allowed, not the whole apps domain, which every organisation shares. DEV_ALLOWED_HOSTS (a shell
 // variable, comma separated, a leading dot allows the subdomains) adds hosts by hand.
 function allowedHosts(): string[] {
-  const hosts = devAllowedHosts(DEV_PORT);
-  const coderProxy = process.env.VSCODE_PROXY_URI;
-  if (coderProxy) {
-    const portHost = new URL(coderProxy.replace("{{port}}", String(DEV_PORT)))
-      .hostname;
-    // The "Mini-app" button of the workspace is a Coder app with its own subdomain: <app slug>--<workspace>--<owner>--<org>.<apps domain>,
-    // without the agent name of the port URL (<port>--<agent>--<workspace>--...). Allow that host too: it is the link of the dashboard.
-    const appHost = portHost.replace(/^\d+--[^.]+?--/, `${DEV_APP_SLUG}--`);
-    if (appHost !== portHost) hosts.push(appHost);
-  }
-  return hosts;
+  // The "Mini-app" button is a Coder app with its own subdomain (appButtonHosts): allow it too, it is the link of the dashboard.
+  return [
+    ...devAllowedHosts(DEV_PORT),
+    ...appButtonHosts(DEV_PORT, DEV_APP_SLUG),
+  ];
 }
 
 // Single self-contained dist/index.html, injected into the native WebView

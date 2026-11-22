@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
+  appButtonHosts,
   devAllowedHosts,
   hostGuard,
   hostNameOf,
@@ -105,4 +106,21 @@ test("the middleware answers 403 and does not call next for a forged Host", () =
     nexted = true;
   });
   assert.equal(nexted, true);
+});
+
+test("appButtonHosts derives the Coder app button host from the port URL", () => {
+  const env = {
+    VSCODE_PROXY_URI:
+      "https://{{port}}--main--test2--thoughtful-lawson93--app.cloudparse.app/",
+  };
+  assert.deepEqual(appButtonHosts(21516, "plugin", env), [
+    "plugin--test2--thoughtful-lawson93--app.cloudparse.app",
+  ]);
+  assert.deepEqual(appButtonHosts(21516, "plugin", {}), []);
+  assert.deepEqual(appButtonHosts(21516, "plugin", { VSCODE_PROXY_URI: "nope" }), []);
+  assert.ok(
+    isAllowedHost("plugin--test2--thoughtful-lawson93--app.cloudparse.app", [
+      ...appButtonHosts(21516, "plugin", env),
+    ]),
+  );
 });

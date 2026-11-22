@@ -9,7 +9,7 @@ Studio loads only published bundles. In development you use a small page that ru
 ## Prerequisites
 
 - In a Coder workspace: nothing to install except `npm ci` (the setup runs it when `plugin/package-lock.json` exists).
-- On a laptop: Node.js 22 or newer and npm. The API must run (`../api/README.md`).
+- On a laptop: Node.js 22.18 or newer and npm. The API must run (`../api/README.md`).
 
 ## Install
 
@@ -27,7 +27,7 @@ cd plugin
 npm run dev
 ```
 
-- Coder: open the button **Plugin** of your workspace.
+- Coder: open the button **Plugin** of your workspace. It works only while `npm run dev` runs in `plugin/` (the port 21516 must listen).
 - Laptop: open `http://localhost:21516`.
 
 The page signs in as a DEV test user. Pick another with `?user=<local number>`. The user must be a mini-app administrator, or the API answers 403.
@@ -36,13 +36,13 @@ If the API is down, a red message at the top of the page says so and how to star
 
 ## Ports
 
-| Port | What |
-| --- | --- |
-| 21516 | this dev page |
+| Port  | What                                        |
+| ----- | ------------------------------------------- |
+| 21516 | this dev page                               |
 | 21514 | the API (reached through the proxy `/api/`) |
-| 21515 | the mini-app |
+| 21515 | the mini-app                                |
 
-Coder hides the ports of apps that have a button (**Mini-app**, **API**, **Plugin**) from "Open ports". Use the buttons.
+Coder hides the ports of apps that have a button (**Mini-app**, **API**, **Plugin**) from "Open ports". Use the buttons. The dev server accepts the host of the **Plugin** button (`plugin--<workspace>--<owner>--<org>...`) and the port URL.
 
 ## Environment
 
@@ -74,11 +74,11 @@ Details: [`../docs/deploy.md`](../docs/deploy.md).
 
 ## Common errors
 
-| Error | Cause | Fix |
-| --- | --- | --- |
-| `Failed to construct 'URL': Invalid URL` | A relative API base URL (fixed in `dev/devHost.ts`: the bases are absolute) | Update the template. Do not pass a relative base to `ApiService` |
-| Red message "The mini-app API does not answer" | The API is not running | `cd api && uv run python -m app` |
-| `The API refuses this account` (403) | The test user is not a mini-app administrator | Open the page with `?user=<local number>` of an admin test user |
-| `Blocked request. This host is not allowed` | The page was opened with an unknown host | Open it from the **Plugin** button. Else `DEV_ALLOWED_HOSTS=your.host npm run dev` |
-| `503 Authentication is not configured` | The API has no Hub public key | See [`../api/README.md`](../api/README.md), "Common errors" |
-| `permission denied for schema public` | The API uses the wrong database account | See [`../api/README.md`](../api/README.md), "Common errors" |
+| Error                                          | Cause                                                                       | Fix                                                                                |
+| ---------------------------------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `Failed to construct 'URL': Invalid URL`       | A relative API base URL (fixed in `dev/devHost.ts`: the bases are absolute) | Update the template. Do not pass a relative base to `ApiService`                   |
+| Red message "The mini-app API does not answer" | The API is not running                                                      | `cd api && uv run python -m app`                                                   |
+| `The API refuses this account` (403)           | The test user is not a mini-app administrator                               | Open the page with `?user=<local number>` of an admin test user                    |
+| `Blocked request. This host is not allowed`    | The page was opened with an unknown host                                    | Open it from the **Plugin** button. Else `DEV_ALLOWED_HOSTS=your.host npm run dev` |
+| `503 Authentication is not configured`         | The API has no Hub public key                                               | See [`../api/README.md`](../api/README.md), "Common errors"                        |
+| `permission denied for schema public`          | The API uses the wrong database account                                     | See [`../api/README.md`](../api/README.md), "Common errors"                        |
