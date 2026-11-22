@@ -12,7 +12,7 @@ Your browser
    ▼
 Coder workspace (dev-<organisation>)
    ├─ miniapp/  Vite dev server, port 21515, live reload, SDK simulator
-   │     ├─ /api/ ──proxy──▶ api/  FastAPI, 127.0.0.1:21514
+   │     ├─ /api/ ──proxy──▶ api/  FastAPI, 0.0.0.0:21514
    │     │                      ├──▶ DEV backend (the Hub)          http://backend-service:8080/api/v1
    │     │                      ├──▶ your mini-app's DEV database  DATABASE_URL
    │     │                      ├──▶ your mini-app's DEV cache     CACHE_URL, CACHE_KEY_PREFIX
@@ -57,10 +57,14 @@ Coder workspace (dev-<organisation>)
 - `miniapp/.env` keeps `VITE_BACKEND_URL=/api/v1`. Vite forwards `/api/` to the API on `127.0.0.1:21514`, and `/hub/` to the DEV backend (`DEV_HUB_ORIGIN`, default `http://backend-service:8080`).
 - Vite answers only to hosts it knows. Coder sets `VSCODE_PROXY_URI` in the workspace: `miniapp/vite.config.ts` allows exactly two hosts: the port URL of 21515 (`21515--<agent>--<workspace>--<owner>--<org>.<apps domain>`) and the link of the dashboard button "Mini-app" (`miniapp--<workspace>--<owner>--<org>.<apps domain>`). Another host needs the shell variable `DEV_ALLOWED_HOSTS` (comma separated; `.example.com` allows every subdomain).
 
+- The Vite dev server (21515), the plugin's development page (21516, `docs/plugin.md`) and the API (21514) listen on `0.0.0.0`. Coder lists only the ports that listen on every interface in "Open ports". Vite refuses any Host header outside its `allowedHosts`. The API (`api/configs/config.toml`, `server.host`) has no such check: `SERVER_HOST=127.0.0.1` keeps it local. A deployed container sets `SERVER_HOST=0.0.0.0` itself (`api/Dockerfile`), so production is unchanged.
+- `api/.env` is read by `python -m app` itself (`api/app/core/dotenv.py`), with or without `uv run`. A variable already set in the shell wins over the file.
+
 ## Where to open the mini-app (2026-11-20)
 
 - The app "Mini-app": `https://miniapp--main--<workspace>--<owner>--<organisation>.cloudparse.app`.
 - The forwarded port 21515: `https://21515--main--<workspace>--<owner>--<organisation>.cloudparse.app`.
+- The plugin's development page: the same URL with port 21516.
 - `cloudparse.app` is the apps domain of the production platform, shared by every organisation's Coder.
 - Both open only for you, after the Coder sign-in. The app is owner-only. The port URL stays owner-only because the platform refuses port sharing (see Limits).
 

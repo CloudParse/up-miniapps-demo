@@ -12,3 +12,7 @@
 # CI scripts: local runs.
 dist-ci/
 __pycache__/
+
+# Local agent files: the workspace setup script writes them (absolute paths of this workspace).
+CLAUDE.local.md
+AGENTS.local.md

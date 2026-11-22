@@ -119,7 +119,8 @@ class ParseTest(unittest.TestCase):
         config["uuid"] = "5b5101d1-0f4c-4b7e-9a35-2d6f1f0c7a11"
         self.assertEqual(mc.plan(config, "backend"), "run")
         self.assertEqual(mc.plan(config, "frontend"), "run")
-        self.assertTrue(mc.plan(config, "plugin").startswith("skip "))  # the plugin section is commented out
+        self.assertEqual(mc.plan(config, "plugin"), "run")
+        self.assertEqual(mc.get(config, "plugin.dir"), "plugin")
 
     def test_invalid_utf8_is_refused(self) -> None:
         path = ROOT / ".gitea" / "scripts" / "tests" / "_bad_utf8.yaml"

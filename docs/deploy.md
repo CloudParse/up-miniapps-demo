@@ -23,7 +23,7 @@ A file that still holds the placeholder `uuid` (`00000000-0000-0000-0000-0000000
 | `api` | the backend | `dir` (folder with the `Dockerfile`), `port` (1024 to 65535, the port the container listens on), `healthPath` (answers 200 when healthy), `publicIngress` (public address, default `false`), `command` (optional exec-form override) |
 | `services` | what the API depends on | `postgres`, `cache`, `bucket` (`true` or `false`). The platform provisions each one and gives the API its settings, with the same names as in your workspace (`DATABASE_URL`, `CACHE_URL`, `CACHE_KEY_PREFIX`, `STORAGE_*`). |
 | `miniapp` | the mini-app shown in the shell | `dir`, `build` (shell command), `out` (build output, relative to `dir`) |
-| `plugin` | a backoffice plugin (optional) | `dir`, `build`, `out`, `file` (the one ES module, `.js` or `.mjs`, relative to `out`) |
+| `plugin` | the Studio plugin (optional); the template ships a demo, see `docs/plugin.md` | `dir`, `build`, `out`, `file` (the one ES module, `.js` or `.mjs`, relative to `out`) |
 
 Rules:
 - Omit a section to leave that part out. No `api` means no backend, no `miniapp` no bundle, no `plugin` no plugin.

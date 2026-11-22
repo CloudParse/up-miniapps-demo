@@ -10,6 +10,7 @@ from app.api.routes import demo, health
 from app.core.config import Config, get_config
 from app.core.errors import register_error_handlers
 from app.core.security import build_token_verifier
+from app.services.demo_admin_service import DemoAdminActions
 from app.services.demo_service import DemoActions, prepare
 from app.services.resource_service import ResourceProbes
 
@@ -42,6 +43,7 @@ def create_app(config: Config | None = None) -> FastAPI:
     app.state.token_verifier = build_token_verifier(config)
     app.state.resource_probes = ResourceProbes.from_config(config)
     app.state.demo_actions = DemoActions.from_config(config)
+    app.state.demo_admin_actions = DemoAdminActions.from_config(config)
 
     _add_cors(app, config)
     register_error_handlers(app)

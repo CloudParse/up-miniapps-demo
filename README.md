@@ -1,6 +1,6 @@
 # Up Mini-App Demo
 
-A complete Up mini-app with its API: a React mini-app that uses every capability of `@cloudparse/up-miniapps-sdk` (`miniapp/`), and a FastAPI API (`api/`). Every mini-app project of an organisation starts as a copy of it. It runs in the project's Coder workspace, against the organisation's DEV backend and the mini-app's own DEV database, cache and bucket.
+A complete Up mini-app with its API: a React mini-app that uses every capability of `@cloudparse/up-miniapps-sdk` (`miniapp/`), a FastAPI API (`api/`) and the Studio plugin of the mini-app (`plugin/`, [`docs/plugin.md`](docs/plugin.md)). Every mini-app project of an organisation starts as a copy of it. It runs in the project's Coder workspace, against the organisation's DEV backend and the mini-app's own DEV database, cache and bucket.
 
 Run the commands in [`SETUP.md`](SETUP.md) to get started, then read [`AGENT.md`](AGENT.md): it holds the architecture, the quick start, the conventions and the review checklist. Then read `miniapp/AGENT.md` and `api/AGENT.md`.
 
@@ -21,10 +21,12 @@ How: a Coder workspace gets `api/.env` at each start (`docs/coder.md`), a deploy
 
 How it runs in Coder: [`docs/coder.md`](docs/coder.md).
 
+How the Studio plugin works, how it reaches the API, the database, the cache and the bucket, how it is published and run in development: [`docs/plugin.md`](docs/plugin.md).
+
 How it goes to production (buttons in the platform for the backend, the frontend and the plugin, Gitea CI, everything configured in `miniapp.yaml`): [`docs/deploy.md`](docs/deploy.md).
 
 The settings of the mini-app (name, description, logo, card style, theme, devices) live in `miniapp.yaml` at the root of each project repository, written by the platform whenever it is missing (never overwritten); [`miniapp.schema.json`](miniapp.schema.json) describes the format. See `SETUP.md`, "Settings of the mini-app".
 
 Agent skills (Claude Code loads them on its own): `.claude/skills/`. The list is in `AGENT.md`, section "Skills".
 
-**Before you ship:** delete the demo of the DEV resources (`api/app/services/demo_service.py`, its route `api/app/api/routes/demo.py`, schema, test, and the card `miniapp/src/features/home/DemoDataCard.tsx`). It is an example; the API does not serve it in production.
+**Before you ship:** delete the demo of the DEV resources (`api/app/services/demo_service.py`, its route `api/app/api/routes/demo.py`, schema, test, and the card `miniapp/src/features/home/DemoDataCard.tsx`; with `api/app/services/demo_admin_service.py`, the plugin page `plugin/src/features/demo/` and its service). It is an example; the API does not serve it in production.

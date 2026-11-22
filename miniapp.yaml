@@ -44,9 +44,10 @@ miniapp:
   build: npm ci && npm run build             # shell command run in `dir`
   out: dist                                  # build output, relative to `dir`
 
-# The backoffice plugin (optional): published as ONE ES module, `file`, relative to `out`.
-# plugin:
-#   dir: plugin
-#   build: npm ci && npm run build
-#   out: dist
-#   file: plugin.js
+# The Studio plugin (optional): the admin page of your mini-app, published as ONE ES module, `file`, relative to `out`.
+# The template ships a demo (plugin/, docs/plugin.md). Delete this section and the plugin/ folder if you have none.
+plugin:
+  dir: plugin
+  build: npm ci && npm run build
+  out: dist
+  file: plugin.js

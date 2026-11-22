@@ -15,6 +15,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import Any
 
 import boto3
 import psycopg
@@ -121,21 +122,15 @@ def _insert_visit(url: str, user_id: str) -> int:
         return int(row[0]) if row else 0
 
 
-def _record_cache(url: str, key_prefix: str, user_id: str) -> int:
-    client = redis.Redis.from_url(
+def cache_client(url: str) -> redis.Redis:
+    return redis.Redis.from_url(
         url, socket_connect_timeout=TIMEOUT_SECONDS, socket_timeout=TIMEOUT_SECONDS
     )
-    try:
-        # Every key starts with the mini-app's prefix: the cache user may touch
-        # nothing else.
-        return int(client.incr(f"{key_prefix}demo:visits"))
-    finally:
-        client.close()
 
 
-def _record_storage(config: Config, user_id: str) -> str:
+def storage_client(config: Config) -> Any:  # noqa: ANN401 - boto3 clients are untyped
     storage = config.storage
-    client = boto3.client(
+    return boto3.client(
         "s3",
         endpoint_url=storage.endpoint,
         aws_access_key_id=storage.access_key,
@@ -147,10 +142,30 @@ def _record_storage(config: Config, user_id: str) -> str:
             s3={"addressing_style": "path"},
         ),
     )
+
+
+def visits_cache_key(key_prefix: str) -> str:
+    # Every key starts with the mini-app's prefix: the cache user may touch
+    # nothing else.
+    return f"{key_prefix}demo:visits"
+
+
+def _record_cache(url: str, key_prefix: str, user_id: str) -> int:
+    client = cache_client(url)
+    try:
+        return int(client.incr(visits_cache_key(key_prefix)))
+    finally:
+        client.close()
+
+
+def _record_storage(config: Config, user_id: str) -> str:
+    storage = config.storage
+    client = storage_client(config)
     # One object per user (the id of the verified token): nobody reads another's.
     key = f"demo/{user_id}.json"
     body = json.dumps({"user": user_id, "at": datetime.now(UTC).isoformat()}).encode()
     client.put_object(
         Bucket=storage.bucket, Key=key, Body=body, ContentType="application/json"
     )
-    return client.get_object(Bucket=storage.bucket, Key=key)["Body"].read().decode()
+    stored = client.get_object(Bucket=storage.bucket, Key=key)["Body"].read()
+    return str(stored.decode())

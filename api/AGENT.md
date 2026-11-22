@@ -2,13 +2,15 @@
 
 Read the root `AGENT.md` first (architecture, security rules, mandatory final review). This file covers the Python / FastAPI backend only.
 
+Paths in this file are relative to the repository root. The absolute paths of this workspace are in `CLAUDE.local.md`, written by `up-project-setup` (git-ignored).
+
 ## Stack and commands
 
 Python 3.14, FastAPI, Pydantic v2, PyJWT, managed with **uv** (never `pip`, `poetry` or `requirements.txt`). Quality tools: ruff (lint + format), mypy `--strict`, pytest.
 
 ```bash
 uv sync                                          # install from uv.lock
-uv run --env-file .env python -m app             # dev server with reload, http://localhost:21514/docs
+uv run python -m app                             # dev server with reload, http://localhost:21514/docs (`python -m app` in the venv works too)
 uv run ruff format . && uv run ruff check .
 uv run mypy app tests
 uv run pytest
@@ -20,13 +22,14 @@ uv run pytest
 api/
 ├── app/
 │   ├── main.py            create_app(): builds and wires the application (a factory, no global app)
-│   ├── __main__.py        dev entry point (uvicorn)
+│   ├── __main__.py        dev entry point (uvicorn): loads api/.env, then starts the server
 │   ├── api/
 │   │   ├── router.py      mounts the routers under /api/v1
 │   │   ├── deps.py        FastAPI dependencies: how routes obtain services and the current user
 │   │   └── routes/        one module per resource: parse input, call a service, return a schema
 │   ├── core/
 │   │   ├── config.py      typed config: TOML file + environment overrides
+│   │   ├── dotenv.py      loads api/.env for the dev entry point (never overrides the environment)
 │   │   ├── security.py    verification of the Hub's user tokens
 │   │   └── errors.py      AppError hierarchy and handlers
 │   ├── schemas/           Pydantic models: the API contract (request and response bodies)

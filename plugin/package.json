@@ -1,0 +1,31 @@
+{
+  "name": "up-miniapps-demo-plugin",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Studio plugin of the Up demo mini-app: its admin page, loaded at runtime by the Up Studio",
+  "scripts": {
+    "dev": "vite --config vite.dev.config.ts",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check . --max-diagnostics 10000 --diagnostic-level error",
+    "check:write": "biome check . --write --max-diagnostics 10000 --diagnostic-level error"
+  },
+  "dependencies": {
+    "@cloudparse/up-backoffice-sdk": "^0.2.0",
+    "lucide-react": "^1.55.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.15",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.4"
+  }
+}

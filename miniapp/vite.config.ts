@@ -15,7 +15,8 @@ const BACKEND_ORIGIN = "http://127.0.0.1:21514";
 // The organisation's DEV backend (the Hub), as reached from a Coder workspace. The
 // test-user picker (src/dev/) signs in through /hub/. DEV_HUB_ORIGIN (a shell
 // variable) points it elsewhere.
-const DEV_HUB_ORIGIN = process.env.DEV_HUB_ORIGIN ?? "http://backend-service:8080";
+const DEV_HUB_ORIGIN =
+  process.env.DEV_HUB_ORIGIN ?? "http://backend-service:8080";
 
 // Vite answers only to the hosts it knows. In a Coder workspace, VSCODE_PROXY_URI
 // is the port URL template (https://{{port}}--<agent>--<workspace>--<owner>--<org>.<apps domain>):
@@ -29,7 +30,8 @@ function devAllowedHosts(): string[] {
     .filter((host) => host.length > 0);
   const coderProxy = process.env.VSCODE_PROXY_URI;
   if (coderProxy) {
-    const portHost = new URL(coderProxy.replace("{{port}}", String(DEV_PORT))).hostname;
+    const portHost = new URL(coderProxy.replace("{{port}}", String(DEV_PORT)))
+      .hostname;
     hosts.push(portHost);
     // The "Mini-app" button of the workspace is a Coder app with its own subdomain: <app slug>--<workspace>--<owner>--<org>.<apps domain>,
     // without the agent name of the port URL (<port>--<agent>--<workspace>--...). Allow that host too: it is the link of the dashboard.
@@ -77,9 +79,9 @@ export default defineConfig({
   },
   server: {
     allowedHosts: devAllowedHosts(),
-    // loopback only: Coder reaches the app at 127.0.0.1:21515, and nothing else in the cluster may (the dev server serves the
-    // project's files)
-    host: "127.0.0.1",
+    // 0.0.0.0, so that Coder lists the port in "Open ports" (it lists the ports that listen on every interface). The dev server
+    // serves the project's files, and allowedHosts above refuses any other Host header. Dev only: the production build is a static file.
+    host: true,
     port: DEV_PORT,
     // Same origin as the page: no CORS, and only port 21515 has to be opened.
     proxy: {

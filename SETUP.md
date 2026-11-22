@@ -13,7 +13,7 @@ At every start, that workspace:
 
 1. clones the repository into `~/<repository>`, once;
 2. writes `api/.env` (never commit it) with your mini-app's own DEV database, cache and bucket (`DATABASE_URL`, `CACHE_URL`, `CACHE_KEY_PREFIX`, `STORAGE_ENDPOINT`, `STORAGE_ACCESS_KEY`, `STORAGE_SECRET_KEY`, `STORAGE_BUCKET`: the names production gives too, table in `README.md`), and the DEV backend's public key (`HUB_PUBLIC_KEY_PATH`);
-3. installs the dependencies of `api/` (`uv sync`, Python 3.14) and of `miniapp/` (`npm ci`);
+3. installs the dependencies of `api/` (`uv sync`, Python 3.14) and of `miniapp/` (`npm ci`; run `npm ci` in `plugin/` too if you work on the plugin);
 4. installs the SDK's Claude Code plugin.
 
 The repository also got `miniapp.yaml` at its root (see "Settings of the mini-app" below).
@@ -24,8 +24,10 @@ Nothing to configure. If a step failed (a warning in the workspace's startup log
 
 ```bash
 cd ~/<repository>/api
-uv run --env-file .env python -m app
+uv run python -m app
 ```
+
+`python -m app` reads `api/.env` itself, with or without `uv run` and from any directory. A variable already set in your shell wins over the file. The API listens on `0.0.0.0:21514`, so Coder lists the port in "Open ports" (`SERVER_HOST=127.0.0.1` keeps it local).
 
 Check it: `curl localhost:21514/api/v1/hello`.
 
@@ -36,19 +38,30 @@ cd ~/<repository>/miniapp
 npm run dev
 ```
 
-## 3. See it live
+## 3. Plugin (terminal 3, optional)
+
+Only if you work on the Studio plugin of the mini-app (`docs/plugin.md`):
+
+```bash
+cd ~/<repository>/plugin
+npm run dev
+```
+
+It listens on port 21516: `https://21516--main--<workspace>--<owner>--<organisation>.cloudparse.app`, or "Open ports" in the Coder dashboard.
+
+## 4. See it live
 
 In the Coder dashboard, open the app **Mini-app** of your workspace (port 21515). The SDK simulator asks which test user to sign in as: pick one. Every save reloads the page.
 
 The same page is on the forwarded port 21515: `https://21515--main--<workspace>--<owner>--<organisation>.cloudparse.app`. It opens only for you, after the Coder sign-in.
 
-## 4. Deploy to production
+## 5. Deploy to production
 
-`miniapp.yaml` is already a deployable `version: 2` file with the `api`, `services` and `miniapp` sections: adjust them, delete the ones you do not use, add `plugin` if you have one (a commented example is in the file). Commit, push, then press **Déployer le backend**, **Déployer le frontend** and/or **Déployer le plugin** in the platform. A part with no section in `miniapp.yaml` has nothing to deploy: keep its workflow, it ends green and builds nothing (`AGENT.md` section 5.1). Details and the CI contract: `docs/deploy.md`.
+`miniapp.yaml` is already a deployable `version: 2` file with the `api`, `services` and `miniapp` sections: adjust them, delete the ones you do not use, the `plugin` section builds the demo plugin of `plugin/` (delete it and the folder if you have none). Commit, push, then press **Déployer le backend**, **Déployer le frontend** and/or **Déployer le plugin** in the platform. A part with no section in `miniapp.yaml` has nothing to deploy: keep its workflow, it ends green and builds nothing (`AGENT.md` section 5.1). Details and the CI contract: `docs/deploy.md`.
 
-## 5. Start Claude Code
+## 6. Start Claude Code
 
-From the root of the project, so it loads `CLAUDE.md` and `AGENT.md`. Sign in with your own Anthropic account (`/login`).
+From the root of the project, so it loads `CLAUDE.md` and `AGENT.md`. The workspace setup script (`up-project-setup`) also writes `CLAUDE.local.md` (root, `api/`, `miniapp/`) with the absolute paths of your workspace. Git ignores it. Sign in with your own Anthropic account (`/login`).
 
 ```bash
 cd ~/<repository>
@@ -76,4 +89,4 @@ claude plugin install up-miniapps-sdk@up-miniapps
 
 ## Stop
 
-`Ctrl+C` in terminals 1 and 2. Stopping the workspace in Coder stops everything; `/home/coder` is kept.
+`Ctrl+C` in the terminals. Stopping the workspace in Coder stops everything; `/home/coder` is kept.

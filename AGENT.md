@@ -10,6 +10,7 @@ This repository is the **demo project** for teams building an Up mini-app: a web
 
 - `miniapp/` uses every public capability of `@cloudparse/up-miniapps-sdk` (map and journeys, QR codes, network, realtime, storage, haptics, permissions, account, achievements, payment demo). Its home screen shows the message of the backend route `GET /api/v1/hello`.
 - `api/` is a small FastAPI service with public, authenticated and admin routes, wired to the mini-app's own DEV database, cache and bucket.
+- `plugin/` is the Studio plugin of the demo: the admin page of the mini-app. It calls the admin routes of `api/` and never holds a credential (`docs/plugin.md`).
 
 The point is the **shape**: a clean architecture, a secure setup and a workflow you can copy for a real idea. The code must itself be an example of what we ask of you.
 
@@ -22,7 +23,7 @@ Where it lives:
 The project runs in its **Coder workspace** (`docs/coder.md`). The API and the mini-app both run in the workspace. They use the organisation's DEV environment: its backend (the "Hub", with test users) and the mini-app's own database, cache and bucket.
 
 ```text
-Browser ──Coder app "Mini-app" (private)──▶ miniapp/ (Vite, 21515) ──/api/ proxy──▶ api/ (FastAPI, 127.0.0.1:21514)
+Browser ──Coder app "Mini-app" (private)──▶ miniapp/ (Vite, 21515) ──/api/ proxy──▶ api/ (FastAPI, 0.0.0.0:21514)
                                                  │                                   ├──▶ DEV Hub         http://backend-service:8080/api/v1
                                                  │                                   ├──▶ DEV database    DATABASE_URL
                                                  │                                   ├──▶ DEV cache       CACHE_URL, CACHE_KEY_PREFIX
@@ -54,6 +55,8 @@ In development `VITE_BACKEND_URL` is `/api/v1`. The Vite dev server forwards `/a
 | --- | --- |
 | `miniapp/` | Mini-app, `up-miniapps-demo-miniapp`. React + Jotai + Tailwind + MapLibre on top of `@cloudparse/up-miniapps-sdk`. Instructions: `miniapp/AGENT.md`. |
 | `api/` | Mini-app API, `up-miniapps-demo-api`. Python + FastAPI. Verifies the Hub's user tokens and serves your own data. Instructions: `api/AGENT.md`. |
+| `plugin/` | Studio plugin, `up-miniapps-demo-plugin`. React + `@cloudparse/up-backoffice-sdk`, built into one ES module. Instructions: `plugin/AGENT.md`, guide: `docs/plugin.md`. |
+| `docs/plugin.md` | The plugin: calling the API, PostgreSQL, cache and bucket through the API, publishing, running it in Coder. |
 | `docs/coder.md` | How the demo runs in a Coder workspace: the services it uses, the settings, the limits. |
 | `SETUP.md` | The commands, in order. |
 | `miniapp.yaml` | The settings of the mini-app: identity and display (name, description, logo, card style, theme, devices) and the deployment sections. The template holds it with placeholders and a comment on every line; when a mini-app is created the platform replaces the identity and display values only (`uuid`, `slug`, `name`, `description`, `cardStyle`, `darkTheme`, `deviceTypes`), once, and never rewrites the file after. A file that still holds the placeholder `uuid` is refused by the CI. Never a secret nor an environment variable. |
@@ -91,15 +94,19 @@ Sub-project specifics live in `miniapp/AGENT.md` and `api/AGENT.md`. When they c
 The full list is in `SETUP.md`. The workspace already cloned the project, wrote `api/.env` and installed the dependencies. In short:
 
 ```bash
-cd api && uv run --env-file .env python -m app    # terminal 1
-cd miniapp && npm run dev                         # terminal 2
+cd api && uv run python -m app      # terminal 1
+cd miniapp && npm run dev           # terminal 2
+cd plugin && npm run dev            # terminal 3, only if you work on the plugin
 ```
+
+`python -m app` reads `api/.env` itself, with or without `uv run`, from any directory. A variable already set in the shell wins over the file.
 
 Then open the app "Mini-app" of the workspace in the Coder dashboard (port `21515`) and pick a test user. The same page is on the forwarded port: `https://21515--main--<workspace>--<owner>--<organisation>.cloudparse.app` (`docs/coder.md`, "Where to open the mini-app").
 
 Ports:
-- `21514`: the API, bound to `127.0.0.1`.
-- `21515`: the Vite dev server, bound to `127.0.0.1` (Coder reaches it there). Through its proxy, the API's `/api/` routes are reachable on that port too.
+- `21514`: the API, bound to `0.0.0.0` so Coder lists it in "Open ports" (`SERVER_HOST=127.0.0.1` keeps it local). A deployed container sets `SERVER_HOST=0.0.0.0` itself.
+- `21515`: the Vite dev server of `miniapp/`, bound to `0.0.0.0`. Through its proxy, the API's `/api/` routes are reachable on that port too. It answers only to the hosts of `server.allowedHosts`.
+- `21516`: the development page of `plugin/`, bound to `0.0.0.0`, same host rule.
 - Before adding a port anywhere, check it does not clash with another project.
 
 ### Production deployment
@@ -114,6 +121,12 @@ Ports:
 - The plugin is one ES module (`.js` or `.mjs`): the organisation API refuses anything else.
 - The schema, `miniapp_config.py` and the root `miniapp.yaml` change together; `.gitea/scripts/tests/test_miniapp_config.py` checks that the validator and the schema agree.
 - The runner has no Docker daemon, no PyYAML: standard library only, Kaniko for images. The tests need PyYAML and jsonschema (`check.sh` installs them with `uv`) and fail without them.
+
+### Where things are
+
+- Every path in the `AGENT.md` files is relative to the repository root.
+- The absolute paths of this workspace are in `CLAUDE.local.md` (the repository root, `api/` and `miniapp/`). The workspace setup script `up-project-setup` writes them. They are git-ignored (`CLAUDE.local.md`, `AGENTS.local.md`): never commit them, never copy an absolute path into a file of the repository.
+- Code: `api/app/` (routes, services, schemas), `miniapp/src/`, `plugin/src/`. Docs: `docs/`. Deployment settings: `miniapp.yaml`.
 
 ## 4. General conventions
 
@@ -138,7 +151,7 @@ Ports:
 - **CORS is an explicit allow-list**, never `*` with credentials.
 - **Images**: pinned tags, no secret baked into an image.
 - **The DEV resources of the mini-app** (`api/.env`, written by the workspace) are shared by its members. Never copy them into the repository, a config file or a log. `api/.env` is gitignored.
-- **The demo data route** `POST /api/v1/demo/visit` (api/app/services/demo_service.py, card `DemoDataCard` of the home screen) is an example of the three resources (PostgreSQL row, cache counter with `CACHE_KEY_PREFIX`, one bucket object per user). It is not served in production (the routes answer 404 and the card hides): delete it with its route, schema, test and card before you ship.
+- **The demo data route** `POST /api/v1/demo/visit` (api/app/services/demo_service.py, card `DemoDataCard` of the home screen) is an example of the three resources (PostgreSQL row, cache counter with `CACHE_KEY_PREFIX`, one bucket object per user). It is not served in production (the routes answer 404 and the card hides): delete it with its route, schema, test and card before you ship. Its admin routes `/api/v1/admin/demo/*` (api/app/services/demo_admin_service.py) are what the demo plugin calls (`plugin/`): they are not served in production either.
 - **Dependencies**: add as few as possible, run `npm audit` (frontend) and `uvx pip-audit` (backend) before shipping, and justify each new one.
 
 ### 5.1 Protected files and forbidden actions
@@ -172,6 +185,7 @@ Enforcement:
 3. Run the checks of every sub-project you touched:
    - `api/`: `uv lock --check && uv run ruff format . && uv run ruff check . && uv run mypy app tests && uv run pytest`
    - `miniapp/`: `npm run check:write && npm run typecheck && npm run build`
+   - `plugin/`: `npm run check:write && npm run typecheck && npm run build`
    - the full list, with the lock checks and the protected-files check: `up-miniapp-ci-contract` section 4
 4. **Run the mandatory final review (section 7), including the security agent (section 7.4).**
 5. Only then call the task done.
