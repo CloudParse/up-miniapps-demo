@@ -11,6 +11,7 @@ from app.core.errors import (
     UnauthorizedError,
 )
 from app.core.security import AuthenticatedUser, TokenVerifier
+from app.services.demo_service import DemoActions, DemoService
 from app.services.hello_service import HelloService
 from app.services.resource_service import ResourceProbes, ResourceService
 
@@ -25,6 +26,11 @@ def get_hello_service() -> HelloService:
 def get_resource_service(request: Request) -> ResourceService:
     probes: ResourceProbes = request.app.state.resource_probes
     return ResourceService(probes)
+
+
+def get_demo_service(request: Request) -> DemoService:
+    actions: DemoActions = request.app.state.demo_actions
+    return DemoService(actions)
 
 
 def get_token_verifier(request: Request) -> TokenVerifier:
@@ -57,4 +63,5 @@ def require_admin(
 
 HelloServiceDep = Annotated[HelloService, Depends(get_hello_service)]
 ResourceServiceDep = Annotated[ResourceService, Depends(get_resource_service)]
+DemoServiceDep = Annotated[DemoService, Depends(get_demo_service)]
 CurrentUserDep = Annotated[AuthenticatedUser, Depends(get_current_user)]

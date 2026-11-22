@@ -15,6 +15,7 @@ import {
   refreshAccount,
 } from "@app/features/account/accountLoaders";
 import { BackendGreetingCard } from "@app/features/home/BackendGreetingCard";
+import { DemoDataCard } from "@app/features/home/DemoDataCard";
 import { loadGreeting } from "@app/features/home/greetingLoader";
 import { getBackendUrl } from "@app/services/backend";
 import {
@@ -119,7 +120,10 @@ export function HomeScreen() {
         </Card>
 
         {backendUrl ? (
-          <BackendGreetingCard />
+          <>
+            <BackendGreetingCard />
+            <DemoDataCard />
+          </>
         ) : (
           <EmptyState
             description="Renseigne VITE_BACKEND_URL dans .env, ou laisse le shell fournir env.backendUrl. Aucune URL n'est devinée."

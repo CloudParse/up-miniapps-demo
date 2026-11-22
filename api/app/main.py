@@ -6,6 +6,7 @@ from app.api.routes import health
 from app.core.config import Config, get_config
 from app.core.errors import register_error_handlers
 from app.core.security import build_token_verifier
+from app.services.demo_service import DemoActions
 from app.services.resource_service import ResourceProbes
 
 API_PREFIX = "/api/v1"
@@ -28,6 +29,7 @@ def create_app(config: Config | None = None) -> FastAPI:
     )
     app.state.token_verifier = build_token_verifier(config)
     app.state.resource_probes = ResourceProbes.from_config(config)
+    app.state.demo_actions = DemoActions.from_config(config)
 
     _add_cors(app, config)
     register_error_handlers(app)
@@ -41,6 +43,6 @@ def _add_cors(app: FastAPI, config: Config) -> None:
         CORSMiddleware,
         allow_origins=config.cors.allowed_origins,
         allow_origin_regex=LOCAL_ORIGIN_REGEX if config.is_development else None,
-        allow_methods=["GET"],
+        allow_methods=["GET", "POST"],
         allow_headers=["Authorization", "Content-Type"],
     )

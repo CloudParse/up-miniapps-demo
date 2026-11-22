@@ -32,9 +32,10 @@ Coder workspace (dev-<organisation>)
 | `STORAGE_ENDPOINT`, `STORAGE_ACCESS_KEY`, `STORAGE_SECRET_KEY`, `STORAGE_BUCKET` | S3 bucket `up-dev-<mini-app>`, your mini-app's only |
 | `HUB_PUBLIC_KEY_PATH` | the DEV backend's public key, to verify the test users' tokens |
 
-- Only the members of the mini-app get them: Vault checks your Coder sign-in against the mini-app's members.
+- Only the members of the mini-app and the admins of the organisation get them: Vault checks your Coder sign-in against the mini-app's members and the organisation's admins (they can read these passwords in the Vault UI anyway). A super user does not.
 - They belong to the mini-app, not to you: every member of the mini-app shares the same database, cache and bucket.
-- `GET /api/v1/resources` (signed in) tells whether each one answers.
+- `GET /api/v1/resources` (signed in) tells whether each one answers. `POST /api/v1/demo/visit` (signed in, and the "Enregistrer une visite" card of the mini-app) writes one row in the database, one counter in the cache and one object in the bucket, then reads them back: the quickest proof that the three resources work from the mini-app. Delete `api/app/services/demo_service.py`, its route, schema, test and the card `miniapp/src/features/home/DemoDataCard.tsx` when you start your own features.
+- The same variable names are set by the platform on a deployed component, so the code does not change. One difference: `STORAGE_ENDPOINT` is `host:port` there and a URL here; `api/app/core/config.py` adds `http://` when the scheme is missing.
 - When the mini-app is deleted, they are deleted with it, and so is this workspace.
 
 ## The DEV backend and its test users

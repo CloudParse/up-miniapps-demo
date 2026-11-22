@@ -13,7 +13,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, SecretStr
+from pydantic import BaseModel, ConfigDict, SecretStr, field_validator
 
 DEFAULT_CONFIG_PATH = "configs/config.toml"
 CONFIG_PATH_ENV_VAR = "CONFIG_PATH"
@@ -49,6 +49,14 @@ class StorageConfig(_Section):
     access_key: str
     secret_key: SecretStr
     bucket: str
+
+    @field_validator("endpoint")
+    @classmethod
+    def _with_scheme(cls, value: str) -> str:
+        # A deployed component gets STORAGE_ENDPOINT as `host:port`
+        # (bucket-svc:9000), the DEV workspace as a URL: boto3 needs a URL.
+        value = value.strip()
+        return f"http://{value}" if value and "://" not in value else value
 
 
 class CorsConfig(_Section):
