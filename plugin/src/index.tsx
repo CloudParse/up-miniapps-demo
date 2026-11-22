@@ -4,7 +4,8 @@ import { LayoutDashboard } from "lucide-react";
 import styles from "./styles.css?inline";
 
 // The default export is the whole plugin: the Studio loads it and renders its pages.
-// Keep the id lowercase (letters, digits, dashes).
+// Keep the id lowercase (letters, digits, dashes). Rename it for your mini-app: two mini-apps
+// copied from the template would otherwise publish the same id.
 export default definePlugin({
   description: "Admin page of the demo mini-app.",
   icon: LayoutDashboard,

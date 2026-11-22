@@ -8,6 +8,7 @@
     "dev": "vite",
     "build": "up-sdk build",
     "preview": "vite preview",
+    "test": "node --test ../dev-tools/hostGuard.test.ts",
     "typecheck": "tsc --noEmit",
     "lint": "biome lint . --max-diagnostics 10000 --diagnostic-level error",
     "check": "biome check . --max-diagnostics 10000 --diagnostic-level error",

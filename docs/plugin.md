@@ -51,7 +51,7 @@ The demo routes are in `api/app/api/routes/demo.py` (`admin_router`):
 | `GET /api/v1/admin/demo/overview` | admin | Counts the rows of `demo_visits`, reads the cache counter, counts the objects under `demo/` in the bucket. |
 | `POST /api/v1/admin/demo/reset-cache` | admin | Deletes the cache counter, returns the new overview. |
 
-Like the rest of the demo, they are not served in production (404): the demo data is an example. For your own plugin, add admin routes the way `api/app/api/routes/admin.py` does (the guard `require_admin` is declared once on the router).
+Like the rest of the demo, they are not served in production (404): the demo data is an example. A demo plugin deployed to production shows the warning "The demo routes are not served in production" instead of the figures. For your own plugin, add admin routes the way `api/app/api/routes/admin.py` does (the guard `require_admin` is declared once on the router).
 
 ## 2. PostgreSQL, the cache and the bucket: always through the API
 
@@ -103,7 +103,7 @@ https://21516--main--<workspace>--<owner>--<organisation>.cloudparse.app
 ```
 
 The page needs the API (terminal 1, port 21514) and the DEV backend. How it works:
-- `plugin/vite.dev.config.ts` listens on `0.0.0.0` so Coder lists the port. It answers only to known hosts: the host of port 21516 read from `VSCODE_PROXY_URI`, plus `DEV_ALLOWED_HOSTS` (comma separated) if you set it. The rule is the one of `miniapp/vite.config.ts`.
+- `plugin/vite.dev.config.ts` listens on `0.0.0.0` so Coder lists the port. It answers 403 to any Host header that is not the host of port 21516 (read from `VSCODE_PROXY_URI`), `DEV_ALLOWED_HOSTS` (comma separated) or a loopback name, IP addresses included. The guard is `dev-tools/hostGuard.ts`, shared with `miniapp/vite.config.ts`.
 - It forwards `/api/` to the API on `127.0.0.1:21514` and `/hub/` to the DEV backend (`DEV_HUB_ORIGIN`).
 - `plugin/dev/main.tsx` builds a stand-in for the Studio: the plugin's `miniappApi` is an `ApiService` with an admin scoped token for a DEV test user. It is development code and is not part of the bundle.
 

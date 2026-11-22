@@ -6,14 +6,20 @@
 
 It reads ``KEY=VALUE`` lines. It never overrides a variable that is already in the
 environment, so a real shell variable (or the production container) always wins.
-Values are never logged.
+Values are never logged: a skipped line is reported by its number only.
+Not supported (so ``uv --env-file`` is not identical beyond plain values):
+``$VAR`` expansion and multi-line values.
 """
 
+import logging
 import os
 import re
 from collections.abc import MutableMapping
 from pathlib import Path
 
+logger = logging.getLogger(__name__)
+
+_EXPORT = re.compile(r"export\s+")
 _KEY = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 _ESCAPES = {"n": "\n", "r": "\r", "t": "\t", '"': '"', "\\": "\\"}
 
@@ -30,9 +36,18 @@ def load_dotenv(
     if not path.is_file():
         return []
     loaded: list[str] = []
-    for line in path.read_text(encoding="utf-8").splitlines():
+    # utf-8-sig: an editor may write a BOM. Split on "\n" only: str.splitlines()
+    # also cuts at U+2028 and others, which may sit inside a quoted value.
+    text = path.read_text(encoding="utf-8-sig")
+    for number, line in enumerate(text.split("\n"), start=1):
+        line = line.removesuffix("\r")
         parsed = _parse_line(line)
         if parsed is None:
+            if _is_skipped(line):
+                # The line number only: the line may hold a secret.
+                logger.warning(
+                    "%s: line %d is not KEY=VALUE, skipped", path.name, number
+                )
             continue
         name, value = parsed
         if name in target:
@@ -42,12 +57,16 @@ def load_dotenv(
     return loaded
 
 
+def _is_skipped(line: str) -> bool:
+    text = line.strip()
+    return bool(text) and not text.startswith("#")
+
+
 def _parse_line(line: str) -> tuple[str, str] | None:
     text = line.strip()
     if not text or text.startswith("#"):
         return None
-    if text.startswith("export "):
-        text = text.removeprefix("export ").lstrip()
+    text = _EXPORT.sub("", text, count=1)
     name, separator, raw = text.partition("=")
     name = name.strip()
     if not separator or not _KEY.fullmatch(name):

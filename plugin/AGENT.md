@@ -14,7 +14,7 @@ npm run check:write && npm run typecheck && npm run build   # dist/plugin.js
 
 ## Rules
 
-- `src/index.tsx` default-exports `definePlugin({ id, name, pages, styles })`. The `id` is lowercase.
+- `src/index.tsx` default-exports `definePlugin({ id, name, pages, styles })`. The `id` is lowercase. Rename the template's `up-miniapps-demo` to your mini-app's own id: two mini-apps made from the template would publish the same one.
 - This is Studio code, not mini-app code. Use the SDK UI kit (`SectionHeader`, `StatTile`, `Table`, `Modal`, `Banner`, ...), English text, Tailwind theme tokens, no arbitrary values, no `any`. No `alert`, `confirm`, `window.open`, cookies or web storage: the plugin runs in a sandboxed iframe.
 - API calls only through `miniappApi` (`src/services/`). Paths start after the API base URL, which ends with `/api/v1`. Check errors with `isApiError()`, never `instanceof ApiError`.
 - The plugin never holds a database, cache or bucket credential, and nothing secret: everything goes through an admin route of `api/`.

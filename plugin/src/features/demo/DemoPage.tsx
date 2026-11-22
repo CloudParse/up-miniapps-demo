@@ -11,8 +11,12 @@ import { demoService } from "@plugin/services/demo";
 import { Database, FolderArchive, MemoryStick, RotateCcw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
-function describe(error: unknown): string {
+function isNotServed(error: unknown): boolean {
   // isApiError, never instanceof: the error class comes from the host's copy of the SDK.
+  return isApiError(error) && error.status === 404;
+}
+
+function describe(error: unknown): string {
   if (isApiError(error)) {
     return error.status === 403
       ? "The API refuses this account: it needs the mini-app administrator scope."
@@ -28,6 +32,7 @@ function show(value: number | null): string {
 export function DemoPage() {
   const [overview, setOverview] = useState<DemoOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notServed, setNotServed] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const run = useCallback(async (call: () => Promise<DemoOverview>) => {
@@ -36,7 +41,8 @@ export function DemoPage() {
     try {
       setOverview(await call());
     } catch (caught) {
-      setError(describe(caught));
+      if (isNotServed(caught)) setNotServed(true);
+      else setError(describe(caught));
     } finally {
       setBusy(false);
     }
@@ -48,6 +54,12 @@ export function DemoPage() {
 
   return (
     <div className="space-y-8">
+      {notServed && (
+        <Banner
+          message="The demo routes are not served in production: the API answers 404. Replace this page and the routes /admin/demo/* with your own."
+          variant="warning"
+        />
+      )}
       {error && (
         <Banner
           message={error}
@@ -59,7 +71,7 @@ export function DemoPage() {
       <SectionHeader
         actions={
           <Button
-            disabled={busy}
+            disabled={busy || notServed}
             onClick={() => run(demoService.resetCache)}
             variant="secondary"
           >
@@ -72,7 +84,9 @@ export function DemoPage() {
       />
 
       {overview === null ? (
-        <LoadingState />
+        notServed ? null : (
+          <LoadingState />
+        )
       ) : (
         <div className="grid gap-4 sm:grid-cols-3">
           <StatTile

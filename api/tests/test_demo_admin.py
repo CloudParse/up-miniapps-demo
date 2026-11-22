@@ -123,20 +123,15 @@ def test_the_cache_is_read_and_reset_under_the_prefix(
     assert keys == [("get", "dev_ab12:demo:visits"), ("delete", "dev_ab12:demo:visits")]
 
 
-def test_the_objects_are_counted_under_the_demo_prefix(
+def test_the_objects_are_counted_under_the_demo_prefix_with_a_cap(
     config: Config, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     asked: list[dict[str, Any]] = []
 
-    class Paginator:
-        def paginate(self, **kwargs: Any) -> list[dict[str, int]]:
-            asked.append(kwargs)
-            return [{"KeyCount": 2}, {"KeyCount": 1}]
-
     class Stub:
-        def get_paginator(self, name: str) -> Paginator:
-            assert name == "list_objects_v2"
-            return Paginator()
+        def list_objects_v2(self, **kwargs: Any) -> dict[str, int]:
+            asked.append(kwargs)
+            return {"KeyCount": 3}
 
     monkeypatch.setattr(demo_admin_service, "storage_client", lambda _c: Stub())
     storage = StorageConfig.model_validate(
@@ -153,4 +148,28 @@ def test_the_objects_are_counted_under_the_demo_prefix(
     )
 
     assert count == 3
-    assert asked == [{"Bucket": "b", "Prefix": "demo/"}]
+    assert asked == [{"Bucket": "b", "Prefix": "demo/", "MaxKeys": 1000}]
+
+
+def test_one_failing_resource_does_not_fail_the_overview(
+    client: TestClient, make_token: TokenFactory
+) -> None:
+    def broken() -> int:
+        raise ConnectionError("db.internal refused user secret")
+
+    client.app.state.demo_admin_actions = DemoAdminActions(  # type: ignore[attr-defined]
+        database_visits=broken,
+        cache_visits=lambda: 3,
+        storage_objects=lambda: 2,
+        reset_cache_visits=None,
+    )
+
+    response = client.get(OVERVIEW, headers=_bearer(make_token, admin=True))
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "databaseVisits": None,
+        "cacheVisits": 3,
+        "storageObjects": 2,
+    }
+    assert "secret" not in response.text

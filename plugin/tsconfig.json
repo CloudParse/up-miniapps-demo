@@ -14,5 +14,11 @@
       "@plugin/*": ["./src/*"]
     }
   },
-  "include": ["src", "dev", "vite.config.ts", "vite.dev.config.ts"]
+  "include": [
+    "src",
+    "dev",
+    "vite.config.ts",
+    "vite.dev.config.ts",
+    "../dev-tools/hostGuard.ts"
+  ]
 }

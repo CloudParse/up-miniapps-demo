@@ -6,6 +6,7 @@ of this API, and this service uses the resources with the API's own settings. Li
 optional.
 """
 
+import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 
@@ -20,8 +21,12 @@ from app.services.demo_service import (
 )
 from app.services.resource_probes import TIMEOUT_SECONDS
 
+logger = logging.getLogger(__name__)
+
 # The objects `demo_service` writes: one per visitor, under this prefix.
 STORAGE_PREFIX = "demo/"
+# A demo counts, it does not scan a whole bucket: stop at this many objects.
+MAX_COUNTED_OBJECTS = 1000
 
 Count = Callable[[], int]
 Reset = Callable[[], None]
@@ -59,15 +64,26 @@ class DemoAdminService:
     def overview(self) -> DemoOverview:
         a = self._actions
         return DemoOverview(
-            database_visits=a.database_visits() if a.database_visits else None,
-            cache_visits=a.cache_visits() if a.cache_visits else None,
-            storage_objects=a.storage_objects() if a.storage_objects else None,
+            database_visits=_read("database", a.database_visits),
+            cache_visits=_read("cache", a.cache_visits),
+            storage_objects=_read("bucket", a.storage_objects),
         )
 
     def reset_cache_visits(self) -> DemoOverview:
         if self._actions.reset_cache_visits:
             self._actions.reset_cache_visits()
         return self.overview()
+
+
+def _read(resource: str, count: Count | None) -> int | None:
+    """One failing resource gives None (like "not configured"), not a 500 for all."""
+    if count is None:
+        return None
+    try:
+        return count()
+    except Exception:  # noqa: BLE001 - any driver error: the other resources still answer
+        logger.warning("demo overview: %s unreachable", resource, exc_info=True)
+        return None
 
 
 def _count_visits(url: str) -> int:
@@ -95,7 +111,9 @@ def _reset_cache_visits(url: str, key_prefix: str) -> None:
 
 def _count_objects(config: Config) -> int:
     client = storage_client(config)
-    pages = client.get_paginator("list_objects_v2").paginate(
-        Bucket=config.storage.bucket, Prefix=STORAGE_PREFIX
+    response = client.list_objects_v2(
+        Bucket=config.storage.bucket,
+        Prefix=STORAGE_PREFIX,
+        MaxKeys=MAX_COUNTED_OBJECTS,
     )
-    return sum(page.get("KeyCount", 0) for page in pages)
+    return int(response.get("KeyCount", 0))

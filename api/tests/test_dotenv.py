@@ -135,3 +135,40 @@ def test_the_shipped_defaults_listen_on_every_interface_for_coder() -> None:
 
     assert config.server.host == "0.0.0.0"  # noqa: S104 - dev default, see config.toml
     assert config.server.port == 21514
+
+
+def test_a_bom_crlf_and_export_with_a_tab(tmp_path: Path) -> None:
+    environ: dict[str, str] = {}
+    path = tmp_path / ".env"
+    path.write_bytes("\ufeffFIRST=1\r\nexport\tSECOND=2\r\n".encode())
+
+    load_dotenv(path, environ)
+
+    assert environ == {"FIRST": "1", "SECOND": "2"}
+
+
+def test_a_unicode_line_separator_inside_a_quoted_value_is_kept(
+    tmp_path: Path,
+) -> None:
+    environ: dict[str, str] = {}
+    path = _write(tmp_path, 'A="one\u2028two"\nB=3\n')
+
+    load_dotenv(path, environ)
+
+    assert environ == {"A": "one\u2028two", "B": "3"}
+
+
+def test_a_skipped_line_is_reported_by_number_never_by_value(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    environ: dict[str, str] = {}
+    path = _write(tmp_path, "# c\n\nOK=1\nSECRET-VALUE-NOT-A-PAIR\n9X=hunter2\n")
+
+    with caplog.at_level("WARNING"):
+        load_dotenv(path, environ)
+
+    assert environ == {"OK": "1"}
+    assert "line 4" in caplog.text
+    assert "line 5" in caplog.text
+    assert "SECRET" not in caplog.text
+    assert "hunter2" not in caplog.text

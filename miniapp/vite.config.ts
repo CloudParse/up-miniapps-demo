@@ -4,6 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import { viteSingleFile } from "vite-plugin-singlefile";
+import { devAllowedHosts, hostGuard } from "../dev-tools/hostGuard";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -18,21 +19,17 @@ const BACKEND_ORIGIN = "http://127.0.0.1:21514";
 const DEV_HUB_ORIGIN =
   process.env.DEV_HUB_ORIGIN ?? "http://backend-service:8080";
 
-// Vite answers only to the hosts it knows. In a Coder workspace, VSCODE_PROXY_URI
-// is the port URL template (https://{{port}}--<agent>--<workspace>--<owner>--<org>.<apps domain>):
-// allow exactly the host of this server's port, not the whole apps domain, which
-// every organisation shares. DEV_ALLOWED_HOSTS (a shell variable, comma separated,
-// a leading dot allows the subdomains) adds hosts by hand.
-function devAllowedHosts(): string[] {
-  const hosts = (process.env.DEV_ALLOWED_HOSTS ?? "")
-    .split(",")
-    .map((host) => host.trim())
-    .filter((host) => host.length > 0);
+// Only the hosts below may reach the dev server (../dev-tools/hostGuard.ts: a 403 for any other Host header, IP
+// addresses included: Vite 8 lets those through `allowedHosts`). In a Coder workspace, VSCODE_PROXY_URI is the
+// port URL template (https://{{port}}--<agent>--<workspace>--<owner>--<org>.<apps domain>): the host of this
+// server's port is allowed, not the whole apps domain, which every organisation shares. DEV_ALLOWED_HOSTS (a shell
+// variable, comma separated, a leading dot allows the subdomains) adds hosts by hand.
+function allowedHosts(): string[] {
+  const hosts = devAllowedHosts(DEV_PORT);
   const coderProxy = process.env.VSCODE_PROXY_URI;
   if (coderProxy) {
     const portHost = new URL(coderProxy.replace("{{port}}", String(DEV_PORT)))
       .hostname;
-    hosts.push(portHost);
     // The "Mini-app" button of the workspace is a Coder app with its own subdomain: <app slug>--<workspace>--<owner>--<org>.<apps domain>,
     // without the agent name of the port URL (<port>--<agent>--<workspace>--...). Allow that host too: it is the link of the dashboard.
     const appHost = portHost.replace(/^\d+--[^.]+?--/, `${DEV_APP_SLUG}--`);
@@ -63,7 +60,12 @@ export default defineConfig({
     // then 404s in the dev server. Excluding it is Vite's documented fix.
     exclude: ["maplibre-gl"],
   },
-  plugins: [react(), tailwindcss(), viteSingleFile()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    viteSingleFile(),
+    hostGuard(allowedHosts()),
+  ],
   resolve: {
     alias: {
       "@app": path.resolve(__dirname, "./src"),
@@ -78,9 +80,9 @@ export default defineConfig({
     ],
   },
   server: {
-    allowedHosts: devAllowedHosts(),
+    allowedHosts: allowedHosts(),
     // 0.0.0.0, so that Coder lists the port in "Open ports" (it lists the ports that listen on every interface). The dev server
-    // serves the project's files, and allowedHosts above refuses any other Host header. Dev only: the production build is a static file.
+    // serves the project's files: hostGuard above refuses any other Host header. Dev only: the production build is a static file.
     host: true,
     port: DEV_PORT,
     // Same origin as the page: no CORS, and only port 21515 has to be opened.
