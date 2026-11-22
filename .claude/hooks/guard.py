@@ -653,40 +653,116 @@ def find_test(word: str, value: str, path: Path, shown: str) -> bool | None:
     return None
 
 
+# Tests and options of find that take one argument. -fprintf takes two.
+FIND_ONE_ARGUMENT = {
+    "-name", "-iname", "-path", "-ipath", "-wholename", "-iwholename", "-regex", "-iregex", "-lname", "-ilname",
+    "-type", "-xtype", "-maxdepth", "-mindepth", "-newer", "-anewer", "-cnewer", "-mtime", "-mmin", "-atime", "-amin",
+    "-ctime", "-cmin", "-size", "-user", "-group", "-uid", "-gid", "-perm", "-regextype", "-samefile", "-links",
+    "-inum", "-used", "-fstype", "-context", "-printf", "-fprint", "-fprint0", "-fls", "-newermt", "-flags",
+}
+FIND_WRITES = {"-fprint", "-fprint0", "-fprintf", "-fls"}
+
+
+class FindExpression:
+    """Evaluates a find expression for one path, with the precedence of find (`!`, then `-a`, then `-o`, then `,`)
+    and short-circuit evaluation. Each value is the set of results it may have: a test this hook does not know may be
+    true or false. `reaches` is True when the expression may run its action (-delete, -exec...) on the path."""
+
+    def __init__(self, tokens: list[str], path: Path, shown: str) -> None:
+        self.tokens, self.index, self.path, self.shown = tokens, 0, path, shown
+
+    def peek(self) -> str | None:
+        return self.tokens[self.index] if self.index < len(self.tokens) else None
+
+    def take(self) -> str:
+        token = self.tokens[self.index]
+        self.index += 1
+        return token
+
+    def parse_list(self) -> tuple[set[bool], bool]:
+        values, reaches = self.parse_or()
+        while self.peek() == ",":
+            self.take()
+            values, more = self.parse_or()
+            reaches = reaches or more
+        return values, reaches
+
+    def parse_or(self) -> tuple[set[bool], bool]:
+        values, reaches = self.parse_and()
+        while self.peek() in {"-o", "-or"}:
+            self.take()
+            right, right_reaches = self.parse_and()
+            if False in values:
+                reaches = reaches or right_reaches
+                values = ({True} if True in values else set()) | right
+        return values, reaches
+
+    def parse_and(self) -> tuple[set[bool], bool]:
+        values, reaches = self.parse_unary()
+        while self.peek() not in {None, "-o", "-or", ",", ")"}:
+            if self.peek() in {"-a", "-and"}:
+                self.take()
+            right, right_reaches = self.parse_unary()
+            if True in values:
+                reaches = reaches or right_reaches
+                values = ({False} if False in values else set()) | right
+        return values, reaches
+
+    def parse_unary(self) -> tuple[set[bool], bool]:
+        token = self.take()
+        if token in {"-not", "!"}:
+            values, reaches = self.parse_unary()
+            return {not value for value in values}, reaches
+        if token == "(":
+            values, reaches = self.parse_list()
+            if self.peek() != ")":
+                raise ValueError("unclosed parenthesis")
+            self.take()
+            return values, reaches
+        if token in FIND_EXEC:
+            while self.peek() not in {None, ";", "+"}:
+                self.take()
+            if self.peek() is not None:
+                self.take()
+            return {True, False}, True
+        if token == "-delete":
+            return {True}, True
+        if token == "-fprintf":
+            self.take()
+            self.take()
+            return {True}, True
+        if token in FIND_ONE_ARGUMENT:
+            argument = self.take()
+            result = find_test(token, argument, self.path, self.shown)
+            if token in FIND_WRITES:
+                return {True}, True
+            return ({result} if result is not None else {True, False}), False
+        if token in {"-true", "-print", "-print0", "-ls", "-prune", "-depth", "-xdev", "-mount", "-follow", "-noleaf", "-d", "-x"}:
+            return {True}, False
+        if token == "-false":
+            return {False}, False
+        return {True, False}, False
+
+
+def find_expression(rest: list[str]) -> list[str]:
+    """The expression of a find command: what follows its options and start folders."""
+    index = 0
+    while index < len(rest) and (rest[index] in {"-L", "-H", "-P", "-D", "-O", "-E", "-X", "-s", "-x", "-d", "-f"} or re.fullmatch(r"-O\d", rest[index])):
+        index += 2 if rest[index] in {"-D", "-O", "-f"} else 1
+    while index < len(rest) and not rest[index].startswith("-") and rest[index] not in {"!", "(", ","}:
+        index += 1
+    return rest[index:]
+
+
 def find_selects(path: Path, start: str, folder: Path, rest: list[str]) -> bool:
-    """Whether the find expression may run its action on `path`.
-    Without parentheses, the action applies to the `-o` branch that holds it, when every test of that branch matches.
-    With parentheses, any matching test or any negation counts (conservative)."""
+    """Whether the find expression may run its action on `path`. An expression it cannot parse counts as yes."""
     shown = start.rstrip("/") + "/" + path.relative_to(folder).as_posix() if path != folder else start
-    if "(" in rest:
-        if {"-not", "!"} & set(rest):
-            return True
-        results = [find_test(word, rest[i + 1], path, shown) for i, word in enumerate(rest[:-1])]
-        tests = [result for result in results if result is not None]
-        return not tests or any(tests)
-    branches: list[list[str]] = [[]]
-    for word in rest:
-        if word in {"-o", "-or"}:
-            branches.append([])
-        else:
-            branches[-1].append(word)
-    actions = {"-delete", "-fprint", "-fprint0", "-fprintf", "-fls"} | FIND_EXEC
-    for branch in branches:
-        first_action = next((i for i, word in enumerate(branch) if word in actions), None)
-        if first_action is None:
-            continue
-        before = branch[:first_action]
-        selected = True
-        for i, word in enumerate(before[:-1]):
-            result = find_test(word, before[i + 1], path, shown)
-            if result is None:
-                continue
-            if i > 0 and before[i - 1] in {"-not", "!"}:
-                result = not result
-            selected = selected and result
-        if selected:
-            return True
-    return False
+    expression = FindExpression(find_expression(rest), path, shown)
+    try:
+        _, reaches = expression.parse_list()
+    except (ValueError, IndexError):
+        return True
+    return reaches or expression.peek() is not None
 
 
 def find_starts(rest: list[str]) -> list[str]:
