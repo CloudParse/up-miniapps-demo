@@ -8,6 +8,8 @@ import { viteSingleFile } from "vite-plugin-singlefile";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const DEV_PORT = 21515;
+// The slug of the Coder app "Mini-app" of the workspace template (templates/org-miniapp, coder_app.miniapp).
+const DEV_APP_SLUG = "miniapp";
 // The demo API (../api/configs/config.toml, server.port).
 const BACKEND_ORIGIN = "http://127.0.0.1:21514";
 // The organisation's DEV backend (the Hub), as reached from a Coder workspace. The
@@ -27,9 +29,12 @@ function devAllowedHosts(): string[] {
     .filter((host) => host.length > 0);
   const coderProxy = process.env.VSCODE_PROXY_URI;
   if (coderProxy) {
-    hosts.push(
-      new URL(coderProxy.replace("{{port}}", String(DEV_PORT))).hostname,
-    );
+    const portHost = new URL(coderProxy.replace("{{port}}", String(DEV_PORT))).hostname;
+    hosts.push(portHost);
+    // The "Mini-app" button of the workspace is a Coder app with its own subdomain: <app slug>--<workspace>--<owner>--<org>.<apps domain>,
+    // without the agent name of the port URL (<port>--<agent>--<workspace>--...). Allow that host too: it is the link of the dashboard.
+    const appHost = portHost.replace(/^\d+--[^.]+?--/, `${DEV_APP_SLUG}--`);
+    if (appHost !== portHost) hosts.push(appHost);
   }
   return hosts;
 }
