@@ -149,7 +149,7 @@ Developers and their agents **never modify, create, rename or delete** these fil
 - `AGENT.md` and `CLAUDE.md` in every folder: the project rules.
 
 Developers and their agents **never**:
-- read, print, copy or send a secret (`.env` files except `*.env.template`, the environment, tokens);
+- read, print, copy or send a secret (`.env` files except `*.env.template` and `*.env.example`, the environment, tokens);
 - send code, data or secrets to an outside service;
 - weaken a check (auth, token checks, tests, lint, type checks, git hooks) to make something pass;
 - add hidden, obfuscated or harmful code (backdoor, hidden route, miner, downloaded script run with `sh`);
