@@ -643,7 +643,9 @@ def find_test(word: str, value: str, path: Path, shown: str) -> bool | None:
         fold = FIND_PATH_FILTERS[word]
         return fnmatch(shown.lower() if fold else shown, value.lower() if fold else value)
     if word in FIND_REGEX_FILTERS:
-        value = re.sub(r"\\([(){}|])", r"\1", value)  # basic and emacs groups, written as extended
+        if re.search(r"\\[<>`'bBwW]", value):
+            return True  # emacs word and buffer operators: not translated, counted as a match
+        value = re.sub(r"\\([(){}|+?])", r"\1", value)  # basic and emacs operators, written as extended
         try:
             return re.fullmatch(value, shown, re.IGNORECASE if FIND_REGEX_FILTERS[word] else 0) is not None
         except re.error:
@@ -654,9 +656,11 @@ def find_test(word: str, value: str, path: Path, shown: str) -> bool | None:
 def find_selects(path: Path, start: str, folder: Path, rest: list[str]) -> bool:
     """Whether the find expression may run its action on `path`.
     Without parentheses, the action applies to the `-o` branch that holds it, when every test of that branch matches.
-    With parentheses, any matching test counts (conservative)."""
+    With parentheses, any matching test or any negation counts (conservative)."""
     shown = start.rstrip("/") + "/" + path.relative_to(folder).as_posix() if path != folder else start
     if "(" in rest:
+        if {"-not", "!"} & set(rest):
+            return True
         results = [find_test(word, rest[i + 1], path, shown) for i, word in enumerate(rest[:-1])]
         tests = [result for result in results if result is not None]
         return not tests or any(tests)

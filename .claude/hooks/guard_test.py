@@ -321,6 +321,13 @@ BLOCKED = [bash(command) for command in [
     "find . \\( -name '*.yml' -o -name '*.md' \\) -delete",
     "find . -name '*.yml' -not \\( -path './node_modules/*' \\) -delete",
     "find . '(' -name '*.md' ')' -delete",
+    "find . -not \\( -name x \\) -delete",
+    "find . ! \\( -name x \\) -delete",
+    "find . -not \\( -name '*.pyc' -o -name '*.md' \\) -delete",
+    "find . \\( ! -name '*.pyc' \\) -delete",
+    "find . '(' -not -name x ')' -delete",
+    "find . -regex '.*AGENT\\.md\\+' -delete",
+    "find . -regex '.*AGENT\\.m\\?d' -delete",
     "echo 'unclosed",
 ]] + [
     tool("Edit", str(ROOT / ".gitea/workflows/deploy-backend.yml")),
