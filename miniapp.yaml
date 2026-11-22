@@ -29,7 +29,7 @@ api:
   dir: api                                   # folder with the Dockerfile (the build context)
   port: 8000                                 # the port the container listens on (1024 to 65535)
   healthPath: /healthz                       # answers 200 when the API is healthy
-  publicIngress: false                       # true: the API gets a public address
+  publicIngress: true                        # true (default): the API gets a public address, the mini-app calls it. false: private
   # command: ["python", "-m", "app"]         # only to override the image's own entrypoint
 
 # What the API needs. The platform provisions each one and hands its settings to the API at start. Needs `api`.
