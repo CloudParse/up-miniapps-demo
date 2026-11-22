@@ -609,7 +609,11 @@ def protected_files_under(folder: Path, root: Path) -> list[Path]:
     """The protected files and folders that exist under `folder` (the folder itself included)."""
     found: list[Path] = []
     if not folder.is_dir():
-        return found
+        try:
+            relative = folder.resolve().relative_to(root).as_posix()
+        except ValueError:
+            return found
+        return [folder] if PROTECTED_PATH.search(relative) else found
     for current, folders, files in os.walk(folder):
         folders[:] = [name for name in folders if name not in SKIPPED_FOLDERS]
         for name in [*folders, *files, ""]:
@@ -632,6 +636,8 @@ def find_test(word: str, value: str, path: Path, shown: str) -> bool | None:
         fold = FIND_PATH_FILTERS[word]
         return fnmatch(shown.lower() if fold else shown, value.lower() if fold else value)
     if word in FIND_REGEX_FILTERS:
+        if re.search(r"\\[(){}|]", value):
+            return True  # basic or emacs regex groups: not translated, counted as a match
         try:
             return re.fullmatch(value, shown, re.IGNORECASE if FIND_REGEX_FILTERS[word] else 0) is not None
         except re.error:
@@ -654,11 +660,21 @@ def find_selects(path: Path, start: str, folder: Path, rest: list[str]) -> bool:
             branches.append([])
         else:
             branches[-1].append(word)
+    actions = {"-delete", "-fprint", "-fprint0", "-fprintf", "-fls"} | FIND_EXEC
     for branch in branches:
-        if not ({"-delete"} | FIND_EXEC) & set(branch):
+        first_action = next((i for i, word in enumerate(branch) if word in actions), None)
+        if first_action is None:
             continue
-        results = [find_test(word, branch[i + 1], path, shown) for i, word in enumerate(branch[:-1])]
-        if all(result is not False for result in results):
+        before = branch[:first_action]
+        selected = True
+        for i, word in enumerate(before[:-1]):
+            result = find_test(word, before[i + 1], path, shown)
+            if result is None:
+                continue
+            if i > 0 and before[i - 1] in {"-not", "!"}:
+                result = not result
+            selected = selected and result
+        if selected:
             return True
     return False
 
@@ -666,9 +682,11 @@ def find_selects(path: Path, start: str, folder: Path, rest: list[str]) -> bool:
 def find_starts(rest: list[str]) -> list[str]:
     """The start folders of a find command, after its -L, -H, -P, -D and -O options."""
     index = 0
-    while index < len(rest) and rest[index] in {"-L", "-H", "-P", "-D", "-O"} or (index < len(rest) and re.fullmatch(r"-O\d", rest[index])):
-        index += 2 if rest[index] in {"-D", "-O"} else 1
     starts: list[str] = []
+    while index < len(rest) and (rest[index] in {"-L", "-H", "-P", "-D", "-O", "-E", "-X", "-s", "-x", "-d", "-f"} or re.fullmatch(r"-O\d", rest[index])):
+        if rest[index] == "-f" and index + 1 < len(rest):
+            starts.append(rest[index + 1])
+        index += 2 if rest[index] in {"-D", "-O", "-f"} else 1
     while index < len(rest) and not rest[index].startswith("-") and rest[index] not in {"!", "("}:
         starts.append(rest[index])
         index += 1
@@ -691,6 +709,9 @@ def check_find(rest: list[str], base: Path, root: Path) -> None:
         else:
             index += 1
     changes = "-delete" in rest
+    for index, word in enumerate(rest[:-1]):
+        if word in {"-fprint", "-fprint0", "-fprintf", "-fls"} and is_protected(rest[index + 1], base, root):
+            block("the command writes to a protected file (deployment CI, agent setup or rules)")
     for command in commands:
         program = program_of(command)
         in_place = program in {"sed", "perl", "ruby"} and any(re.fullmatch(r"-[a-zA-Z]*i\S*", word) for word in command)
@@ -698,13 +719,12 @@ def check_find(rest: list[str], base: Path, root: Path) -> None:
         check_simple([str(resolve(starts[0], base) / "FIND_RESULT") if word == "{}" else word for word in command], base, root)
     if not changes:
         return
-    negated = {"-not", "!"} & set(rest)
     for start in starts:
         if is_outside(start, base, root, root_allowed=True):
             block("the command deletes or changes files outside the project")
         folder = resolve(start, base)
         for path in protected_files_under(folder, root):
-            if negated or find_selects(path, start, folder, rest):
+            if find_selects(path, start, folder, rest):
                 block(f"the command may delete or change the protected file `{path.relative_to(root).as_posix() or '.'}`")
 
 
