@@ -20,6 +20,7 @@ The settings start this file only when python3 exists, and block every call othe
 Tests: `python3 .claude/hooks/guard_test.py`.
 """
 
+import glob
 import json
 import os
 import re
@@ -50,9 +51,9 @@ INTERPRETERS = {"python", "python3", "node", "perl", "ruby", "deno", "bun"}
 WRITE_PROGRAMS = {"tee", "rm", "rmdir", "mv", "ln", "chmod", "chown", "truncate", "touch", "unlink", "mkdir", "patch", "shred"}
 COPY_PROGRAMS = {"cp", "install", "rsync", "dd"}
 GIT_PATH_WRITES = {"rm", "mv", "checkout", "restore", "apply", "am", "add", "commit", "update-index", "stash"}
-SAFE_ENV_PROGRAMS = {"test", "[", "[[", "ls", "stat"}
+SAFE_ENV_PROGRAMS = {"test", "[", "[[", "ls", "stat", "echo", "printf"}
 
-WRITE_IN_CODE = re.compile(r"\b(write_text|write_bytes|writeFile|writeFileSync|appendFile|appendFileSync|unlink|rmSync|rmtree|remove|rename)\b|\bopen\([^)]*['\"][wax+]")
+WRITE_IN_CODE = re.compile(r"\b(write_text|write_bytes|writeFile|writeFileSync|appendFile|appendFileSync|copyFile|copyFileSync|unlink|rmSync|rmtree|remove|rename|symlink)\b|\bshutil\.(copy\w*|move)\b|\bos\.(replace|link)\b|\bopen\([^)]*['\"][wax+]")
 ENV_IN_CODE = re.compile(r"os\.environ\b(?!\s*\[|\.get)|process\.env\b(?![.\[])|\bENV\.to_h\b|%ENV\b")
 GLOB_CHARS = re.compile(r"[*?\[]")
 
@@ -69,18 +70,36 @@ def project_root(event: dict[str, object]) -> Path:
     return Path(os.environ.get("CLAUDE_PROJECT_DIR") or str(event.get("cwd") or ".")).resolve()
 
 
+def resolve_pattern(raw: str, base: Path) -> Path:
+    """A glob pattern made absolute, without resolving its wildcards."""
+    expanded = os.path.expanduser(raw.replace("${HOME}", "~").replace("$HOME", "~"))
+    return Path(expanded) if os.path.isabs(expanded) else base.resolve() / expanded
+
+
 def resolve(raw: str, base: Path) -> Path:
     expanded = os.path.expanduser(raw.replace("${HOME}", "~").replace("$HOME", "~"))
     path = Path(expanded)
     return (path if path.is_absolute() else base / path).resolve()
 
 
+def shell_glob_matches(name: str, pattern: str) -> bool:
+    """Shell glob semantics: a pattern that does not start with `.` never matches a dotfile."""
+    if name.startswith(".") and not pattern.startswith("."):
+        return False
+    return fnmatch(name, pattern)
+
+
 def is_protected(raw: str, base: Path, root: Path) -> bool:
     """True when the path is a protected file of the project or a Claude Code settings file."""
     if GLOB_CHARS.search(raw):
-        name = raw.rstrip("/").rsplit("/", 1)[-1]
-        if any(fnmatch(protected, name) for protected in PROTECTED_NAMES):
+        # Expand like the shell would. In the project root, also match the names that do not exist yet.
+        pattern = str(resolve_pattern(raw, base))
+        if any(is_protected(match, base, root) for match in glob.glob(pattern)):
             return True
+        folder, _, name = pattern.rstrip("/").rpartition("/")
+        if Path(folder or "/").resolve() == root and any(shell_glob_matches(protected, name) for protected in PROTECTED_NAMES):
+            return True
+        return False
     path = resolve(raw, base)
     if USER_SETTINGS_PATH.search(path.as_posix()):
         return True
@@ -94,7 +113,7 @@ def is_protected(raw: str, base: Path, root: Path) -> bool:
 def is_secret(raw: str) -> bool:
     name = raw.rstrip("/").rsplit("/", 1)[-1]
     if GLOB_CHARS.search(name):
-        return any(fnmatch(secret, name) for secret in SECRET_NAMES)
+        return any(shell_glob_matches(secret, name) for secret in SECRET_NAMES)
     return bool(SECRET_PATH.search(raw))
 
 
@@ -150,10 +169,36 @@ def take_substitution(text: str, start: int) -> int:
     return index
 
 
+def scan_substitutions(text: str, check_inner) -> None:
+    """Checks the substitutions of an unquoted heredoc body. Quotes are literal there."""
+    index = 0
+    while index < len(text):
+        if text[index] == "\\":
+            index += 2
+            continue
+        if text.startswith("$(", index):
+            end = take_substitution(text, index)
+            check_inner(text[index + 2 : end - 1].strip("()") if text.startswith("$((", index) else text[index + 2 : end - 1])
+            index = end
+            continue
+        if text[index] == "`":
+            end = text.find("`", index + 1)
+            if end < 0:
+                block("the command has an unclosed backtick")
+            check_inner(text[index + 1 : end])
+            index = end + 1
+            continue
+        index += 1
+
+
+# Heredoc bodies of the command being checked, by placeholder. Read when the program is a shell or an interpreter.
+HEREDOCS: dict[str, str] = {}
+
+
 def flatten(text: str, check_inner) -> str:
-    """Checks each substitution with `check_inner`, drops heredoc bodies and turns unquoted newlines into `;`."""
+    """Checks each substitution with `check_inner`, keeps heredoc bodies aside and turns unquoted newlines into `;`."""
     out: list[str] = []
-    pending_heredocs: list[tuple[str, bool]] = []
+    pending_heredocs: list[tuple[str, bool, str]] = []
     index, quote = 0, ""
     while index < len(text):
         char = text[index]
@@ -167,7 +212,22 @@ def flatten(text: str, check_inner) -> str:
             out.append(text[index : index + 2])
             index += 2
             continue
-        if text.startswith("$(", index) and not text.startswith("$((", index):
+        if not quote and text.startswith("$'", index):
+            end = index + 2
+            while end < len(text) and text[end] != "'":
+                end += 2 if text[end] == "\\" else 1
+            if end >= len(text):
+                block("the command has an unclosed quote")
+            out.append("ANSI_STRING")
+            index = end + 1
+            continue
+        if text.startswith("$((", index):
+            end = take_substitution(text, index)
+            scan_substitutions(text[index + 3 : end - 2], check_inner)
+            out.append("ARITHMETIC")
+            index = end
+            continue
+        if text.startswith("$(", index):
             end = take_substitution(text, index)
             check_inner(text[index + 2 : end - 1])
             out.append("SUBSTITUTION")
@@ -205,18 +265,21 @@ def flatten(text: str, check_inner) -> str:
             continue
         heredoc = re.match(r"<<-?\s*(['\"]?)([\w.-]+)\1", text[index:])
         if heredoc:
-            pending_heredocs.append((heredoc.group(2), heredoc.group(1) == ""))
-            out.append(" ")
+            placeholder = f"HEREDOC_{len(HEREDOCS)}_"
+            HEREDOCS[placeholder] = ""
+            pending_heredocs.append((heredoc.group(2), heredoc.group(1) == "", placeholder))
+            out.append(f" {placeholder} ")
             index += heredoc.end()
             continue
         if char == "\n":
             out.append(" ; ")
             index += 1
-            for delimiter, expands in pending_heredocs:
+            for delimiter, expands, placeholder in pending_heredocs:
                 end = re.compile(r"^[ \t]*" + re.escape(delimiter) + r"[ \t]*$", re.MULTILINE).search(text, index)
                 body_end = end.start() if end else len(text)
+                HEREDOCS[placeholder] = text[index:body_end]
                 if expands:
-                    flatten(text[index:body_end], check_inner)
+                    scan_substitutions(text[index:body_end], check_inner)
                 index = end.end() if end else len(text)
             pending_heredocs.clear()
             continue
@@ -255,11 +318,12 @@ def split_commands(tokens: list[str]) -> list[tuple[list[str], str]]:
 # ---------------------------------------------------------------- checks
 
 
-def split_redirects(words: list[str]) -> tuple[list[str], list[str]]:
-    """Arguments and redirection targets. `2>&1` and `>/dev/null` write nothing."""
+def split_redirects(words: list[str]) -> tuple[list[str], list[str], list[str]]:
+    """Arguments, output targets and input sources. `2>&1` and `>/dev/null` write nothing."""
     operator = set("<>&|")
     args: list[str] = []
     targets: list[str] = []
+    sources: list[str] = []
     index = 0
     while index < len(words):
         word = words[index]
@@ -270,11 +334,13 @@ def split_redirects(words: list[str]) -> tuple[list[str], list[str]]:
         if word and set(word) <= operator and word not in SEPARATORS:
             if ">" in word and not word.endswith("&") and following and following != "/dev/null" and not following.isdigit():
                 targets.append(following)
+            if "<" in word and word != "<<<" and following:
+                sources.append(following)
             index += 2
             continue
         args.append(word)
         index += 1
-    return args, targets
+    return args, targets, sources
 
 
 def strip_leading(args: list[str]) -> list[str]:
@@ -292,6 +358,31 @@ def strip_leading(args: list[str]) -> list[str]:
     return args
 
 
+def program_of(args: list[str]) -> str:
+    """The program a command runs, `env` and wrappers unwrapped."""
+    args = strip_leading(args)
+    while args and os.path.basename(args[0]) == "env":
+        args = strip_leading([word for word in args[1:] if not word.startswith("-")])
+    return os.path.basename(args[0]) if args else ""
+
+
+def long_options(words: list[str], known: set[str]) -> set[str]:
+    """The known long options among `words`. git accepts any unambiguous prefix, so `--amen` counts as `--amend`."""
+    found: set[str] = set()
+    for word in words:
+        if not word.startswith("--"):
+            continue
+        name = word.split("=", 1)[0]
+        found |= {option for option in known if option == name or (len(name) >= 5 and option.startswith(name))}
+    return found
+
+
+GIT_DANGEROUS_LONGS = {
+    "--force", "--force-with-lease", "--force-if-includes", "--mirror", "--delete", "--prune", "--no-verify",
+    "--amend", "--hard", "--merge", "--keep", "--root",
+}
+
+
 def check_git(args: list[str], base: Path, root: Path) -> None:
     index = 1
     while index < len(args) and args[index].startswith("-"):
@@ -299,6 +390,8 @@ def check_git(args: list[str], base: Path, root: Path) -> None:
         if option in {"-C", "-c"} and index + 1 < len(args):
             if option == "-c" and args[index + 1].lower().startswith("core.hookspath"):
                 block("the command turns the git hooks off")
+            if option == "-C":
+                base = resolve(args[index + 1], base)
             index += 2
         else:
             index += 1
@@ -322,7 +415,7 @@ def check_git(args: list[str], base: Path, root: Path) -> None:
             kept.append(word)
         rest = kept
     short = "".join(word[1:] for word in rest if re.fullmatch(r"-[a-zA-Z]+", word))
-    longs = {word.split("=", 1)[0] for word in rest if word.startswith("--")}
+    longs = long_options(rest, GIT_DANGEROUS_LONGS)
     if sub == "push" and ("f" in short or "d" in short or longs & {"--force", "--force-with-lease", "--force-if-includes", "--mirror", "--delete", "--prune"} or any(word.startswith(("+", ":")) for word in rest)):
         block("the command force pushes or deletes on the remote")
     if sub in {"branch", "tag"} and ("d" in short.lower() or "--delete" in longs):
@@ -347,7 +440,7 @@ def check_git(args: list[str], base: Path, root: Path) -> None:
             block("the command may change a protected file (deployment CI, agent setup or rules)")
 
 
-def check_inline_code(program: str, code: str, base: Path, root: Path) -> None:
+def check_inline_code(code: str, base: Path, root: Path) -> None:
     if ENV_IN_CODE.search(code):
         block("the command dumps the environment")
     names = re.findall(r"[\w./~-]+", code)
@@ -357,12 +450,60 @@ def check_inline_code(program: str, code: str, base: Path, root: Path) -> None:
         block("the command may change a protected file (deployment CI, agent setup or rules)")
 
 
-def check_simple(words: list[str], base: Path, root: Path) -> Path:
-    """Checks one simple command and returns the working folder after it (it changes only with `cd`)."""
-    args, targets = split_redirects(words)
+# Options that take a value, for the runners whose own command is checked too.
+RUNNER_VALUE_OPTIONS = {
+    "uv": {"--env-file", "--with", "--python", "-p", "--directory", "--project", "--package", "--group", "--extra", "--index", "--from"},
+    "npx": {"--package", "-p", "--call", "-c"},
+    "docker": {"-e", "--env", "--env-file", "-v", "--volume", "--name", "-p", "--publish", "-w", "--workdir", "-u", "--user", "--network", "--entrypoint", "--mount", "--label", "-l"},
+}
+
+
+def runner_command(program: str, rest: list[str]) -> list[str] | None:
+    """The command run by `uv run`, `npx`, `bunx`, `docker run` or `docker exec`, or None."""
+    if program == "uv" and rest[:1] == ["run"]:
+        values, rest = RUNNER_VALUE_OPTIONS["uv"], rest[1:]
+    elif program in {"npx", "bunx", "pnpx"}:
+        values = RUNNER_VALUE_OPTIONS["npx"]
+    elif program in {"docker", "podman"} and rest[:1] in (["run"], ["exec"]):
+        values, rest = RUNNER_VALUE_OPTIONS["docker"], rest[1:]
+    else:
+        return None
+    index = 0
+    while index < len(rest) and rest[index].startswith("-"):
+        index += 2 if rest[index] in values else 1
+    remaining = rest[index:]
+    if program in {"docker", "podman"}:
+        remaining = remaining[1:]
+    return remaining
+
+
+def operands_of(program: str, rest: list[str]) -> list[str]:
+    """Non-option arguments, without the value of `--env-file` (a program reads it, nothing prints it) nor a grep pattern."""
+    operands: list[str] = []
+    skip = False
+    for word in rest:
+        if skip:
+            skip = False
+            continue
+        if word == "--env-file":
+            skip = True
+            continue
+        if not word.startswith("-"):
+            operands.append(word)
+    if program in {"grep", "egrep", "fgrep", "rg"} and operands and not {"-e", "-f", "--regexp", "--file"} & set(rest):
+        operands = operands[1:]
+    return operands
+
+
+def check_simple(words: list[str], base: Path, root: Path, piped_from: list[str] | None = None) -> Path:
+    """Checks one simple command and returns the working folder after it (it changes only with `cd` and `pushd`)."""
+    args, targets, sources = split_redirects(words)
     for target in targets:
         if is_protected(target, base, root):
             block("the command writes to a protected file (deployment CI, agent setup or rules)")
+    for source in sources:
+        if is_secret(source):
+            block("the command reads a .env file, which holds secrets")
     for word in words:
         if re.search(r"/proc/[^/\s]*/environ\b", word):
             block("the command dumps the environment")
@@ -371,14 +512,16 @@ def check_simple(words: list[str], base: Path, root: Path) -> Path:
         return base
     program = os.path.basename(args[0])
     rest = args[1:]
+    heredoc_bodies = [HEREDOCS[word] for word in words if word in HEREDOCS]
 
-    if program == "cd":
-        return resolve(rest[0], base) if rest and not rest[0].startswith("-") else base
+    if program in {"cd", "pushd"}:
+        folders = [word for word in rest if not word.startswith("-")]
+        return resolve(folders[0], base) if folders else base
     if program == "env":
         remaining = [word for word in rest if not word.startswith("-")]
         if not strip_leading(remaining):
             block("the command dumps the environment")
-        return check_simple(strip_leading(remaining), base, root)
+        return check_simple(strip_leading(remaining) + [word for word in words if word in HEREDOCS], base, root, piped_from)
     if program == "printenv" or (program in {"export", "set"} and all(word in {"-p"} for word in rest)):
         block("the command dumps the environment")
     if program in {"declare", "typeset"} and any(re.fullmatch(r"-[a-zA-Z]*[px][a-zA-Z]*", word) for word in rest) and not [w for w in rest if not w.startswith("-")]:
@@ -389,27 +532,32 @@ def check_simple(words: list[str], base: Path, root: Path) -> Path:
         check_command(" ".join(rest), base, root)
         return base
 
+    # Code given to a shell or an interpreter: -c/-e, a heredoc, or text piped from echo, printf or a heredoc.
+    piped_code = piped_from or []
     if program in SHELLS:
         for index, word in enumerate(rest):
             if re.fullmatch(r"-[a-zA-Z]*c[a-zA-Z]*", word) and index + 1 < len(rest):
                 check_command(rest[index + 1], base, root)
                 return base
-        if rest and not rest[0].startswith("-") and is_protected(rest[0], base, root):
-            return base
+        for code in heredoc_bodies + piped_code:
+            check_command(code, base, root)
         return base
     if program.rstrip("0123456789.") in INTERPRETERS or program in INTERPRETERS:
         for index, word in enumerate(rest):
             if word in {"-c", "-e", "--eval", "-p", "--print", "-E"} and index + 1 < len(rest):
-                check_inline_code(program, rest[index + 1], base, root)
+                check_inline_code(rest[index + 1], base, root)
                 break
+        for code in heredoc_bodies + piped_code:
+            check_inline_code(code, base, root)
 
-    env_file_values = {rest[i + 1] for i, word in enumerate(rest[:-1]) if word == "--env-file"}
-    env_file_values |= {word.split("=", 1)[1] for word in rest if word.startswith("--env-file=")}
-    operands = [word for word in rest if not word.startswith("-")]
+    nested = runner_command(program, rest)
+    if nested:
+        check_simple(nested, base, root)
+
+    operands = operands_of(program, rest)
     if program in {"rm", "rmdir", "shred", "unlink"} and any(is_outside(word, base, root) for word in operands):
         block("the command deletes outside the project")
-    secret_operands = [word for word in operands if is_secret(word) and word not in env_file_values]
-    if secret_operands:
+    if nested is None and any(is_secret(word) for word in operands):
         safe = program in SAFE_ENV_PROGRAMS or (program == "git" and rest[:1] == ["check-ignore"])
         safe |= program == "cp" and len(operands) == 2 and re.search(r"\.env\.(template|example)$", operands[0]) is not None
         if not safe:
@@ -422,8 +570,12 @@ def check_simple(words: list[str], base: Path, root: Path) -> Path:
             block("the command may change a protected file (deployment CI, agent setup or rules)")
     if program in WRITE_PROGRAMS and any(is_protected(word, base, root) for word in operands):
         block("the command may change a protected file (deployment CI, agent setup or rules)")
-    if program in COPY_PROGRAMS and operands and is_protected(operands[-1], base, root):
-        block("the command may change a protected file (deployment CI, agent setup or rules)")
+    if program in COPY_PROGRAMS | {"mv"}:
+        destinations = operands[-1:]
+        destinations += [rest[i + 1] for i, word in enumerate(rest[:-1]) if word in {"-t", "--target-directory"}]
+        destinations += [word.split("=", 1)[1] for word in rest if word.startswith("--target-directory=")]
+        if any(is_protected(word, base, root) for word in destinations):
+            block("the command may change a protected file (deployment CI, agent setup or rules)")
     if program == "dd" and any(word.startswith("of=") and is_protected(word[3:], base, root) for word in rest):
         block("the command may change a protected file (deployment CI, agent setup or rules)")
     if program == "find" and {"-delete", "-exec", "-execdir", "-ok"} & set(rest):
@@ -433,17 +585,27 @@ def check_simple(words: list[str], base: Path, root: Path) -> Path:
     return base
 
 
+def piped_text(words: list[str]) -> list[str]:
+    """Text a command writes to the next one: the arguments of echo and printf, the body of a heredoc."""
+    args = strip_leading(split_redirects(words)[0])
+    program = os.path.basename(args[0]) if args else ""
+    texts = [HEREDOCS[word] for word in words if word in HEREDOCS]
+    if program in {"echo", "printf"}:
+        texts.append(" ".join(word for word in args[1:] if not re.fullmatch(r"-[neE]+", word)))
+    return texts
+
+
 def check_command(command: str, base: Path, root: Path) -> None:
     flat = flatten(command, lambda inner: check_command(inner, base, root))
-    previous_program = ""
+    previous_words: list[str] = []
     previous_separator = ""
     for words, separator in split_commands(tokenize(flat)):
-        args = strip_leading(split_redirects(words)[0])
-        program = os.path.basename(args[0]) if args else ""
-        if previous_separator in {"|", "|&"} and previous_program in {"curl", "wget"} and (program in SHELLS or program in INTERPRETERS):
+        program = program_of(split_redirects(words)[0])
+        piped = previous_separator in {"|", "|&"}
+        if piped and program_of(split_redirects(previous_words)[0]) in {"curl", "wget"} and (program in SHELLS or program in INTERPRETERS):
             block("the command runs a downloaded script")
-        base = check_simple(words, base, root)
-        previous_program, previous_separator = program, separator
+        base = check_simple(words, base, root, piped_text(previous_words) if piped else None)
+        previous_words, previous_separator = words, separator
 
 
 # ---------------------------------------------------------------- tools
