@@ -51,6 +51,14 @@ def load_dotenv(
             continue
         name, value = parsed
         if name in target:
+            if target[name] != value:
+                # Names only, never values.
+                logger.warning(
+                    "%s is already set in the environment and differs from %s: "
+                    "the environment wins",
+                    name,
+                    path.name,
+                )
             continue
         target[name] = value
         loaded.append(name)

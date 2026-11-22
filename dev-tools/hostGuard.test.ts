@@ -68,6 +68,13 @@ test("devAllowedHosts reads DEV_ALLOWED_HOSTS and the Coder port URL", () => {
   ]);
 });
 
+test("devAllowedHosts ignores an unusable VSCODE_PROXY_URI", () => {
+  assert.deepEqual(
+    devAllowedHosts(21515, { VSCODE_PROXY_URI: "not a url {{port}}" }),
+    [],
+  );
+});
+
 test("the middleware answers 403 and does not call next for a forged Host", () => {
   let handler: (req: unknown, res: unknown, next: () => void) => void =
     () => {};

@@ -31,6 +31,13 @@ logger = logging.getLogger(__name__)
 
 SCHEMA_ATTEMPTS = 5
 SCHEMA_PAUSE_SECONDS = 1.0
+PRIVILEGE_HINT = (
+    "demo table not created: the database role may not create tables "
+    "(permission denied for schema public). In a Coder workspace the usual cause is "
+    "a DATABASE_URL exported by your shell (~/.config/up/env, a read-only account of "
+    "the organisation) that wins over api/.env. "
+    "Run `unset DATABASE_URL PGUSER PGPASSWORD`, then start the API again."
+)
 
 # Each action takes the visitor's id and returns what it read back.
 RecordDatabase = Callable[[str], int]
@@ -84,9 +91,17 @@ def prepare(actions: DemoActions) -> None:
     for attempt in range(1, SCHEMA_ATTEMPTS + 1):
         try:
             actions.prepare()
-        except Exception:  # noqa: BLE001 - the database may start after the API
+        except pg_errors.InsufficientPrivilege:
+            # Retrying cannot fix a missing right: one clear line, no traceback.
+            logger.error(PRIVILEGE_HINT)
+            return
+        except Exception as error:  # noqa: BLE001 - the database may start after the API
             logger.warning(
-                "demo table not created (attempt %d)", attempt, exc_info=True
+                "demo table not created (attempt %d/%d): %s",
+                attempt,
+                SCHEMA_ATTEMPTS,
+                type(error).__name__,
+                exc_info=attempt == SCHEMA_ATTEMPTS,
             )
             time.sleep(SCHEMA_PAUSE_SECONDS)
         else:

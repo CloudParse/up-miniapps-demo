@@ -187,3 +187,21 @@ def test_a_concurrent_table_creation_is_not_an_error(
     monkeypatch.setattr(demo_service.psycopg, "connect", lambda *_a, **_k: Connection())
 
     demo_service._ensure_schema("postgres://x")  # must not raise
+
+
+def test_a_missing_privilege_is_one_clear_line_and_not_retried(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    monkeypatch.setattr(demo_service, "SCHEMA_PAUSE_SECONDS", 0)
+    calls: list[int] = []
+
+    def refused() -> None:
+        calls.append(1)
+        raise pg_errors.InsufficientPrivilege("permission denied for schema public")
+
+    with caplog.at_level("ERROR"):
+        demo_service.prepare(DemoActions(None, None, None, prepare=refused))
+
+    assert len(calls) == 1
+    assert "~/.config/up/env" in caplog.text
+    assert "Traceback" not in caplog.text

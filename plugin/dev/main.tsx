@@ -11,6 +11,7 @@ import {
 import plugin from "@plugin/index";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { apiProblem, devBaseUrls } from "./devHost";
 
 // The Hub's shared DEV registration of every mini-app (../miniapp/src/dev/devHub.ts).
 const MOCK_APP_UUID = "0d0d0d0d-0000-4000-8000-000000000001";
@@ -20,7 +21,9 @@ const MOCK_APP_UUID = "0d0d0d0d-0000-4000-8000-000000000001";
 const DEFAULT_USER = "639980001";
 const TEST_PASSWORD = "password123";
 const ADMIN_SCOPE = "profile:miniapp:admin";
-const HUB = "/hub/api/v1";
+// The SDK's ApiService needs absolute base URLs (devHost.ts); the Vite server proxies /api/ and /hub/.
+const urls = devBaseUrls(window.location.origin);
+const HUB = urls.hubLogin;
 // The token lives 5 minutes: renew it a minute early.
 const TOKEN_LIFETIME_MS = 4 * 60 * 1000;
 
@@ -62,12 +65,12 @@ async function adminToken(): Promise<string> {
 }
 
 // The same class the Studio uses for `miniappApi`. The Vite server proxies /api/ to the API.
-const miniappApi = new ApiService("/api/v1");
+const miniappApi = new ApiService(urls.api);
 miniappApi.setTokenLoader(adminToken);
 
 const host: PluginHost = {
   application: {
-    httpBackendUrl: "/api/v1",
+    httpBackendUrl: urls.api,
     iconUrl: null,
     name: "Demo mini-app (development)",
     uuid: MOCK_APP_UUID,
@@ -76,7 +79,7 @@ const host: PluginHost = {
   basePath: "/",
   contractVersion: 1,
   getScopeToken: () => adminToken(),
-  hubApi: new ApiService(""),
+  hubApi: new ApiService(urls.hub),
   miniappApi,
   navigate: (pagePath) => {
     window.location.hash = pagePath;
@@ -95,6 +98,18 @@ function currentPage(): Omit<PluginPage, "component"> | undefined {
 
 const rootElement = document.getElementById("root");
 if (!rootElement) throw new Error("#root is missing");
+const problemBox = document.createElement("div");
+problemBox.setAttribute("role", "alert");
+problemBox.style.cssText =
+  "display:none;margin:16px auto;max-width:64rem;padding:12px 16px;border-radius:8px;background:#fef2f2;color:#991b1b;font:14px sans-serif";
+rootElement.before(problemBox);
+apiProblem(urls.api).then((problem) => {
+  if (problem) {
+    problemBox.textContent = problem;
+    problemBox.style.display = "block";
+  }
+});
+
 createRoot(rootElement).render(
   <StrictMode>
     <main className="mx-auto max-w-5xl p-8">

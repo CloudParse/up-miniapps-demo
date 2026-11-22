@@ -2,6 +2,8 @@
 
 A complete Up mini-app with its API: a React mini-app that uses every capability of `@cloudparse/up-miniapps-sdk` (`miniapp/`), a FastAPI API (`api/`) and the Studio plugin of the mini-app (`plugin/`, [`docs/plugin.md`](docs/plugin.md)). Every mini-app project of an organisation starts as a copy of it. It runs in the project's Coder workspace, against the organisation's DEV backend and the mini-app's own DEV database, cache and bucket.
 
+Guides by folder, for beginners (install, run, ports, tests, Docker, deploy, common errors): [`api/README.md`](api/README.md), [`miniapp/README.md`](miniapp/README.md), [`plugin/README.md`](plugin/README.md).
+
 Run the commands in [`SETUP.md`](SETUP.md) to get started, then read [`AGENT.md`](AGENT.md): it holds the architecture, the quick start, the conventions and the review checklist. Then read `miniapp/AGENT.md` and `api/AGENT.md`.
 
 ## Environment variables (the same names in the Coder workspace and in production)

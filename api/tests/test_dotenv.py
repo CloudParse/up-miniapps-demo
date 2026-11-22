@@ -172,3 +172,19 @@ def test_a_skipped_line_is_reported_by_number_never_by_value(
     assert "line 5" in caplog.text
     assert "SECRET" not in caplog.text
     assert "hunter2" not in caplog.text
+
+
+def test_a_shell_variable_that_differs_from_the_file_is_reported_by_name_only(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    environ = {"DATABASE_URL": "postgres://shell-secret", "SAME": "1"}
+    path = _write(tmp_path, "DATABASE_URL=postgres://file-secret\nSAME=1\n")
+
+    with caplog.at_level("WARNING"):
+        loaded = load_dotenv(path, environ)
+
+    assert loaded == []
+    assert environ["DATABASE_URL"] == "postgres://shell-secret"
+    assert "DATABASE_URL is already set" in caplog.text
+    assert "SAME" not in caplog.text
+    assert "secret" not in caplog.text

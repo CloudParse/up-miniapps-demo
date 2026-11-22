@@ -63,7 +63,13 @@ export function devAllowedHosts(
     .filter((host) => host.length > 0);
   const coderProxy = env.VSCODE_PROXY_URI;
   if (coderProxy) {
-    hosts.push(new URL(coderProxy.replace("{{port}}", String(port))).hostname);
+    // An unusable VSCODE_PROXY_URI (no scheme, garbage) must not stop the dev server with
+    // "Invalid URL": the loopback names and DEV_ALLOWED_HOSTS still work.
+    try {
+      hosts.push(new URL(coderProxy.replace("{{port}}", String(port))).hostname);
+    } catch {
+      // ignored
+    }
   }
   return [...hosts, ...extra];
 }

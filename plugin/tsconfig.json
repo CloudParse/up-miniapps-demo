@@ -3,6 +3,7 @@
     "target": "ES2022",
     "lib": ["dom", "dom.iterable", "esnext"],
     "module": "esnext",
+    "allowImportingTsExtensions": true,
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
     "strict": true,
