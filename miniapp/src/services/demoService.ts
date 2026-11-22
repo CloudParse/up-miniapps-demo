@@ -1,9 +1,10 @@
 import { apiService } from "@app/services/backend";
 
-// Route of the demo backend (backend/app/api/routes/demo.py), served under /api/v1.
+// Routes of the demo API (api/app/api/routes/demo.py), served under /api/v1 outside production only.
+export const DEMO_PATH = "demo";
 export const DEMO_VISIT_PATH = "demo/visit";
 
-/** Wire shape returned by `POST /api/v1/demo/visit` (backend/app/schemas/demo.py). */
+/** Wire shape returned by `POST /api/v1/demo/visit` (api/app/schemas/demo.py). */
 interface IBackendDemoVisit {
   databaseVisits: number | null;
   cacheVisits: number | null;
@@ -30,4 +31,14 @@ export async function recordDemoVisit(): Promise<DemoVisit> {
   return mapBackendDemoVisit(
     await apiService.post<IBackendDemoVisit>(DEMO_VISIT_PATH, {}),
   );
+}
+
+/** True when the API serves the demo. In production the route does not exist (404): the card stays hidden. */
+export async function isDemoServed(): Promise<boolean> {
+  try {
+    await apiService.get<{ enabled: boolean }>(DEMO_PATH);
+    return true;
+  } catch {
+    return false;
+  }
 }

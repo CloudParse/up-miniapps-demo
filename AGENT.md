@@ -138,7 +138,7 @@ Ports:
 - **CORS is an explicit allow-list**, never `*` with credentials.
 - **Images**: pinned tags, no secret baked into an image.
 - **The DEV resources of the mini-app** (`api/.env`, written by the workspace) are shared by its members. Never copy them into the repository, a config file or a log. `api/.env` is gitignored.
-- **The demo data route** `POST /api/v1/demo/visit` (api/app/services/demo_service.py, card `DemoDataCard` of the home screen) is an example of the three resources (PostgreSQL row, cache counter with `CACHE_KEY_PREFIX`, bucket object). Delete it with its route, schema, test and card when you start your own features.
+- **The demo data route** `POST /api/v1/demo/visit` (api/app/services/demo_service.py, card `DemoDataCard` of the home screen) is an example of the three resources (PostgreSQL row, cache counter with `CACHE_KEY_PREFIX`, one bucket object per user). It is not served in production (the routes answer 404 and the card hides): delete it with its route, schema, test and card before you ship.
 - **Dependencies**: add as few as possible, run `npm audit` (frontend) and `uvx pip-audit` (backend) before shipping, and justify each new one.
 
 ### 5.1 Protected files and forbidden actions

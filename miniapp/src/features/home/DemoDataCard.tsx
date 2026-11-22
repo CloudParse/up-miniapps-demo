@@ -1,19 +1,29 @@
 import { Button } from "@app/components/ui/button";
 import { Card } from "@app/components/ui/card";
 import { getErrorMessage } from "@app/lib/errors";
-import { type DemoVisit, recordDemoVisit } from "@app/services/demoService";
-import { useState } from "react";
+import {
+  type DemoVisit,
+  isDemoServed,
+  recordDemoVisit,
+} from "@app/services/demoService";
+import { useEffect, useState } from "react";
 
 function describe(value: number | string | null): string {
   return value === null ? "non configuré" : String(value);
 }
 
 // The demo's own resources: POST /api/v1/demo/visit writes a row in PostgreSQL, a counter in
-// the cache and an object in the bucket, then reads them back. Delete it with backend/app/services/demo_service.py.
+// the cache and an object in the bucket, then reads them back. Not served in production (the
+// card then stays hidden). Delete it with api/app/services/demo_service.py before shipping.
 export function DemoDataCard() {
   const [visit, setVisit] = useState<DemoVisit | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [served, setServed] = useState(false);
+
+  useEffect(() => {
+    void isDemoServed().then(setServed);
+  }, []);
 
   async function record() {
     setBusy(true);
@@ -26,6 +36,8 @@ export function DemoDataCard() {
       setBusy(false);
     }
   }
+
+  if (!served) return null;
 
   return (
     <Card className="flex flex-col gap-2">

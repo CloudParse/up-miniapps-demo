@@ -10,3 +10,9 @@ class DemoVisit(CamelModel):
     database_visits: int | None
     cache_visits: int | None
     storage_object: str | None
+
+
+class DemoState(CamelModel):
+    """Answered by ``GET /demo``; the route does not exist (404) in production."""
+
+    enabled: bool

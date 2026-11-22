@@ -56,7 +56,11 @@ class StorageConfig(_Section):
         # A deployed component gets STORAGE_ENDPOINT as `host:port`
         # (bucket-svc:9000), the DEV workspace as a URL: boto3 needs a URL.
         value = value.strip()
-        return f"http://{value}" if value and "://" not in value else value
+        if value and "://" not in value:
+            return f"http://{value}"
+        if value and not value.startswith(("http://", "https://")):
+            raise ValueError("storage endpoint must be http:// or https://")
+        return value
 
 
 class CorsConfig(_Section):
