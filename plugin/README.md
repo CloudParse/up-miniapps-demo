@@ -4,7 +4,7 @@ The admin page of your mini-app, shown inside Studio (the backoffice). It is one
 
 How it is published and how it reaches the API: [`../docs/plugin.md`](../docs/plugin.md). The coding rules are in [`AGENT.md`](AGENT.md). This file is the beginner guide.
 
-The plugin is styled in light mode, like the Studio: `src/styles.css` overrides the dark tokens of the backoffice SDK (see the comment there). Keep using the tokens (`bg-card`, `text-foreground`, ...) and the SDK components: they follow it.
+The plugin is light, like the Studio: the backoffice SDK (0.3.0 and later) carries the Studio palette and fonts (Figtree for text, Bricolage Grotesque for display titles). `src/styles.css` only imports the SDK stylesheet. Use the tokens (`bg-card`, `text-foreground`, `border-line`, `bg-soft`, ...) and the SDK components. Never write `bg-white/5`, `text-white` or other opacity colors: they are for a dark page.
 
 Studio loads only published bundles. In development you use a small page that runs the same plugin code with hot reload.
 

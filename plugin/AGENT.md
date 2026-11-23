@@ -15,7 +15,7 @@ npm run check:write && npm run typecheck && npm run build   # dist/plugin.js
 ## Rules
 
 - `src/index.tsx` default-exports `definePlugin({ id, name, pages, styles })`. The `id` is lowercase. Rename the template's `up-miniapps-demo` to your mini-app's own id: two mini-apps made from the template would publish the same one.
-- This is Studio code, not mini-app code. Use the SDK UI kit (`SectionHeader`, `StatTile`, `Table`, `Modal`, `Banner`, ...), English text, Tailwind theme tokens (light theme set in `src/styles.css`, do not hard-code dark colors), no arbitrary values, no `any`. No `alert`, `confirm`, `window.open`, cookies or web storage: the plugin runs in a sandboxed iframe.
+- This is Studio code, not mini-app code. Use the SDK UI kit (`SectionHeader`, `StatTile`, `Table`, `Modal`, `Banner`, ...), English text, Tailwind theme tokens (the light Studio theme comes from the SDK 0.3.0, `src/styles.css` only imports it; no `white/…` or `black/…` opacity classes, no hard-coded colors), no arbitrary values, no `any`. No `alert`, `confirm`, `window.open`, cookies or web storage: the plugin runs in a sandboxed iframe.
 - API calls only through `miniappApi` (`src/services/`). Paths start after the API base URL, which ends with `/api/v1`. Check errors with `isApiError()`, never `instanceof ApiError`.
 - The plugin never holds a database, cache or bucket credential, and nothing secret: everything goes through an admin route of `api/`.
 - Production output: ONE ES module, `dist/plugin.js` (`plugin` section of `miniapp.yaml`). No code splitting, no dynamic `import()`. `grep -c __UP_BACKOFFICE_SHARED__ dist/plugin.js` must print 3.

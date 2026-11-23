@@ -109,7 +109,7 @@ The page needs the API (terminal 1, port 21514) and the DEV backend. How it work
 
 Limits:
 - The admin routes need the scope `profile:miniapp:admin`. The DEV backend gives it only to a test user with the global Hub flag `miniapp_admin`. With another user, the page shows "The API refuses this account". Pick a user with `?user=<local number>` (the numbers are in `miniapp/src/dev/devHub.ts`). Ask an admin of your organisation to flag a test user if none is.
-- The page has no sandbox, no Studio layout and no host styles. The plugin is light: `plugin/src/styles.css` sets a light theme over the dark tokens of the SDK. Look once in the real Studio before you ship: press **Déployer le plugin**, then open the mini-app in the Studio, tab "Plugin".
+- The page has no sandbox, no Studio layout and no host styles. The plugin is light, like the Studio: the backoffice SDK (0.3.0 and later) ships the Studio palette, with Figtree for text and Bricolage Grotesque for display titles. `plugin/src/styles.css` only imports the SDK stylesheet. Look once in the real Studio before you ship: press **Déployer le plugin**, then open the mini-app in the Studio, tab "Plugin".
 
 ## Checks
 

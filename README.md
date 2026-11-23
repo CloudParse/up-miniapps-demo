@@ -44,7 +44,7 @@ What this template shows, and where. When the platform or the SDK gets a feature
 | Web launcher | Phone mock and device picker on a computer, fullscreen on a phone or in a narrow window (with a **Plein écran** button where the browser allows it), install on the home screen, web host limits with a clear message | `docs/web-launcher.md`, `miniapp/src/lib/errors.ts` |
 | Realtime | WebSocket route `/api/v1/ws`, hub, push example, listening client, **Ping / pong button with the round trip**, tests | `docs/realtime.md`, `api/app/api/routes/realtime.py` |
 | API | FastAPI, access levels (public, user, admin), Hub tokens and the admin scope, `.env` loader, Host guard, `0.0.0.0` dev servers, database, cache, bucket, tests | `api/`, `api/AGENT.md` |
-| Studio plugin | Boilerplate in light mode (the Studio is light), development page, admin routes | `plugin/`, `docs/plugin.md` |
+| Studio plugin | Boilerplate in light mode with the Studio palette and fonts (backoffice SDK 0.3.0), development page, admin routes | `plugin/`, `docs/plugin.md` |
 | Coder | Workspace started by the person, project variables in the shell, `CLAUDE.local.md`, ports, buttons that open a tab, no sign-in rate limit in DEV | `docs/coder.md`, `SETUP.md` |
 | Deploy | `miniapp.yaml`, buttons in the Studio, Gitea CI, addresses registered by the platform, `publicIngress` | `docs/deploy.md`, `miniapp.yaml` |
 | Agent skills | Project, CI contract, platform guide, frontend, API, web launcher, realtime (draft), security reviewer | `.claude/skills/`, `.claude/agents/` |
