@@ -100,7 +100,7 @@ The backend never keeps its own list of admins. The Hub decides, and says so ins
 
 1. The shell asks the Hub for a scoped token: `POST /applications/{uuid}/token`. A mini-app never asks for scopes. The Hub ignores a `scopes` field in the body.
 2. The Hub puts `["profile:miniapp:admin"]` in the token's `scp` claim **only if that user has the global Hub flag `miniapp_admin`**. The flag is not a per-app grant: it is valid for every mini-app. For anyone else the token has no `scp` claim (or an empty one).
-3. A token made in the Studio (`POST /admin/applications/{uuid}/token`, tab "Scope tokens", by an organisation admin or a super user) always carries `profile:miniapp:admin`.
+3. A token made in the Studio (`POST /admin/applications/{uuid}/token`, tab "Scope tokens", by an organisation admin, a super user, or a mini-app administrator of this app) always carries `profile:miniapp:admin`.
 4. `core/security.py` sets `AuthenticatedUser.is_admin` (the scope is in `scp`). `require_admin` turns a non-admin into `403 forbidden`.
 
 Because the token is signed by the Hub and verified here, a client cannot add the scope to its own token.
