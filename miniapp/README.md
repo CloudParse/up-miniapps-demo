@@ -4,6 +4,14 @@ The mini-app users open in the Up app. React + Vite + `@cloudparse/up-miniapps-s
 
 The architecture and the coding rules are in [`AGENT.md`](AGENT.md). This file is the beginner guide.
 
+## How the mini-app is shown
+
+- The SDK is pinned to `@cloudparse/up-miniapps-sdk` 0.17.0. That version draws the phone mock by itself on the Up web launcher. Do not add an SDK version older than 0.17.0.
+- On the Up web launcher on a computer, the mini-app runs inside a phone mock. The person picks the device (Pixel, iPhone, tablet) above the app.
+- On the Up web launcher on a phone, there is no mock: the mini-app fills the screen, like in the Up app. The exit button of the mini-app goes back to the list of mini-apps.
+- You change nothing for this. `<SDKProvider>` reads `window.__UP_RENDER_AS__`, which the launcher sets. The `edgeToEdge` prop of `<SDKProvider>` only changes the simulator you get in a plain browser (`npm run dev`).
+- Build with the pinned SDK (`npm ci`) before you upload the bundle in the Studio. A bundle built with an older SDK shows no phone mock.
+
 ## Prerequisites
 
 - In a Coder workspace: nothing to install. `up-project-setup` already ran `npm ci` and copied `.env.template` to `.env`.

@@ -16,7 +16,7 @@
     "format": "biome format . --write --max-diagnostics 10000 --diagnostic-level error"
   },
   "dependencies": {
-    "@cloudparse/up-miniapps-sdk": "^0.17.0",
+    "@cloudparse/up-miniapps-sdk": "0.17.0",
     "@vis.gl/react-maplibre": "^8.1.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
