@@ -63,6 +63,8 @@ Add layers **when a use case needs them**, not before:
 
 `hello` (public), `me` (authenticated) and `admin/hello` (admin only) are the worked examples; pick the access level first, see "Public, authenticated and admin routes".
 
+`ws` (`api/routes/realtime.py`, WebSocket) is the worked example of a push: the hub in `services/realtime_service.py` broadcasts, the mini-app listens. It is public, so push only what every member may see. See `docs/realtime.md`.
+
 ## FastAPI practices
 
 - **Routers and prefix**: one `APIRouter` per resource, mounted once in `api/router.py` under `/api/v1`. `GET /healthz` stays unversioned and public.

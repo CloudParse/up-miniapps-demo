@@ -3,7 +3,9 @@ import { ScreenTitle } from "@app/components/layout/ScreenTitle";
 import { Badge } from "@app/components/ui/badge";
 import { Button } from "@app/components/ui/button";
 import { Card } from "@app/components/ui/card";
+import { useAction } from "@app/hooks/useAction";
 import { apiClient, getWsUrl } from "@app/services/backend";
+import { broadcastDemoMessage } from "@app/services/demoService";
 import {
   type BroadcastWsServiceClient,
   createWsService,
@@ -26,6 +28,11 @@ export function RealtimeDemo() {
   const [status, setStatus] = useState<WsConnectionStatus>("closed");
   const [messages, setMessages] = useState<{ id: number; text: string }[]>([]);
   const [client, setClient] = useState<BroadcastWsServiceClient | null>(null);
+  const send = useAction(() =>
+    broadcastDemoMessage(
+      `Bonjour de ${new Date().toLocaleTimeString("fr-FR")}`,
+    ),
+  );
 
   useEffect(() => {
     if (!wsUrl) return;
@@ -62,7 +69,7 @@ export function RealtimeDemo() {
   return (
     <div className="flex flex-col gap-4">
       <ScreenTitle
-        subtitle="Canal diffusé, reconnexion automatique."
+        subtitle="Canal diffusé : l'API pousse, l'app écoute. Reconnexion automatique."
         title="Temps réel"
       />
       <Card className="flex items-center justify-between gap-3">
@@ -86,6 +93,16 @@ export function RealtimeDemo() {
           Déconnecter
         </Button>
       </div>
+      <Button
+        disabled={status !== "open" || send.state.status === "pending"}
+        onClick={() => void send.run()}
+        variant="secondary"
+      >
+        Envoyer un message à tous
+      </Button>
+      {send.state.status === "error" ? (
+        <p className="text-sm-plus text-accent-danger">{send.state.message}</p>
+      ) : null}
       <div className="flex flex-col gap-2">
         {messages.length === 0 ? (
           <p className="text-xs-plus text-ink-faint">

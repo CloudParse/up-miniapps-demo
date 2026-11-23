@@ -14,6 +14,7 @@ from app.core.security import AuthenticatedUser, TokenVerifier
 from app.services.demo_admin_service import DemoAdminActions, DemoAdminService
 from app.services.demo_service import DemoActions, DemoService
 from app.services.hello_service import HelloService
+from app.services.realtime_service import RealtimeHub
 from app.services.resource_service import ResourceProbes, ResourceService
 
 # auto_error=False: a missing header becomes our own 401 JSON error.
@@ -37,6 +38,11 @@ def get_demo_service(request: Request) -> DemoService:
 def get_demo_admin_service(request: Request) -> DemoAdminService:
     actions: DemoAdminActions = request.app.state.demo_admin_actions
     return DemoAdminService(actions)
+
+
+def get_realtime_hub(request: Request) -> RealtimeHub:
+    hub: RealtimeHub = request.app.state.realtime_hub
+    return hub
 
 
 def get_token_verifier(request: Request) -> TokenVerifier:
@@ -70,5 +76,6 @@ def require_admin(
 HelloServiceDep = Annotated[HelloService, Depends(get_hello_service)]
 ResourceServiceDep = Annotated[ResourceService, Depends(get_resource_service)]
 DemoServiceDep = Annotated[DemoService, Depends(get_demo_service)]
+RealtimeHubDep = Annotated[RealtimeHub, Depends(get_realtime_hub)]
 DemoAdminServiceDep = Annotated[DemoAdminService, Depends(get_demo_admin_service)]
 CurrentUserDep = Annotated[AuthenticatedUser, Depends(get_current_user)]

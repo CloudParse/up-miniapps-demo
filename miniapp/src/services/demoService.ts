@@ -3,6 +3,7 @@ import { apiService } from "@app/services/backend";
 // Routes of the demo API (api/app/api/routes/demo.py), served under /api/v1 outside production only.
 export const DEMO_PATH = "demo";
 export const DEMO_VISIT_PATH = "demo/visit";
+export const DEMO_BROADCAST_PATH = "demo/broadcast";
 
 /** Wire shape returned by `POST /api/v1/demo/visit` (api/app/schemas/demo.py). */
 interface IBackendDemoVisit {
@@ -41,4 +42,17 @@ export async function isDemoServed(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/**
+ * Asks the API to push a message to every open WebSocket (`POST /api/v1/demo/broadcast`).
+ * The message comes back through the socket of the "Temps réel" screen, not through this call:
+ * the SDK's WebSocket client only listens. Returns how many sockets received it.
+ */
+export async function broadcastDemoMessage(text: string): Promise<number> {
+  const result = await apiService.post<{ delivered: number }>(
+    DEMO_BROADCAST_PATH,
+    { text },
+  );
+  return result.delivered;
 }

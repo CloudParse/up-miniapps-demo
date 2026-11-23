@@ -6,12 +6,13 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.router import api_router
-from app.api.routes import demo, health
+from app.api.routes import demo, health, realtime
 from app.core.config import Config, get_config
 from app.core.errors import register_error_handlers
 from app.core.security import build_token_verifier
 from app.services.demo_admin_service import DemoAdminActions
 from app.services.demo_service import DemoActions, prepare
+from app.services.realtime_service import RealtimeHub
 from app.services.resource_service import ResourceProbes
 
 API_PREFIX = "/api/v1"
@@ -44,6 +45,7 @@ def create_app(config: Config | None = None) -> FastAPI:
     app.state.resource_probes = ResourceProbes.from_config(config)
     app.state.demo_actions = DemoActions.from_config(config)
     app.state.demo_admin_actions = DemoAdminActions.from_config(config)
+    app.state.realtime_hub = RealtimeHub()
 
     _add_cors(app, config)
     register_error_handlers(app)
@@ -52,6 +54,7 @@ def create_app(config: Config | None = None) -> FastAPI:
     if not config.is_production:
         # An example to delete before shipping: never served in production.
         app.include_router(demo.router, prefix=API_PREFIX)
+        app.include_router(realtime.demo_router, prefix=API_PREFIX)
     return app
 
 

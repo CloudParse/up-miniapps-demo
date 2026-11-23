@@ -37,13 +37,14 @@ Outside the shell (your browser), `SDKProvider` mounts a **simulator**: a phone 
 
 ### Calling the backend
 
-- `src/services/backend.ts` builds the client with `createApiService`. The URL comes from the shell (`env.backendUrl`) first, then from `VITE_BACKEND_URL`. Never invent one: a missing backend shows a visible empty state.
+- `src/services/backend.ts` builds the client with `createApiService`. The URL comes from the platform first (`window.__UP_BACKEND_URLS__`, then `env.backendUrl`, then an `UPDATE_CONTEXT` event), then from `VITE_BACKEND_URL` in development. Never invent one: a missing backend shows a visible empty state.
 - In development `VITE_BACKEND_URL` is `/api/v1`. `config/env.ts` turns a path into an absolute URL on the page's origin, and the Vite dev server forwards `/api/` to `http://127.0.0.1:21514` (`vite.config.ts`). An absolute URL is called directly.
 - `vite.config.ts` `hostGuard` (`../dev-tools/hostGuard.ts`): the dev server answers 403 to any Host header that is not allowed, IP addresses included (Vite 8 lets IP hosts through `server.allowedHosts`). In a Coder workspace it allows the port URL host of 21515, read from `VSCODE_PROXY_URI`, and the dashboard app host; loopback names are always allowed. `server.host` is `true` (0.0.0.0), so Coder lists the port in "Open ports". The shell variable `DEV_ALLOWED_HOSTS` adds hosts (Vite does not read it from `.env`). See `../docs/coder.md`. `npm test` runs the unit tests of the guard (node's test runner).
 - Requests go through the shell, which attaches the user's token. Never hand-roll `fetch`. The one exception is development tooling: `src/dev/` signs the simulator in as a DEV test user through the Vite proxy `/hub/` (`devHub.ts`), and is cut out of a production build (`import.meta.env.DEV` guards).
 - Test users (development only): without `VITE_DEV_TOKEN`, the simulator first shows `DevUserPicker` (15 users of the DEV backend, `src/dev/devHub.ts`), then runs the app with the real scoped token of the one picked, renewed every 4 minutes (`useDevSession`). `DevUserSwitchCard` on the account screen goes back to the picker. `devHub.ts` reads `import.meta.env.DEV` itself so that the production build drops the list and the password.
 - `src/services/helloService.ts` is the worked example: `GET /api/v1/hello`, wire type, mapping to the UI type in one function. `features/home/BackendGreetingCard.tsx` displays it, `features/home/greetingLoader.ts` loads it into `atoms/greeting.ts`.
-- The realtime demo (`features/tools/RealtimeDemo.tsx`) needs a WebSocket URL from the shell. The demo backend has none, so the demo shows its "not configured" state locally.
+- The realtime demo (`features/tools/RealtimeDemo.tsx`) listens on the WebSocket of the API (`GET /api/v1/ws`, `api/app/api/routes/realtime.py`). The address comes from the platform, like the HTTP one. The button "Envoyer un message à tous" calls `POST /api/v1/demo/broadcast`, and the message comes back through the socket. Details: `docs/realtime.md`.
+- On the Up website the mini-app runs in a phone mock (computer) or fullscreen (phone), and some capabilities are not supported (fidelity, camera, location...). `src/lib/errors.ts` turns the web host answer into a clear message. Details: `docs/web-launcher.md`.
 
 Look signatures up in the SDK README or its `.d.ts`; never guess a method name.
 

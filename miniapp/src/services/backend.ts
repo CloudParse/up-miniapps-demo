@@ -21,7 +21,7 @@ export function getWsUrl(): string | null {
 export class BackendNotConfiguredError extends Error {
   constructor() {
     super(
-      "Backend non configuré : renseigne VITE_BACKEND_URL ou laisse le shell fournir env.backendUrl.",
+      "Backend non configuré : la plateforme fournit l'adresse quand le backend est déployé, ou renseigne VITE_BACKEND_URL en développement.",
     );
     this.name = "BackendNotConfiguredError";
   }
