@@ -149,6 +149,11 @@ Ports:
 - **Anything in `miniapp/` is public.** `VITE_*` variables are inlined into the bundle: never put a key, token or secret there. Dev-only values are blanked in production builds.
 - **Validate every input** at the edge (Pydantic models, `Query(...)` constraints). Never trust a client-supplied id, name or role.
 - **Authenticate and authorise.** Choose the access level of every route up front: public, authenticated, or admin (admin = `profile:miniapp:admin` scope in the Hub-signed token, enforced by `require_admin`, see `api/AGENT.md`). Routes that return or change user data depend on `get_current_user`. A token minted for another mini-app (`aud`) must be rejected. Never weaken a check to "make it work".
+- **An admin route usually comes with a plugin page.**
+  - Admin routes (`/api/v1/admin/...`, `require_admin`) let the mini-app's administrators put data in: content, settings, moderation.
+  - The administrators call them from the Studio plugin (`plugin/`, `docs/plugin.md`), not from the mini-app's screens.
+  - When you add an admin route, add or update the plugin page that calls it.
+  - The demo pairs `/api/v1/admin/demo/*` with the demo plugin page.
 - **Never leak internals**: error bodies are generic (`{"error": {"code", "message"}}`), tracebacks stay in the logs, interactive docs are off in production.
 - **No raw HTML.** Never use `dangerouslySetInnerHTML`; no string-built SQL (use a query builder or parameters).
 - **CORS is an explicit allow-list**, never `*` with credentials.
@@ -191,7 +196,12 @@ Enforcement:
    - `plugin/`: `npm run check:write && npm run typecheck && npm run build`
    - the full list, with the lock checks and the protected-files check: `up-miniapp-ci-contract` section 4
 4. **Run the mandatory final review (section 7), including the security agent (section 7.4).**
-5. Only then call the task done.
+5. Commit and push to `main` as often as possible:
+   - Commit after every small change that passes the checks of step 3.
+   - Push each time the review of step 4 passes on what you push. Push small, reviewed pieces often, not one big change at the end.
+   - Small commits are easy to review and to undo, and your teammates get your work at once.
+   - Claude Code asks you before every `git push`. Never force push (section 5.1).
+6. Only then call the task done.
 
 ## 7. Mandatory final review
 
