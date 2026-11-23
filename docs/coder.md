@@ -63,7 +63,8 @@ Coder workspace (dev-<organisation>)
 ## When the workspace runs
 
 - A workspace starts only when a person starts it. The platform creates it stopped, without a pod, and never starts it for you.
-- Open the Studio link **Ouvrir mon workspace**, then start the workspace in Coder (one click). It stops again on its own after 2 hours without use.
+- Open the Studio link **Ouvrir mon workspace**, then start the workspace in Coder (one click). Coder shows no warning on Start.
+- If you start a brand-new workspace within its first minute, it can still be held (no pod yet): stop it and start it again. It stops again on its own after 2 hours without use.
 - A workspace stopped for a while keeps `/home/coder`: your files and installed tools are still there when it starts again.
 
 ## Your shell and the project settings
