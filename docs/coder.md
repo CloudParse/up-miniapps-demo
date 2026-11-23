@@ -71,7 +71,7 @@ Coder workspace (dev-<organisation>)
 - Every **Ouvrir mon workspace** entry does the same: the button on the page of a mini-app, the link in the sidebar, the link on the home page, the "Coder" line of the services and the card of the components page.
 - An entry that is not on a mini-app page uses your mini-apps. With one mini-app it opens that workspace. With several it shows a short list to choose from. With none it says "Aucune mini-app à ouvrir.".
 - The first time, the button opens the Coder sign-in page. Sign in with the account you use in the Studio. After the sign-in Coder shows your workspace, which is already there, stopped. Press **Start**.
-- If your organisation was deployed before template 0.5.13, nothing is created ahead and the click answers "Le workspace n'est pas encore prêt": ask a manager to redeploy the organisation.
+- If your organisation was deployed before template 0.5.13, nothing is created ahead and the click says "Ton organisation doit être redéployée avec le dernier modèle Coder.": ask a manager to redeploy the organisation.
 - If the workspace page shows a failure, press **Start**. A person never gets a second workspace for the same mini-app.
 - A workspace that you started and left unused for 5 minutes after its creation is stopped on its own, and one left running without use is stopped after 2 hours.
 - A workspace created before 2026-11-23 can show the Coder warning "Ephemeral Parameters Detected" when you press Start. In Coder, open the workspace and press **Update** to get the current template (0.5.13): the warning is gone after it, and the workspace keeps its files.
