@@ -4,6 +4,12 @@ import { Badge } from "@app/components/ui/badge";
 import { Button } from "@app/components/ui/button";
 import { Card } from "@app/components/ui/card";
 import { useAction } from "@app/hooks/useAction";
+import {
+  createPingClient,
+  type PingClient,
+  type PingResult,
+  type PingStatus,
+} from "@app/lib/pingClient";
 import { apiClient, getWsUrl } from "@app/services/backend";
 import { broadcastDemoMessage } from "@app/services/demoService";
 import {
@@ -13,6 +19,12 @@ import {
   type WsMessage,
 } from "@cloudparse/up-miniapps-sdk";
 import { useEffect, useState } from "react";
+
+const STATUS_LABEL: Record<PingStatus, string> = {
+  closed: "déconnecté",
+  connecting: "connexion…",
+  open: "connecté",
+};
 
 const STATUS_TONE: Record<
   WsConnectionStatus,
@@ -28,6 +40,12 @@ export function RealtimeDemo() {
   const [status, setStatus] = useState<WsConnectionStatus>("closed");
   const [messages, setMessages] = useState<{ id: number; text: string }[]>([]);
   const [client, setClient] = useState<BroadcastWsServiceClient | null>(null);
+  // Ping/pong: the SDK broadcast client only listens, so the ping has its own small socket
+  // to the same address (src/lib/pingClient.ts). The API answers the sender only.
+  const [pingStatus, setPingStatus] = useState<PingStatus>("closed");
+  const [lastPong, setLastPong] = useState<PingResult | null>(null);
+  const [pingLog, setPingLog] = useState<{ id: number; text: string }[]>([]);
+  const [pinger, setPinger] = useState<PingClient | null>(null);
   const send = useAction(() =>
     broadcastDemoMessage(
       `Bonjour de ${new Date().toLocaleTimeString("fr-FR")}`,
@@ -51,6 +69,32 @@ export function RealtimeDemo() {
       offStatus();
       offMessages();
       ws.disconnect();
+    };
+  }, [wsUrl]);
+
+  useEffect(() => {
+    if (!wsUrl) return;
+    let line = 0;
+    const next = createPingClient({
+      onLog: (text) =>
+        setPingLog((previous) =>
+          [
+            {
+              id: ++line,
+              text: `${new Date().toLocaleTimeString("fr-FR")} ${text}`,
+            },
+            ...previous,
+          ].slice(0, 6),
+        ),
+      onPong: setLastPong,
+      onStatus: setPingStatus,
+      url: wsUrl,
+    });
+    setPinger(next);
+    next.connect();
+    return () => {
+      next.disconnect();
+      setPinger(null);
     };
   }, [wsUrl]);
 
@@ -93,6 +137,43 @@ export function RealtimeDemo() {
           Déconnecter
         </Button>
       </div>
+      <Card className="flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm-plus text-ink-bright">Ping / pong</p>
+          <Badge
+            tone={
+              pingStatus === "open"
+                ? "success"
+                : pingStatus === "connecting"
+                  ? "warning"
+                  : "neutral"
+            }
+          >
+            {STATUS_LABEL[pingStatus]}
+          </Badge>
+        </div>
+        <Button
+          disabled={!pinger || pingStatus !== "open"}
+          onClick={() => pinger?.ping()}
+        >
+          Ping
+        </Button>
+        {lastPong ? (
+          <p className="text-sm-plus text-ink-bright">
+            Pong #{lastPong.id} reçu en {lastPong.roundTripMs} ms (heure du
+            serveur {new Date(lastPong.serverTime).toLocaleTimeString("fr-FR")})
+          </p>
+        ) : (
+          <p className="text-xs-plus text-ink-faint">
+            Appuie sur Ping : l'API répond par un pong, à toi seul.
+          </p>
+        )}
+        {pingLog.map((entry) => (
+          <p className="text-xxs-minus text-ink-soft break-all" key={entry.id}>
+            {entry.text}
+          </p>
+        ))}
+      </Card>
       <Button
         disabled={status !== "open" || send.state.status === "pending"}
         onClick={() => void send.run()}

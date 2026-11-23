@@ -1,5 +1,6 @@
 import asyncio
 import time
+from datetime import datetime
 
 import pytest
 from fastapi.testclient import TestClient
@@ -254,3 +255,61 @@ def test_the_demo_broadcast_does_not_exist_in_production(config: Config) -> None
     assert production.post(BROADCAST, json={"text": "x"}).status_code == 404
     assert production.get("/docs").status_code == 404
     assert production.get("/openapi.json").status_code == 404
+
+
+def test_a_ping_is_answered_to_the_sender_only(client: TestClient) -> None:
+    with (
+        client.websocket_connect("/api/v1/ws") as sender,
+        client.websocket_connect("/api/v1/ws") as other,
+    ):
+        sender.send_json({"type": "ping", "id": 7})
+
+        pong = sender.receive_json()
+        assert pong["type"] == "pong"
+        assert pong["id"] == 7
+        assert datetime.fromisoformat(pong["serverTime"]).tzinfo is not None
+        # the other socket got nothing: the next thing it receives is a later broadcast
+        sender.send_json({"type": "ping", "id": 8})
+        assert sender.receive_json()["id"] == 8
+        other.send_json({"type": "ping", "id": 1})
+        assert other.receive_json()["id"] == 1
+
+
+def test_a_ping_id_that_is_not_a_small_integer_is_answered_without_it(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # six pings in a row: the rate limit has its own test below
+    monkeypatch.setattr(realtime_routes, "MAX_PINGS_PER_SECOND", 100)
+    with client.websocket_connect("/api/v1/ws") as socket:
+        for bad in ("x", True, -1, 2**40, None):
+            socket.send_json({"type": "ping", "id": bad})
+            assert socket.receive_json()["id"] is None
+        socket.send_json({"type": "ping"})
+        assert socket.receive_json()["id"] is None
+
+
+def test_other_messages_are_dropped_without_an_answer(
+    client: TestClient, make_token: TokenFactory
+) -> None:
+    with client.websocket_connect("/api/v1/ws") as socket:
+        socket.send_text("not json")
+        socket.send_json({"type": "hello"})
+        socket.send_json([1, 2])
+        # still alive and nothing queued: the next frame is the pong of a real ping
+        socket.send_json({"type": "ping", "id": 3})
+        assert socket.receive_json()["id"] == 3
+
+
+def test_too_many_pings_in_a_second_are_not_answered(client: TestClient) -> None:
+    with client.websocket_connect("/api/v1/ws") as socket:
+        for i in range(realtime_routes.MAX_PINGS_PER_SECOND + 3):
+            socket.send_json({"type": "ping", "id": i})
+        answered = [
+            socket.receive_json()["id"]
+            for _ in range(realtime_routes.MAX_PINGS_PER_SECOND)
+        ]
+        assert answered == list(range(realtime_routes.MAX_PINGS_PER_SECOND))
+        # the three over the limit got no pong; after the window a ping is answered
+        time.sleep(1.1)
+        socket.send_json({"type": "ping", "id": 99})
+        assert socket.receive_json()["id"] == 99

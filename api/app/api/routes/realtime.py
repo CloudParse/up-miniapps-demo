@@ -1,4 +1,7 @@
 import asyncio
+import json
+import time
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, WebSocket, status
 
@@ -7,12 +10,15 @@ from app.schemas.realtime import BroadcastRequest, BroadcastResult
 
 router = APIRouter(tags=["realtime"])
 
-# What a mini-app may send up the socket: nothing useful. The SDK client only
-# listens, so anything it sends (a ping, at most) is read and dropped.
+# What a mini-app may send up the socket: a ping (``{"type": "ping", "id": 1}``),
+# answered to the sender only with a pong. Anything else is read and dropped.
 # The cap is in BYTES of the frame, text or binary.
 MAX_CLIENT_MESSAGE_BYTES = 1024
 # A socket that sends nothing for this long is closed. A client may send a ping to stay.
 IDLE_TIMEOUT_SECONDS = 300.0
+# A socket may ping this many times per second.
+# More are read and dropped without an answer.
+MAX_PINGS_PER_SECOND = 5
 # The web launcher runs a mini-app in a sandboxed frame: the browser sends this Origin.
 SANDBOX_ORIGIN = "null"
 
@@ -50,6 +56,24 @@ def origin_allowed(websocket: WebSocket, allowed: list[str], development: bool) 
     return False
 
 
+def ping_id(text: str | None) -> tuple[bool, int | None]:
+    """Whether the text frame is a ping, and its id.
+
+    The id is a small integer the client uses to match the pong.
+    """
+    if not text:
+        return False, None
+    try:
+        data = json.loads(text)
+    except ValueError:
+        return False, None
+    if not isinstance(data, dict) or data.get("type") != "ping":
+        return False, None
+    raw = data.get("id")
+    ident = raw if isinstance(raw, int) and not isinstance(raw, bool) else None
+    return True, ident if ident is not None and 0 <= ident < 2**31 else None
+
+
 @router.websocket("/ws")
 async def realtime_socket(websocket: WebSocket) -> None:
     """Broadcast channel: every connected mini-app receives what the API pushes.
@@ -72,6 +96,7 @@ async def realtime_socket(websocket: WebSocket) -> None:
     if not hub.add(websocket, client_address(websocket)):
         await websocket.close(code=status.WS_1013_TRY_AGAIN_LATER)
         return
+    recent_pings: list[float] = []
     try:
         while True:
             try:
@@ -89,6 +114,20 @@ async def realtime_socket(websocket: WebSocket) -> None:
             if size > MAX_CLIENT_MESSAGE_BYTES:
                 await websocket.close(code=status.WS_1009_MESSAGE_TOO_BIG)
                 return
+            is_ping, ident = ping_id(frame.get("text"))
+            if is_ping:
+                now = time.monotonic()
+                recent_pings[:] = [t for t in recent_pings if now - t < 1.0]
+                if len(recent_pings) < MAX_PINGS_PER_SECOND:
+                    recent_pings.append(now)
+                    # To THIS socket only: a pong is not a broadcast.
+                    await websocket.send_json(
+                        {
+                            "type": "pong",
+                            "id": ident,
+                            "serverTime": datetime.now(UTC).isoformat(),
+                        }
+                    )
     finally:
         hub.remove(websocket)
 
