@@ -62,20 +62,19 @@ Coder workspace (dev-<organisation>)
 
 ## When the workspace runs
 
-- A workspace is created, and starts, when you click **Ouvrir mon workspace** in the Studio. Nothing runs before that click.
+- Your workspace is created AHEAD, when you become a developer and for each mini-app you administer. It is created **stopped**: no pod runs until you press **Start** in Coder.
+  - Coder shows it with its **Start** button. Press it when you want to work. It takes a short moment to start.
+  - For a few seconds after its creation Coder can show it as "Running" with nothing started. The platform then stops it by itself (within 20 seconds) and the Start button appears.
+  - Coder shows no warning. Nothing starts before you press Start.
+- **Ouvrir mon workspace** in the Studio opens your workspace page in Coder. If the workspace does not exist yet, the click creates it: with its pod started if you already signed in to Coder, stopped (press Start) if you never did.
 - Every **Ouvrir mon workspace** entry does the same: the button on the page of a mini-app, the link in the sidebar, the link on the home page, the "Coder" line of the services and the card of the components page.
 - An entry that is not on a mini-app page uses your mini-apps. With one mini-app it opens that workspace. With several it shows a short list to choose from. With none it says "Aucune mini-app à ouvrir.".
-- The first time, the button opens the Coder sign-in page. Sign in with the account you use in the Studio.
-  - Right after your sign-in the platform creates the workspace and starts it. It takes about a minute. You do not click again.
-  - Stay on the Studio tab: it asks every 5 seconds and says "Ton workspace est prêt" when the workspace exists. Click **Ouvrir mon workspace** to open it.
-  - After the sign-in Coder shows the page of your workspace. If it says "Resource not found" in the first seconds, wait a few seconds and reload: the workspace is still being created.
-  - The platform remembers your click for 30 minutes. After that, click again.
-  - A person who never clicked never gets a workspace: nothing starts before a click.
-  - Coder shows no warning.
-- The next clicks open your workspace. If it was stopped, press **Start** in Coder.
-- If the workspace page shows a failure, sign in to Coder if you have not yet, then press **Start**. A first build made before your first sign-in fails and the next click does not create a second workspace.
-- A workspace that nobody used 5 minutes after its creation is stopped on its own, and one left running without use is stopped after 2 hours.
-- A workspace created before 2026-11-23 can show the Coder warning "Ephemeral Parameters Detected" when you press Start. In Coder, open the workspace and press **Update** to get the current template: the warning is gone after it.
+- The first time, the button opens the Coder sign-in page. Sign in with the account you use in the Studio. After the sign-in Coder shows your workspace, which is already there, stopped. Press **Start**.
+- If your organisation was deployed before template 0.5.12, a person who never signed in to Coder has no workspace yet: sign in to Coder, then click **Ouvrir mon workspace** again.
+- If the workspace page shows a failure, press **Start**. A person never gets a second workspace for the same mini-app.
+- A workspace you asked for with a click and that nobody used 5 minutes after its creation is stopped on its own, and one left running without use is stopped after 2 hours.
+- A workspace created before 2026-11-23 can show the Coder warning "Ephemeral Parameters Detected" when you press Start. In Coder, open the workspace and press **Update** to get the current template (0.5.12): the warning is gone after it, and the workspace keeps its files.
+- The workspace has a parameter "Créé sans pod" (`hold_first_start`) managed by the platform. Do not change it: the platform sets it back to false so that your Start runs the pod.
 - A workspace stopped for a while keeps `/home/coder`: your files and installed tools are still there when it starts again.
 
 ## Your shell and the project settings
