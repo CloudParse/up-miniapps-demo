@@ -79,6 +79,18 @@ Coder workspace (dev-<organisation>)
 - The Coder buttons **Mini-app**, **API** and **Plugin** open in a new browser tab, so you can refresh the page.
 - The DEV backend has no sign-in rate limit, because all the workspaces of an organisation share one address. A `429 Too Many Requests` on `/hub/api/v1/auth/login` in DEV means the organisation was deployed before this change: redeploy it from the super console.
 
+## Coder says "Resource not found or you do not have access" (404)
+
+- Coder keeps its own session in the browser. Signing out of the Studio does not sign out of Coder.
+- After you change account in the Studio (Google, Apple, SMS, another developer), the Coder tab can still be signed in as the old account.
+- Your workspace page then answers 404, because it belongs to the other account.
+- Fix:
+  1. In Coder, open the menu of your avatar (top right) and read which account is signed in.
+  2. Sign out of Coder.
+  3. Click "Ouvrir mon workspace" again in the Studio. Coder asks you to sign in: use the same account as in the Studio.
+- The Studio shows the expected Coder user name under "Ouvrir mon workspace" (the part after `@` in the workspace address).
+- Each account is a separate person for the platform: a developer role given to your Google account does not apply to your Apple or phone account.
+
 ## Where to open the mini-app (2026-11-20)
 
 - The app "Mini-app": `https://miniapp--main--<workspace>--<owner>--<organisation>.cloudparse.app`.
