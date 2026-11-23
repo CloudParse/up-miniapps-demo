@@ -38,6 +38,7 @@ The round trip is measured by the mini-app with its own clock. The `id` is a sma
 - `miniapp/.env` sets `VITE_BACKEND_URL=/api/v1`. The page and the API share one address: Vite proxies `/api/` to the API, WebSocket included (`ws: true` in `vite.config.ts`).
 - `miniapp/src/lib/devWsUrl.ts` turns that address into `wss://<same host>/api/v1/ws` (or `ws://` on localhost). It is only the last fallback: in a deployed app the platform address always wins.
 - The API accepts an `Origin` equal to its own `Host` (the Coder URL of the page), so the proxied socket is not refused.
+- The screens that use the demo routes (`/api/v1/demo`, `/api/v1/demo/broadcast`) call nothing in a production build: `isDemoAvailable()` in `miniapp/src/services/demoService.ts` is false there, and the screen shows "Les routes de démo ne sont servies qu'en développement". Replace those routes with your own before you ship.
 - If the screen says "Temps réel non configuré", check that `VITE_BACKEND_URL` in `miniapp/.env` is set (copy `.env.template`) and restart `npm run dev`.
 
 ## Channel mode (rooms)
