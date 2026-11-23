@@ -20,7 +20,6 @@ const MOCK_APP_UUID = "0d0d0d0d-0000-4000-8000-000000000001";
 // flag, or the API answers 403 to the admin routes.
 const DEFAULT_USER = "639980001";
 const TEST_PASSWORD = "password123";
-const ADMIN_SCOPE = "profile:miniapp:admin";
 // The SDK's ApiService needs absolute base URLs (devHost.ts); the Vite server proxies /api/ and /hub/.
 const urls = devBaseUrls(window.location.origin);
 const HUB = urls.hubLogin;
@@ -57,7 +56,8 @@ async function adminToken(): Promise<string> {
   });
   const scoped = await postJson<{ token: string }>(
     `${HUB}/applications/${MOCK_APP_UUID}/token`,
-    { scopes: [ADMIN_SCOPE] },
+    // Empty body: the Hub adds the admin scope on its own for a flagged user.
+    {},
     master.token,
   );
   cached = { expiresAt: Date.now() + TOKEN_LIFETIME_MS, token: scoped.token };

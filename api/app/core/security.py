@@ -18,8 +18,9 @@ from app.core.errors import UnauthorizedError
 logger = logging.getLogger(__name__)
 
 SIGNING_ALGORITHM = "ES256"
-# Scope the Hub puts in a token only for a Hub admin who asked for it
-# (`POST /applications/{uuid}/token` with `{"scopes": ["profile:miniapp:admin"]}`).
+# The only scope the Hub puts in a token's `scp` claim. The Hub adds it on its own
+# when the user is an administrator of this mini-app, and to every token made by
+# an organisation admin in the Studio. Any other user gets no `scp` claim.
 ADMIN_SCOPE = "profile:miniapp:admin"
 # Placeholder audience the shell's "Vite Dev" hot-reload entry mints tokens for.
 # Accepted in development only.
@@ -29,11 +30,7 @@ DEV_SHELL_APP_UUID = "99999999-9999-9999-9999-999999999999"
 @dataclass(frozen=True)
 class AuthenticatedUser:
     user_uuid: UUID
-    scopes: tuple[str, ...]
-
-    @property
-    def is_admin(self) -> bool:
-        return ADMIN_SCOPE in self.scopes
+    is_admin: bool
 
 
 class TokenVerifier:
@@ -50,13 +47,16 @@ class TokenVerifier:
                 audience=self._audiences,  # blocks replaying another app's token
                 options={"require": ["exp", "sub", "aud"]},
             )
-            scopes = claims.get("scp", [])
+            # `scp` is absent (or null) for a user who is not an admin.
+            scopes = claims.get("scp")
+            if scopes is None:
+                scopes = []
             if not isinstance(scopes, list) or not all(
                 isinstance(scope, str) for scope in scopes
             ):
                 raise ValueError("scp must be a list of strings")
             return AuthenticatedUser(
-                user_uuid=UUID(claims["sub"]), scopes=tuple(scopes)
+                user_uuid=UUID(claims["sub"]), is_admin=ADMIN_SCOPE in scopes
             )
         except (jwt.PyJWTError, ValueError) as error:
             # Log the reason, never the token itself.

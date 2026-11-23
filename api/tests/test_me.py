@@ -22,10 +22,37 @@ def test_returns_the_identity_of_a_valid_token(
     response = client.get(ME, headers=_bearer(make_token()))
 
     assert response.status_code == 200
-    assert response.json() == {
-        "userUuid": str(USER_UUID),
-        "scopes": ["profile:username"],
-    }
+    assert response.json() == {"userUuid": str(USER_UUID), "isAdmin": False}
+
+
+def test_reports_a_mini_app_admin(client: TestClient, make_token: TokenFactory) -> None:
+    response = client.get(ME, headers=_bearer(make_token(admin=True)))
+
+    assert response.status_code == 200
+    assert response.json() == {"userUuid": str(USER_UUID), "isAdmin": True}
+
+
+@pytest.mark.parametrize("scp", [[], None], ids=["empty", "null"])
+def test_accepts_an_empty_scope_claim(
+    client: TestClient,
+    hub_private_key: ec.EllipticCurvePrivateKey,
+    scp: list[str] | None,
+) -> None:
+    token = jwt.encode(
+        {
+            "sub": str(USER_UUID),
+            "aud": APP_UUID,
+            "exp": int(time.time()) + 300,
+            "scp": scp,
+        },
+        hub_private_key,
+        algorithm="ES256",
+    )
+
+    response = client.get(ME, headers=_bearer(token))
+
+    assert response.status_code == 200
+    assert response.json()["isAdmin"] is False
 
 
 def test_rejects_a_missing_token(client: TestClient) -> None:

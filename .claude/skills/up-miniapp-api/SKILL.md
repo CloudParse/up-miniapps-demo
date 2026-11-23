@@ -67,7 +67,7 @@ Adding an endpoint:
 1. The shell asks the Hub for a scoped token. It is an ES256 JWT:
    - `sub`: the user uuid;
    - `aud`: this mini-app's uuid;
-   - `scp`: the granted scopes;
+   - `scp`: `["profile:miniapp:admin"]` for a mini-app administrator, absent or empty otherwise;
    - `exp`: a short expiry.
 2. The shell sends it as `Authorization: Bearer <token>`.
 3. `core/security.py` verifies it offline with the Hub's **public** key.
@@ -76,7 +76,7 @@ What `TokenVerifier.verify` enforces (keep all of it):
 - `algorithms=["ES256"]`: the token's own `alg` is never trusted.
 - `audience=[app_uuid]`: a token of another mini-app is refused.
 - `require: exp, sub, aud`.
-- `scp` must be a list of strings.
+- `scp` may be absent. When present it must be a list of strings.
 - On failure: log the reason type, never the token. Answer `401`.
 
 In `development` only, the API also accepts the audience `99999999-9999-9999-9999-999999999999`. It is the shell's "Vite Dev" entry.
@@ -100,9 +100,10 @@ router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(requir
 
 Rules:
 - Admin means the scope `profile:miniapp:admin` is in the signed token.
-- The Hub adds it to a user token only for a Hub admin who asked for it.
+- The Hub adds it on its own to the token of a mini-app administrator. Nobody asks for it: the Hub ignores a `scopes` field in the token request.
 - A token made in the Studio tab "Scope tokens" always carries it.
-- The user token of a mini-app member, from the Up app, does not carry it. Only a Hub admin's user token does.
+- The token of any other user has no `scp` claim.
+- A mini-app declares no scopes. It gets the whole user profile from the shell.
 - Never keep a list of admins in this API. Never trust an admin flag from the client.
 - `401` = no or invalid token. `403` = valid token without the right.
 - The user is `user.user_uuid` from the token. Never trust a user id sent in a body, header or query.

@@ -10,6 +10,7 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from fastapi.testclient import TestClient
 
 from app.core.config import Config
+from app.core.security import ADMIN_SCOPE
 from app.main import create_app
 
 APP_UUID = "00000000-0000-0000-0000-0000000000a1"
@@ -76,16 +77,19 @@ def make_token(hub_private_key: ec.EllipticCurvePrivateKey) -> TokenFactory:
         audience: str = APP_UUID,
         expires_in: int = 300,
         key: ec.EllipticCurvePrivateKey | None = None,
-        scopes: tuple[str, ...] = ("profile:username",),
+        admin: bool = False,
     ) -> str:
+        claims: dict[str, object] = {
+            "sub": str(USER_UUID),
+            "aud": audience,
+            "exp": int(time.time()) + expires_in,
+            "jti": str(uuid4()),
+        }
+        if admin:
+            # Like the Hub: the admin scope only, and no `scp` claim otherwise.
+            claims["scp"] = [ADMIN_SCOPE]
         return jwt.encode(
-            {
-                "sub": str(USER_UUID),
-                "aud": audience,
-                "exp": int(time.time()) + expires_in,
-                "scp": list(scopes),
-                "jti": str(uuid4()),
-            },
+            claims,
             _pem(key or hub_private_key),
             algorithm="ES256",
         )

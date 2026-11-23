@@ -5,7 +5,6 @@ import redis
 from fastapi.testclient import TestClient
 
 from app.core.config import Config, StorageConfig
-from app.core.security import ADMIN_SCOPE
 from app.main import create_app
 from app.services import demo_admin_service
 from app.services.demo_admin_service import DemoAdminActions
@@ -16,8 +15,7 @@ RESET = "/api/v1/admin/demo/reset-cache"
 
 
 def _bearer(make_token: TokenFactory, *, admin: bool) -> dict[str, str]:
-    scopes = ("profile:username", ADMIN_SCOPE) if admin else ("profile:username",)
-    return {"Authorization": f"Bearer {make_token(scopes=scopes)}"}
+    return {"Authorization": f"Bearer {make_token(admin=admin)}"}
 
 
 def test_the_plugin_routes_need_a_token_and_the_admin_scope(

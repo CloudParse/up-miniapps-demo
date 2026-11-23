@@ -1,6 +1,5 @@
 from fastapi.testclient import TestClient
 
-from app.core.security import ADMIN_SCOPE
 from tests.conftest import TokenFactory
 
 ADMIN_HELLO = "/api/v1/admin/hello"
@@ -13,7 +12,7 @@ def _bearer(token: str) -> dict[str, str]:
 def test_admin_scope_unlocks_admin_routes(
     client: TestClient, make_token: TokenFactory
 ) -> None:
-    token = make_token(scopes=("profile:username", ADMIN_SCOPE))
+    token = make_token(admin=True)
 
     response = client.get(ADMIN_HELLO, headers=_bearer(token))
 
