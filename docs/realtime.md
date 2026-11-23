@@ -33,6 +33,13 @@ The round trip is measured by the mini-app with its own clock. The `id` is a sma
 - The hub lives in the memory of one process. With several replicas of the API, each replica only reaches its own sockets. Use the cache (Valkey publish and subscribe, keys and channels start with `CACHE_KEY_PREFIX`) to fan out between replicas.
 - `POST /demo/broadcast` is an example, served outside production only. Delete it with the rest of the demo before you ship.
 
+## In development (Coder workspace)
+
+- `miniapp/.env` sets `VITE_BACKEND_URL=/api/v1`. The page and the API share one address: Vite proxies `/api/` to the API, WebSocket included (`ws: true` in `vite.config.ts`).
+- `miniapp/src/lib/devWsUrl.ts` turns that address into `wss://<same host>/api/v1/ws` (or `ws://` on localhost). It is only the last fallback: in a deployed app the platform address always wins.
+- The API accepts an `Origin` equal to its own `Host` (the Coder URL of the page), so the proxied socket is not refused.
+- If the screen says "Temps réel non configuré", check that `VITE_BACKEND_URL` in `miniapp/.env` is set (copy `.env.template`) and restart `npm run dev`.
+
 ## Channel mode (rooms)
 
 For a room or a group, create the service with `channelField` (for example `groupUuid`). The client sends `{ "action": "subscribe", "groupUuid": "<id>" }` and the server must route messages to the sockets of that room. Authenticate the socket first: add a route like `POST /api/v1/ws-ticket` (not in this template) (signed in) for a short-lived ticket, and check it when the socket opens. This template ships the broadcast mode only. The SDK README describes the wire protocol.

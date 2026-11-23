@@ -42,10 +42,15 @@ def origin_allowed(websocket: WebSocket, allowed: list[str], development: bool) 
 
     No Origin header (a native app or a script) is accepted: this channel is public
     and carries no cookie. An Origin must be the sandbox frame of the web launcher
-    ("null"), a configured origin, or a local host in development.
+    ("null"), a configured origin, the site that serves this very API (its Origin host
+    equals the Host header: the Vite dev proxy behind a Coder URL), or a local host in
+    development.
     """
     origin = websocket.headers.get("origin")
     if origin is None or origin == SANDBOX_ORIGIN or origin in allowed:
+        return True
+    host = websocket.headers.get("host")
+    if host and origin.split("://", 1)[-1] == host:
         return True
     if development:
         host = origin.removeprefix("http://")

@@ -85,7 +85,8 @@ export default defineConfig({
     port: DEV_PORT,
     // Same origin as the page: no CORS, and only port 21515 has to be opened.
     proxy: {
-      "/api/": BACKEND_ORIGIN,
+      // ws: the /api/v1/ws WebSocket of the API goes through the same origin as the page.
+      "/api/": { target: BACKEND_ORIGIN, ws: true },
       "/hub/": {
         changeOrigin: true,
         rewrite: (url) => url.replace(/^\/hub/, ""),

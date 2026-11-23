@@ -1,4 +1,5 @@
 import { APP_CONFIG } from "@app/config/env";
+import { devWsUrl } from "@app/lib/devWsUrl";
 import { createApiService } from "@cloudparse/up-miniapps-sdk";
 
 // Backend URL precedence: the shell's env (live, via UPDATE_CONTEXT) first,
@@ -6,6 +7,8 @@ import { createApiService } from "@cloudparse/up-miniapps-sdk";
 // is set the app shows an explicit "not configured" state instead.
 export const apiClient = createApiService({
   defaultBaseUrl: APP_CONFIG.backendUrl,
+  // Development only (empty in production): the WebSocket of the demo API next to its HTTP address, through the Vite proxy.
+  defaultWsBackendUrl: devWsUrl(APP_CONFIG.backendUrl),
 });
 
 export function getBackendUrl(): string | null {

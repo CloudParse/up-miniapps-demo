@@ -313,3 +313,27 @@ def test_too_many_pings_in_a_second_are_not_answered(client: TestClient) -> None
         time.sleep(1.1)
         socket.send_json({"type": "ping", "id": 99})
         assert socket.receive_json()["id"] == 99
+
+
+def test_the_site_that_serves_the_api_may_open_the_socket(config: Config) -> None:
+    """Behind a Coder URL the Vite proxy forwards the Origin and Host of the page."""
+    client = TestClient(create_app(config))
+    host = "miniapp--demo--me--app.cloudparse.app"
+    with client.websocket_connect(
+        "/api/v1/ws",
+        headers={"Origin": f"https://{host}", "Host": host},
+    ) as socket:
+        socket.send_text('{"type":"ping","id":1}')
+        assert socket.receive_json()["type"] == "pong"
+
+
+def test_another_site_is_still_refused(config: Config) -> None:
+    client = TestClient(create_app(config))
+    with (
+        pytest.raises(WebSocketDisconnect),
+        client.websocket_connect(
+            "/api/v1/ws",
+            headers={"Origin": "https://evil.example", "Host": "api.example"},
+        ),
+    ):
+        pass
