@@ -12,6 +12,7 @@ Status: draft. Source of truth: `docs/realtime.md`. Last audited 2026-11-23.
 - The API route is `GET /api/v1/ws` (`api/app/api/routes/realtime.py`). The hub is `api/app/services/realtime_service.py`.
 - The client is `createWsService({ api: apiClient })` in broadcast mode (`miniapp/src/features/tools/RealtimeDemo.tsx`). With `channelField` it is channel mode (rooms).
 - The SDK client only listens. A person acts with HTTP (`createApiService`), the API then calls `hub.broadcast(...)`.
+- Ping/pong: `miniapp/src/lib/pingClient.ts` sends `{"type":"ping","id":n}` on its own socket, the API answers `{"type":"pong","id":n,"serverTime":...}` to that socket only (`api/app/api/routes/realtime.py`). The screen **Temps réel** has a **Ping** button that shows the round trip. Use it first to check that realtime works.
 
 ## Steps to add a live feature
 
