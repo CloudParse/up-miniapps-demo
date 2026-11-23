@@ -65,7 +65,13 @@ Coder workspace (dev-<organisation>)
 - A workspace is created, and starts, when you click **Ouvrir mon workspace** in the Studio. Nothing runs before that click.
 - Every **Ouvrir mon workspace** entry does the same: the button on the page of a mini-app, the link in the sidebar, the link on the home page, the "Coder" line of the services and the card of the components page.
 - An entry that is not on a mini-app page uses your mini-apps. With one mini-app it opens that workspace. With several it shows a short list to choose from. With none it says "Aucune mini-app à ouvrir.".
-- The first time, the button opens Coder and asks you to sign in there. Come back to the Studio and click **Ouvrir mon workspace** again: the workspace is created and starts. Coder shows no warning.
+- The first time, the button opens the Coder sign-in page. Sign in with the account you use in the Studio.
+  - Right after your sign-in the platform creates the workspace and starts it. It takes about a minute. You do not click again.
+  - Stay on the Studio tab: it asks every 5 seconds and says "Ton workspace est prêt" when the workspace exists. Click **Ouvrir mon workspace** to open it.
+  - After the sign-in Coder shows the page of your workspace. If it says "Resource not found" in the first seconds, wait a few seconds and reload: the workspace is still being created.
+  - The platform remembers your click for 30 minutes. After that, click again.
+  - A person who never clicked never gets a workspace: nothing starts before a click.
+  - Coder shows no warning.
 - The next clicks open your workspace. If it was stopped, press **Start** in Coder.
 - If the workspace page shows a failure, sign in to Coder if you have not yet, then press **Start**. A first build made before your first sign-in fails and the next click does not create a second workspace.
 - A workspace that nobody used 5 minutes after its creation is stopped on its own, and one left running without use is stopped after 2 hours.
