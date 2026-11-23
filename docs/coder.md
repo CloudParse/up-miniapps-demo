@@ -62,9 +62,11 @@ Coder workspace (dev-<organisation>)
 
 ## When the workspace runs
 
-- A workspace starts only when a person starts it. The platform creates it stopped, without a pod, and never starts it for you.
-- Open the Studio link **Ouvrir mon workspace**, then start the workspace in Coder (one click). Coder shows no warning on Start.
-- If you start a brand-new workspace within its first minute, it can still be held (no pod yet): stop it and start it again. It stops again on its own after 2 hours without use.
+- A workspace is created, and starts, when you click **Ouvrir mon workspace** on the page of your mini-app in the Studio. Nothing runs before that click.
+- The first time, the button opens Coder and asks you to sign in there. Come back to the Studio and click **Ouvrir mon workspace** again: the workspace is created and starts. Coder shows no warning.
+- The next clicks open your workspace. If it was stopped, press **Start** in Coder.
+- A workspace that nobody used 5 minutes after its creation is stopped on its own, and one left running without use is stopped after 2 hours.
+- A workspace created before 2026-11-23 can show the Coder warning "Ephemeral Parameters Detected" when you press Start. In Coder, open the workspace and press **Update** to get the current template: the warning is gone after it.
 - A workspace stopped for a while keeps `/home/coder`: your files and installed tools are still there when it starts again.
 
 ## Your shell and the project settings
