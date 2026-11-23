@@ -2,7 +2,9 @@
 # upper-cased, with dots replaced by underscores (hub.base_url -> HUB_BASE_URL).
 # `environment` is deliberately top-level so it maps to a plain ENVIRONMENT.
 # Secrets never live here: real values come from the environment (api/.env).
-environment = "development"
+# Fails closed: without ENVIRONMENT the API runs as production (no /docs, no demo routes, no local CORS). Development is explicit:
+# api/.env has ENVIRONMENT=development (the Coder workspace and .env.template write it), the production image pins production.
+environment = "production"
 
 [server]
 # 0.0.0.0 so the Coder workspace lists the API port in "Open ports". A deployed component sets SERVER_HOST itself

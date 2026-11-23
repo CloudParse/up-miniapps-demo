@@ -20,6 +20,8 @@ This creates `api/.venv` from `uv.lock`.
 
 ## Run in development
 
+The API runs as production when nothing says otherwise: no `/docs`, no demo routes. Development needs `api/.env` with `ENVIRONMENT=development`. The Coder workspace writes that file. On your own machine run `cp .env.template .env` in `api/` first.
+
 Pick one way.
 
 ```bash

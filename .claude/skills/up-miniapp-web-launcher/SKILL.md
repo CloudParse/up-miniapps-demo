@@ -13,7 +13,7 @@ Read `docs/web-launcher.md` first. This skill is the checklist.
 
 - The SDK pinned in `miniapp/package.json` must be `@cloudparse/up-miniapps-sdk` 0.17.0 or newer. An older SDK draws no phone mock.
 - Do not draw your own phone frame. `<SDKProvider>` reads `window.__UP_RENDER_AS__` and does it.
-- A computer shows the mock with a device picker. A phone shows the app fullscreen. The exit button is `sdk.ui.exit()`.
+- A computer shows the mock with a device picker. A phone, or a narrow window of any browser, shows the app fullscreen, with a **Plein écran** button where the Fullscreen API exists (not in Safari on iPhone: use Add to Home Screen). The exit button is `sdk.ui.exit()`.
 - Layout height is `h-full` or `100%`, never `100vh`.
 
 ## What the web host supports

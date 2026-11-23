@@ -60,6 +60,7 @@ Also forbidden for these files:
 - `uv.lock` is committed and matches `pyproject.toml`. The image runs `uv sync --frozen`, which does not check the lock: a stale lock ships old dependencies. After a dependency change run `uv lock`, commit the lock, and run `uv lock --check`.
 - The image copies only `pyproject.toml`, `uv.lock`, `app/` and `configs/`. A new folder needed at run time must be added to the `Dockerfile`.
 - Keep: pinned base images (tag and digest), user `10001`, `/app` read-only, `ENVIRONMENT=production`, `CMD ["python", "-m", "app"]` or an exec-form `api.command`.
+- `ENVIRONMENT` stays `production` in the `Dockerfile`, and is never set in the Studio component variables: `development` serves `/docs`, the demo routes and local CORS. The default of `configs/config.toml` is `production` (fail closed).
 - The API refuses to start in production on the DEV defaults (`HUB_APP_UUID`, `HUB_CLIENT_SECRET`). Never remove that check.
 
 ### `miniapp/` (frontend workflow)

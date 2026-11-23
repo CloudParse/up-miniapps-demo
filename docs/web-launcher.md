@@ -13,8 +13,8 @@ People open a mini-app in the Up app on a phone, and also on the Up website (the
 | --- | --- |
 | A computer | Your mini-app inside a phone mock. A control **Écran** above the app picks the device: Pixel 10, iPhone 16, Galaxy Tab S9, iPad Air. The choice is kept in the browser and restarts the app. |
 | A phone, or a narrow window | No mock. The mini-app fills the whole page, like in the Up app. The exit button of the mini-app (`sdk.ui.exit()`) goes back to the list of mini-apps. |
-| A phone, in Chrome or Brave on Android | A small **Plein écran** button hides the address bar and the browser buttons. It needs a tap. |
-| A phone, in Safari on iPhone | Safari has no fullscreen API for a page. Use **Add to Home Screen** in the share menu: the site then opens without any browser bar. |
+| The fullscreen display (a phone, or a narrow window of any browser), in a browser that has the Fullscreen API (Chrome, Brave, Edge, Firefox on Android or on a computer) | A small **Plein écran** button hides the address bar and the browser buttons. It needs a tap. It also shows in a narrow desktop window. |
+| Safari on iPhone | Safari has no fullscreen API for a page. Use **Add to Home Screen** in the share menu: the site then opens without any browser bar. |
 | A phone, site added to the home screen | Already without browser bars. The **Plein écran** button is not shown. |
 
 You write nothing for this. `<SDKProvider>` of `@cloudparse/up-miniapps-sdk` 0.17.0 reads `window.__UP_RENDER_AS__`, which the launcher sets, and draws the phone mock by itself. Rules:

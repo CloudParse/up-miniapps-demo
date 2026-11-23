@@ -24,7 +24,7 @@ Status: draft. Source of truth: `docs/realtime.md`. Last audited 2026-11-23.
 ## Rules
 
 - Never write the socket address in the code. The platform registers `wss://api.<mini-app>.app.<domain>/api/v1/ws` and gives it to the app.
-- The socket is public. Push no secret and no personal data. Push a ping, then let the mini-app fetch with its token.
+- The socket is a public broadcast channel (no cookie or token; the `Origin` is checked, `null` is the web launcher). Push no secret and no personal data. Client frames over 1024 bytes close it, 5 minutes of silence close it, 10 sockets per address. Push a ping, then let the mini-app fetch with its token.
 - Limit the size and the rate of what you push.
 - One process holds the sockets in memory. For several replicas, fan out through the cache (keys and channels start with `CACHE_KEY_PREFIX`).
 - A private channel needs a ticket checked when the socket opens. Do not trust a room id sent by the client alone.

@@ -27,7 +27,7 @@ cd ~/<repository>/api
 uv run python -m app
 ```
 
-`python -m app` reads `api/.env` itself, with or without `uv run` and from any directory. A variable already set in your shell wins over the file. The API listens on `0.0.0.0:21514`, so the Coder button **API** reaches it (Coder hides the ports of the buttons Mini-app, API and Plugin from "Open ports"; `SERVER_HOST=127.0.0.1` keeps it local). On a laptop (shared Wi-Fi, a café), the API on `0.0.0.0` has no Host check: anyone on the network can read `/docs`, `/openapi.json`, `GET /api/v1/demo` and the public routes. Authenticated routes still need a Hub-signed token. Set `SERVER_HOST=127.0.0.1` to keep it local.
+`python -m app` reads `api/.env` itself, with or without `uv run` and from any directory. That file has `ENVIRONMENT=development`: without it the API runs as production (no `/docs`, no demo routes). A variable already set in your shell wins over the file. The API listens on `0.0.0.0:21514`, so the Coder button **API** reaches it (Coder hides the ports of the buttons Mini-app, API and Plugin from "Open ports"; `SERVER_HOST=127.0.0.1` keeps it local). On a laptop (shared Wi-Fi, a café), the API on `0.0.0.0` has no Host check: anyone on the network can read `/docs`, `/openapi.json`, `GET /api/v1/demo` and the public routes. Authenticated routes still need a Hub-signed token. Set `SERVER_HOST=127.0.0.1` to keep it local.
 
 `python -m app` gives the same result as `uv run --env-file` only for plain `KEY=VALUE` values (quotes, comments, `export`). Not supported: `$VAR` expansion and multi-line values. A skipped line is logged by its number, never by its value.
 

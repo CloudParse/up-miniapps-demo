@@ -41,6 +41,7 @@ def create_app(config: Config | None = None) -> FastAPI:
         redoc_url=None,
         openapi_url=None if config.is_production else "/openapi.json",
     )
+    app.state.config = config
     app.state.token_verifier = build_token_verifier(config)
     app.state.resource_probes = ResourceProbes.from_config(config)
     app.state.demo_actions = DemoActions.from_config(config)
