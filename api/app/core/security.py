@@ -19,8 +19,9 @@ logger = logging.getLogger(__name__)
 
 SIGNING_ALGORITHM = "ES256"
 # The only scope the Hub puts in a token's `scp` claim. The Hub adds it on its own
-# when the user is an administrator of this mini-app, and to every token made by
-# an organisation admin in the Studio. Any other user gets no `scp` claim.
+# when the user has the global Hub flag `miniapp_admin` (valid for every mini-app).
+# Every token made in the Studio (`POST /admin/applications/{uuid}/token`, by an
+# organisation admin or a super user) carries it too. Other users get no `scp` claim.
 ADMIN_SCOPE = "profile:miniapp:admin"
 # Placeholder audience the shell's "Vite Dev" hot-reload entry mints tokens for.
 # Accepted in development only.

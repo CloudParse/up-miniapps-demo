@@ -67,7 +67,7 @@ Adding an endpoint:
 1. The shell asks the Hub for a scoped token. It is an ES256 JWT:
    - `sub`: the user uuid;
    - `aud`: this mini-app's uuid;
-   - `scp`: `["profile:miniapp:admin"]` for a mini-app administrator, absent or empty otherwise;
+   - `scp`: `["profile:miniapp:admin"]` for a user with the global Hub flag `miniapp_admin`, absent or empty otherwise;
    - `exp`: a short expiry.
 2. The shell sends it as `Authorization: Bearer <token>`.
 3. `core/security.py` verifies it offline with the Hub's **public** key.
@@ -100,8 +100,8 @@ router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(requir
 
 Rules:
 - Admin means the scope `profile:miniapp:admin` is in the signed token.
-- The Hub adds it on its own to the token of a mini-app administrator. Nobody asks for it: the Hub ignores a `scopes` field in the token request.
-- A token made in the Studio tab "Scope tokens" always carries it.
+- The Hub adds it on its own when the user has the global Hub flag `miniapp_admin`. The flag is valid for every mini-app, not a per-app grant. Nobody asks for it: the Hub ignores a `scopes` field in the token request.
+- A token made in the Studio tab "Scope tokens" (`POST /admin/applications/{uuid}/token`, by an organisation admin or a super user) always carries it.
 - The token of any other user has no `scp` claim.
 - A mini-app declares no scopes. It gets the whole user profile from the shell.
 - Never keep a list of admins in this API. Never trust an admin flag from the client.

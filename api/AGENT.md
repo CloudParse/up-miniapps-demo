@@ -99,8 +99,8 @@ Decide the access level of **every** route when you create it. There are three, 
 The backend never keeps its own list of admins. The Hub decides, and says so inside the signed token:
 
 1. The shell asks the Hub for a scoped token: `POST /applications/{uuid}/token`. A mini-app never asks for scopes. The Hub ignores a `scopes` field in the body.
-2. The Hub puts `["profile:miniapp:admin"]` in the token's `scp` claim **only if that user is an administrator of this mini-app**. For anyone else the token has no `scp` claim (or an empty one).
-3. A token made by an organisation admin in the Studio (`POST /admin/applications/{uuid}/token`, tab "Scope tokens") always carries `profile:miniapp:admin`.
+2. The Hub puts `["profile:miniapp:admin"]` in the token's `scp` claim **only if that user has the global Hub flag `miniapp_admin`**. The flag is not a per-app grant: it is valid for every mini-app. For anyone else the token has no `scp` claim (or an empty one).
+3. A token made in the Studio (`POST /admin/applications/{uuid}/token`, tab "Scope tokens", by an organisation admin or a super user) always carries `profile:miniapp:admin`.
 4. `core/security.py` sets `AuthenticatedUser.is_admin` (the scope is in `scp`). `require_admin` turns a non-admin into `403 forbidden`.
 
 Because the token is signed by the Hub and verified here, a client cannot add the scope to its own token.
@@ -141,7 +141,7 @@ curl -s localhost:21514/api/v1/hello                                  # 200, pub
 curl -s -o /dev/null -w '%{http_code}\n' localhost:21514/api/v1/me    # 401 without a token
 ```
 
-The admin scope needs no setting on the application: the Hub adds it on its own for a mini-app administrator.
+The admin scope needs no setting on the application: the Hub adds it on its own for a user with the global Hub flag `miniapp_admin`.
 
 ## Configuration (`configs/config.toml`)
 
@@ -205,7 +205,7 @@ In development every mini-app uses the DEV backend's shared mock registration: t
 
 ### How requests are authenticated (user → your backend)
 
-1. A user opens your mini-app. The shell asks the Hub for a **scoped token** for `(user, your app uuid)`: ES256 JWT, short-lived, `sub` = user UUID, `aud` = your app uuid, `scp` = `["profile:miniapp:admin"]` for a mini-app administrator, absent otherwise. The mini-app gets the whole user profile from the shell: there are no profile scopes and no per-scope consent.
+1. A user opens your mini-app. The shell asks the Hub for a **scoped token** for `(user, your app uuid)`: ES256 JWT, short-lived, `sub` = user UUID, `aud` = your app uuid, `scp` = `["profile:miniapp:admin"]` for a user with the global Hub flag `miniapp_admin`, absent otherwise. The mini-app gets the whole user profile from the shell: there are no profile scopes and no per-scope consent.
 2. The shell attaches it as `Authorization: Bearer <token>` to every request the mini-app sends (through the SDK).
 3. `core/security.py` verifies it **offline** with the Hub's public key (`hub.public_key_path`): signature, algorithm pinned to ES256, `exp`, and `aud` equal to your app uuid. That audience check stops a token minted for another mini-app from working on yours.
 

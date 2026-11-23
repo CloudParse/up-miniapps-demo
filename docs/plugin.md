@@ -108,7 +108,7 @@ The page needs the API (terminal 1, port 21514) and the DEV backend. How it work
 - `plugin/dev/main.tsx` builds a stand-in for the Studio: the plugin's `miniappApi` is an `ApiService` with an admin scoped token for a DEV test user. It is development code and is not part of the bundle.
 
 Limits:
-- The admin routes need the scope `profile:miniapp:admin`. The DEV backend gives it only to a test user flagged as a mini-app administrator. With another user, the page shows "The API refuses this account". Pick a user with `?user=<local number>` (the numbers are in `miniapp/src/dev/devHub.ts`). Ask an admin of your organisation to flag a test user if none is.
+- The admin routes need the scope `profile:miniapp:admin`. The DEV backend gives it only to a test user with the global Hub flag `miniapp_admin`. With another user, the page shows "The API refuses this account". Pick a user with `?user=<local number>` (the numbers are in `miniapp/src/dev/devHub.ts`). Ask an admin of your organisation to flag a test user if none is.
 - The page has no sandbox, no Studio layout and no host styles. Look once in the real Studio before you ship: press **Déployer le plugin**, then open the mini-app in the Studio, tab "Plugin".
 
 ## Checks

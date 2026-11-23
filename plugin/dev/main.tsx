@@ -16,8 +16,8 @@ import { apiProblem, devBaseUrls } from "./devHost";
 // The Hub's shared DEV registration of every mini-app (../miniapp/src/dev/devHub.ts).
 const MOCK_APP_UUID = "0d0d0d0d-0000-4000-8000-000000000001";
 // A DEV test user (development data, no real account). `?user=<number>` picks another
-// one from ../miniapp/src/dev/devHub.ts. It must carry the mini-app administrator
-// flag, or the API answers 403 to the admin routes.
+// one from ../miniapp/src/dev/devHub.ts. It must carry the global Hub flag
+// `miniapp_admin`, or the API answers 403 to the admin routes.
 const DEFAULT_USER = "639980001";
 const TEST_PASSWORD = "password123";
 // The SDK's ApiService needs absolute base URLs (devHost.ts); the Vite server proxies /api/ and /hub/.
@@ -56,7 +56,8 @@ async function adminToken(): Promise<string> {
   });
   const scoped = await postJson<{ token: string }>(
     `${HUB}/applications/${MOCK_APP_UUID}/token`,
-    // Empty body: the Hub adds the admin scope on its own for a flagged user.
+    // Empty body: the Hub adds the admin scope on its own when the user has the
+    // global Hub flag `miniapp_admin`.
     {},
     master.token,
   );
