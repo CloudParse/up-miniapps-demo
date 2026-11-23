@@ -1,1 +1,39 @@
 @import "@cloudparse/up-backoffice-sdk/plugin.css";
+
+/*
+ * Light theme. The Studio is light, but the tokens of the backoffice SDK are dark
+ * (background #0f172a, white text, surfaces painted with white at 5% to 10%).
+ * Later @theme values win over the SDK ones, so these tokens make the plugin light.
+ *
+ * `--color-white` is inverted on purpose: the SDK kit paints its surfaces with
+ * `bg-white/5`, `border-white/10` and `text-white`, which only work on a dark page.
+ * With the dark ink here they become soft grey surfaces, grey borders and dark text.
+ * The rules below the theme put a real white back where the text sits on a colored
+ * button and on the switch knob.
+ */
+@theme {
+  --color-background: #f8fafc;
+  --color-foreground: #0f172a;
+
+  --color-card: #ffffff;
+  --color-card-foreground: #0f172a;
+
+  --color-muted: #e2e8f0;
+  --color-muted-foreground: #475569;
+
+  --color-accent: #0369a1;
+  --color-accent-foreground: #ffffff;
+
+  --color-white: #0f172a;
+}
+
+/* Outside any @layer, so these win over the utilities: white on a colored background. */
+.bg-primary.text-white,
+.bg-error.text-white,
+.bg-primary .text-white {
+  color: #ffffff;
+}
+
+.rounded-full.bg-white.shadow {
+  background-color: #ffffff;
+}
