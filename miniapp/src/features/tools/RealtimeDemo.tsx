@@ -11,7 +11,11 @@ import {
   type PingStatus,
 } from "@app/lib/pingClient";
 import { apiClient, getWsUrl } from "@app/services/backend";
-import { broadcastDemoMessage } from "@app/services/demoService";
+import {
+  broadcastDemoMessage,
+  DEMO_DEV_ONLY_MESSAGE,
+  isDemoAvailable,
+} from "@app/services/demoService";
 import {
   type BroadcastWsServiceClient,
   createWsService,
@@ -103,7 +107,7 @@ export function RealtimeDemo() {
       <div className="flex flex-col gap-4">
         <ScreenTitle title="Temps réel" />
         <EmptyState
-          description="Aucune URL WebSocket reçue : le shell ne fournit pas wsUrl et VITE_BACKEND_URL n'est pas renseigné."
+          description="Aucune adresse WebSocket. Dans l'app UP, la plateforme la fournit quand le backend est déployé. En développement : copie miniapp/.env.template vers miniapp/.env (VITE_BACKEND_URL=/api/v1) et relance npm run dev."
           title="Temps réel non configuré"
         />
       </div>
@@ -175,12 +179,19 @@ export function RealtimeDemo() {
         ))}
       </Card>
       <Button
-        disabled={status !== "open" || send.state.status === "pending"}
+        disabled={
+          !isDemoAvailable() ||
+          status !== "open" ||
+          send.state.status === "pending"
+        }
         onClick={() => void send.run()}
         variant="secondary"
       >
         Envoyer un message à tous
       </Button>
+      {isDemoAvailable() ? null : (
+        <p className="text-xs-plus text-ink-faint">{DEMO_DEV_ONLY_MESSAGE}</p>
+      )}
       {send.state.status === "error" ? (
         <p className="text-sm-plus text-accent-danger">{send.state.message}</p>
       ) : null}

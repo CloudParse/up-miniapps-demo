@@ -1,4 +1,14 @@
+import { APP_CONFIG } from "@app/config/env";
 import { apiService } from "@app/services/backend";
+
+/** Why the demo is off: its routes exist in development only (the API answers 404 in production). */
+export const DEMO_DEV_ONLY_MESSAGE =
+  "Les routes de démo ne sont servies qu'en développement : remplace cette carte par tes propres routes.";
+
+/** True in a development build: only there the API serves the demo routes. */
+export function isDemoAvailable(): boolean {
+  return APP_CONFIG.isDev;
+}
 
 // Routes of the demo API (api/app/api/routes/demo.py), served under /api/v1 outside production only.
 export const DEMO_PATH = "demo";
@@ -36,6 +46,8 @@ export async function recordDemoVisit(): Promise<DemoVisit> {
 
 /** True when the API serves the demo. In production the route does not exist (404): the card stays hidden. */
 export async function isDemoServed(): Promise<boolean> {
+  // A production build never calls a demo route: no 404 in the console.
+  if (!isDemoAvailable()) return false;
   try {
     await apiService.get<{ enabled: boolean }>(DEMO_PATH);
     return true;

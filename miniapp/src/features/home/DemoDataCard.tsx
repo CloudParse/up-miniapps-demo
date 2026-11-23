@@ -2,7 +2,9 @@ import { Button } from "@app/components/ui/button";
 import { Card } from "@app/components/ui/card";
 import { getErrorMessage } from "@app/lib/errors";
 import {
+  DEMO_DEV_ONLY_MESSAGE,
   type DemoVisit,
+  isDemoAvailable,
   isDemoServed,
   recordDemoVisit,
 } from "@app/services/demoService";
@@ -37,6 +39,13 @@ export function DemoDataCard() {
     }
   }
 
+  if (!isDemoAvailable()) {
+    return (
+      <Card className="text-xs-plus text-ink-soft">
+        {DEMO_DEV_ONLY_MESSAGE}
+      </Card>
+    );
+  }
   if (!served) return null;
 
   return (

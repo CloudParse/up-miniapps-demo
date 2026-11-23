@@ -8,3 +8,14 @@ export function devWsUrl(backendUrl: string): string {
   if (!/^https?:\/\//.test(url)) return "";
   return `${url.replace(/^http/, "ws")}/ws`;
 }
+
+// A path such as "/api/v1" goes through the Vite dev server's proxy to the
+// backend (vite.config.ts): one origin, so it works the same on localhost and
+// behind a Coder port URL. The SDK needs an absolute URL.
+export function resolveDevBackendUrl(
+  raw: string | undefined,
+  origin: string = window.location.origin,
+): string {
+  const value = raw?.trim() ?? "";
+  return value.startsWith("/") ? `${origin}${value}` : value;
+}
