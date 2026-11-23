@@ -32,3 +32,21 @@ The settings of the mini-app (name, description, logo, card style, theme, device
 Agent skills (Claude Code loads them on its own): `.claude/skills/`. The list is in `AGENT.md`, section "Skills".
 
 **Before you ship:** delete the demo of the DEV resources (`api/app/services/demo_service.py`, its route `api/app/api/routes/demo.py`, schema, test, and the card `miniapp/src/features/home/DemoDataCard.tsx`; with `api/app/services/demo_admin_service.py`, the plugin page `plugin/src/features/demo/` and its service). It is an example; the API does not serve it in production.
+
+## Features covered (last audit: 2026-11-23)
+
+What this template shows, and where. When the platform or the SDK gets a feature, add a line here and change the audit date.
+
+| Area | Covered | Where |
+| --- | --- | --- |
+| SDK | `@cloudparse/up-miniapps-sdk` 0.17.0 pinned. Boot (`initialize`, context, insets), user profile, `createApiService`, `createWsService` (broadcast), storage and secure storage, permissions, haptics, location, map and routing, journey, QR scan and generation, media, payment, fidelity, achievements, network, system UI and exit | `miniapp/src/` (`features/`, `services/`) |
+| Backend addresses | Given by the platform only: `window.__UP_BACKEND_URLS__`, `env`, `UPDATE_CONTEXT` when the backend is registered later. Never in the code | `docs/web-launcher.md`, `miniapp/src/services/backend.ts` |
+| Web launcher | Phone mock and device picker on a computer, fullscreen on a phone, install on the home screen, web host limits with a clear message | `docs/web-launcher.md`, `miniapp/src/lib/errors.ts` |
+| Realtime | WebSocket route `/api/v1/ws`, hub, push example, listening client, tests | `docs/realtime.md`, `api/app/api/routes/realtime.py` |
+| API | FastAPI, access levels (public, user, admin), Hub tokens and the admin scope, `.env` loader, Host guard, `0.0.0.0` dev servers, database, cache, bucket, tests | `api/`, `api/AGENT.md` |
+| Studio plugin | Boilerplate, development page, admin routes | `plugin/`, `docs/plugin.md` |
+| Coder | Workspace started by the person, project variables in the shell, `CLAUDE.local.md`, ports, buttons that open a tab, no sign-in rate limit in DEV | `docs/coder.md`, `SETUP.md` |
+| Deploy | `miniapp.yaml`, buttons in the Studio, Gitea CI, addresses registered by the platform, `publicIngress` | `docs/deploy.md`, `miniapp.yaml` |
+| Agent skills | Project, CI contract, platform guide, frontend, API, web launcher, realtime (draft), security reviewer | `.claude/skills/`, `.claude/agents/` |
+
+Not covered on purpose: a private WebSocket channel with tickets (described in `docs/realtime.md`), several API replicas, payments with a real provider.

@@ -50,6 +50,15 @@ miniapp:
   out: dist
 ```
 
+### The addresses the platform registers
+
+When the backend is deployed, the platform registers two addresses for the mini-app, only if they are still empty (a value you typed in the Studio is kept):
+
+- HTTP: `https://api.<mini-app>.app.<domain>/api/v1`
+- WebSocket: `wss://api.<mini-app>.app.<domain>/api/v1/ws`
+
+The Up app and the web launcher give them to your mini-app (`docs/web-launcher.md`): the code never contains them. Your API must serve the WebSocket at `/api/v1/ws` for the second one to work (`docs/realtime.md`). `api.publicIngress` must stay `true` for the mini-app to reach the backend from a browser.
+
 ## 2. Deploy
 
 1. Commit and push to the default branch.

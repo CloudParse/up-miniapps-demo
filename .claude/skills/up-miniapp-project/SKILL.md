@@ -16,6 +16,8 @@ Deeper skills of this repository:
 - `up-platform-guide`: questions about Up, roles, development, deployment, the web.
 - `up-miniapp-frontend`: code in `miniapp/`.
 - `up-miniapp-api`: code in `api/`.
+- `up-miniapp-web-launcher`: the website display, the web host limits, the backend addresses.
+- `up-miniapp-realtime`: a live feature over the WebSocket.
 
 ## Where things run
 

@@ -71,7 +71,7 @@ The repository root is **not** an application: no code lives there, only the doc
 
 ### Skills
 
-The project ships five agent skills in `.claude/skills/` and one review agent in `.claude/agents/`. Claude Code loads them on its own. Another agent reads the `SKILL.md` it needs.
+The project ships seven agent skills in `.claude/skills/` and one review agent in `.claude/agents/`. Claude Code loads them on its own. Another agent reads the `SKILL.md` it needs.
 
 | Skill | Use it for |
 | --- | --- |
@@ -79,6 +79,8 @@ The project ships five agent skills in `.claude/skills/` and one review agent in
 | `.claude/skills/up-miniapp-ci-contract/` | **Mandatory for every change.** The protected files, the forbidden actions, and what the deployment CI relies on. Breaking one rule makes the mini-app impossible to deploy. |
 | `.claude/skills/up-platform-guide/` | Questions about Up: what it is, roles and permissions (Classic, Dev, Admin mini-app, Admin), development in Coder, deployment from the Studio of `up.cloudparse.fr`, the web via `deviceTypes`, common problems. |
 | `.claude/skills/up-miniapp-frontend/` | Code in `miniapp/`: Jotai state, services, components, styling, WebView rules, frontend security. |
+| `.claude/skills/up-miniapp-web-launcher/` | How the Up website shows the mini-app: phone mock on a computer, fullscreen on a phone, what the web host supports, where backend addresses come from. |
+| `.claude/skills/up-miniapp-realtime/` | A live feature: the API pushes over `/api/v1/ws`, the mini-app listens with `createWsService`. |
 | `.claude/skills/up-miniapp-api/` | Code in `api/`: MVC by default, Hub tokens, access levels, secrets, errors, data, tests, Dockerfile. |
 
 | Agent | Use it for |

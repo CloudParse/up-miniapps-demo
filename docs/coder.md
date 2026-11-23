@@ -60,6 +60,19 @@ Coder workspace (dev-<organisation>)
 - The Vite dev server (21515), the plugin's development page (21516, `docs/plugin.md`) and the API (21514) listen on `0.0.0.0`. Coder lists only the ports that listen on every interface in "Open ports". The two Vite servers answer 403 to any Host header that is not the Coder port URL, `DEV_ALLOWED_HOSTS` or a loopback name, IP addresses included (`dev-tools/hostGuard.ts`; Vite 8 alone lets IP Host headers through `allowedHosts`). The API (`api/configs/config.toml`, `server.host`) has no such check. On a laptop (shared Wi-Fi, a café), the API on `0.0.0.0` has no Host check: anyone on the network can read `/docs`, `/openapi.json`, `GET /api/v1/demo` and the public routes. Authenticated routes still need a Hub-signed token. Set `SERVER_HOST=127.0.0.1` to keep it local. A deployed container sets `SERVER_HOST=0.0.0.0` itself (`api/Dockerfile`), so production is unchanged.
 - `api/.env` is read by `python -m app` itself (`api/app/core/dotenv.py`), with or without `uv run`. A variable already set in the shell wins over the file. `python -m app` gives the same result as `uv run --env-file` only for plain `KEY=VALUE` values (quotes, comments, `export`). Not supported: `$VAR` expansion and multi-line values. A skipped line is logged by its number, never by its value.
 
+## When the workspace runs
+
+- A workspace starts only when a person starts it. The platform creates it stopped, without a pod, and never starts it for you.
+- Open the Studio link **Ouvrir mon workspace**, then start the workspace in Coder (one click). It stops again on its own after 2 hours without use.
+- A workspace stopped for a while keeps `/home/coder`: your files and installed tools are still there when it starts again.
+
+## Your shell and the project settings
+
+- The terminal of the workspace already has the project variables (`DATABASE_URL`, `CACHE_URL`, `STORAGE_*` and the others of the table above), the same names as in `api/.env`. `psql "$DATABASE_URL"` works in a new terminal.
+- The workspace writes `CLAUDE.local.md` (and one per folder) at each start: the absolute paths, the commands and the ports of this workspace. Claude Code reads them. Git ignores them.
+- The Coder buttons **Mini-app**, **API** and **Plugin** open in a new browser tab, so you can refresh the page.
+- The DEV backend has no sign-in rate limit, because all the workspaces of an organisation share one address. A `429 Too Many Requests` on `/hub/api/v1/auth/login` in DEV means the organisation was deployed before this change: redeploy it from the super console.
+
 ## Where to open the mini-app (2026-11-20)
 
 - The app "Mini-app": `https://miniapp--main--<workspace>--<owner>--<organisation>.cloudparse.app`.
@@ -71,5 +84,5 @@ Coder workspace (dev-<organisation>)
 ## Limits (2026-11-20)
 
 - **The app URL is private.** It opens only for you, after the Coder sign-in. The platform blocks port sharing: Coder Community cannot limit a shared port to the organisation.
-- **The mini-app runs in the SDK simulator** in your browser. The Up app on a phone does not load it.
+- **The mini-app runs in the SDK simulator** in your browser. The Up app on a phone does not load it. To see it as a member does on the website, publish a bundle and open the web launcher: [web-launcher.md](web-launcher.md).
 - **The workspace is not production.** Production is deployed from the Studio: [deploy.md](deploy.md).
