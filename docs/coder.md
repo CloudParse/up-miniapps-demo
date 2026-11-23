@@ -64,17 +64,22 @@ Coder workspace (dev-<organisation>)
 
 - Your workspace is created AHEAD, when you become a developer and for each mini-app you administer. It is created **stopped**: no pod runs until you press **Start** in Coder.
   - Coder shows it with its **Start** button. Press it when you want to work. It takes a short moment to start.
-  - For a few seconds after its creation Coder can show it as "Running" with nothing started. The platform then stops it by itself (within 20 seconds) and the Start button appears.
+  - For a few seconds after its creation Coder can show it as "Running" with nothing started. The platform stops it by itself right after the first build, a few seconds, and at the latest within about 20 seconds plus the time of the stop build. The Start button then appears.
+  - If you press Start inside that short window, the platform stops the workspace once. Press Start again.
   - Coder shows no warning. Nothing starts before you press Start.
-- **Ouvrir mon workspace** in the Studio opens your workspace page in Coder. If the workspace does not exist yet, the click creates it: with its pod started if you already signed in to Coder, stopped (press Start) if you never did.
+- **Ouvrir mon workspace** in the Studio opens your workspace page in Coder. If the workspace does not exist yet, the click creates it, stopped as well: press **Start** in Coder. The click never starts a pod.
 - Every **Ouvrir mon workspace** entry does the same: the button on the page of a mini-app, the link in the sidebar, the link on the home page, the "Coder" line of the services and the card of the components page.
 - An entry that is not on a mini-app page uses your mini-apps. With one mini-app it opens that workspace. With several it shows a short list to choose from. With none it says "Aucune mini-app à ouvrir.".
 - The first time, the button opens the Coder sign-in page. Sign in with the account you use in the Studio. After the sign-in Coder shows your workspace, which is already there, stopped. Press **Start**.
-- If your organisation was deployed before template 0.5.12, a person who never signed in to Coder has no workspace yet: sign in to Coder, then click **Ouvrir mon workspace** again.
+- If your organisation was deployed before template 0.5.13, nothing is created ahead and the click answers "Le workspace n'est pas encore prêt": ask a manager to redeploy the organisation.
 - If the workspace page shows a failure, press **Start**. A person never gets a second workspace for the same mini-app.
-- A workspace you asked for with a click and that nobody used 5 minutes after its creation is stopped on its own, and one left running without use is stopped after 2 hours.
-- A workspace created before 2026-11-23 can show the Coder warning "Ephemeral Parameters Detected" when you press Start. In Coder, open the workspace and press **Update** to get the current template (0.5.12): the warning is gone after it, and the workspace keeps its files.
+- A workspace that you started and left unused for 5 minutes after its creation is stopped on its own, and one left running without use is stopped after 2 hours.
+- A workspace created before 2026-11-23 can show the Coder warning "Ephemeral Parameters Detected" when you press Start. In Coder, open the workspace and press **Update** to get the current template (0.5.13): the warning is gone after it, and the workspace keeps its files.
 - The workspace has a parameter "Créé sans pod" (`hold_first_start`) managed by the platform. Do not change it: the platform sets it back to false so that your Start runs the pod.
+- Cost of the workspaces created ahead:
+  - The Coder namespaces use the StorageClass `local-path` (`WaitForFirstConsumer`). A workspace that never ran keeps a pending volume claim and uses no disk before its first Start.
+  - A started workspace grows without a limit per volume, and a deleted workspace keeps its directory on the node (`Retain`).
+  - The platform creates at most 100 workspaces ahead per organisation. It logs a warning when the cap is reached.
 - A workspace stopped for a while keeps `/home/coder`: your files and installed tools are still there when it starts again.
 
 ## Your shell and the project settings
