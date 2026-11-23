@@ -28,7 +28,7 @@ Deeper skills of this repository:
 Start:
 1. `cd api && uv run --env-file .env python -m app`. The API listens on 127.0.0.1:21514.
 2. `cd miniapp && npm run dev`. Vite listens on 21515 and sends `/api/` to the API.
-3. Open the workspace app "Mini-app", or the forwarded port: `https://21515--main--<workspace>--<owner>--<organisation>.cloudparse.app` (private, after the Coder sign-in).
+3. Open the workspace app "Mini-app": `https://miniapp--<workspace>--<owner>--<organisation>.cloudparse.app` (private, after the Coder sign-in). Never give the port URL `https://21515--main--...`. It does not open the mini-app (checked 2026-11-23).
 
 `GET /api/v1/resources` (signed in) tells whether the database, the cache and the bucket answer.
 

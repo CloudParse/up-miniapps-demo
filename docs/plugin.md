@@ -95,11 +95,10 @@ cd plugin
 npm run dev          # terminal 3, port 21516
 ```
 
-Open it with the button **Plugin** of the Coder dashboard (it works only while `npm run dev` runs in `plugin/`; Coder hides port 21516 from "Open ports" because the button exists) or at the port URL:
+Open it with the button **Plugin** of the Coder dashboard. The button works only while `npm run dev` runs in `plugin/`. Coder hides port 21516 from "Open ports" because the button exists. The button opens:
 
 ```text
-https://<port>--<agent>--<workspace>--<owner>--<org>.<apps domain>
-https://21516--main--<workspace>--<owner>--<organisation>.cloudparse.app
+https://plugin--<workspace>--<owner>--<organisation>.cloudparse.app
 ```
 
 The page needs the API (terminal 1, port 21514) and the DEV backend. How it works:

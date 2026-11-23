@@ -103,11 +103,11 @@ cd plugin && npm run dev            # terminal 3, only if you work on the plugin
 
 `python -m app` reads `api/.env` itself, with or without `uv run`, from any directory. A variable already set in the shell wins over the file. It equals `uv run --env-file` only for plain values: no `$VAR` expansion, no multi-line values.
 
-Then open the app "Mini-app" of the workspace in the Coder dashboard (port `21515`) and pick a test user. The same page is on the forwarded port: `https://21515--main--<workspace>--<owner>--<organisation>.cloudparse.app` (`docs/coder.md`, "Where to open the mini-app").
+Then open the app "Mini-app" of the workspace in the Coder dashboard (port `21515`) and pick a test user. The button opens `https://miniapp--<workspace>--<owner>--<organisation>.cloudparse.app`. The port URL `https://21515--main--<workspace>--<owner>--<organisation>.cloudparse.app` does not open the mini-app (checked 2026-11-23). Use the button address only. See `docs/coder.md`, "Where to open the mini-app".
 
 Ports:
 - `21514`: the API, bound to `0.0.0.0` so Coder lists it in "Open ports". It has no Host check: on a laptop network, others can read `/docs`, `/openapi.json` and `GET /api/v1/demo`; authenticated routes still need a Hub token. `SERVER_HOST=127.0.0.1` keeps it local. A deployed container sets `SERVER_HOST=0.0.0.0` itself.
-- `21515`: the Vite dev server of `miniapp/`, bound to `0.0.0.0`. Through its proxy, the API's `/api/` routes are reachable on that port too. It answers 403 to any Host header that is not the Coder port URL, `DEV_ALLOWED_HOSTS` or a loopback name, IP addresses included (`dev-tools/hostGuard.ts`).
+- `21515`: the Vite dev server of `miniapp/`, bound to `0.0.0.0`. Through its proxy, the API's `/api/` routes are reachable on that port too. It answers 403 to any Host header that is not the Coder port URL, the host of the dashboard button, `DEV_ALLOWED_HOSTS` or a loopback name, IP addresses included (`dev-tools/hostGuard.ts`).
 - `21516`: the development page of `plugin/`, bound to `0.0.0.0`, same host rule.
 - Before adding a port anywhere, check it does not clash with another project.
 

@@ -49,13 +49,13 @@ cd ~/<repository>/plugin
 npm run dev
 ```
 
-It listens on port 21516: `https://21516--main--<workspace>--<owner>--<organisation>.cloudparse.app`, or the button **Plugin** of the Coder dashboard (it works only while `plugin/` runs).
+It listens on port 21516. Open it with the button **Plugin** of the Coder dashboard: `https://plugin--<workspace>--<owner>--<organisation>.cloudparse.app`. The button works only while `plugin/` runs.
 
 ## 4. See it live
 
 In the Coder dashboard, open the app **Mini-app** of your workspace (port 21515). The SDK simulator asks which test user to sign in as: pick one. Every save reloads the page.
 
-The same page is on the forwarded port 21515: `https://21515--main--<workspace>--<owner>--<organisation>.cloudparse.app`. It opens only for you, after the Coder sign-in.
+The button opens `https://miniapp--<workspace>--<owner>--<organisation>.cloudparse.app`. It opens only for you, after the Coder sign-in. The port URL `https://21515--main--<workspace>--<owner>--<organisation>.cloudparse.app` does not open the mini-app (checked 2026-11-23). Use the button address only.
 
 ## 5. Deploy to production
 

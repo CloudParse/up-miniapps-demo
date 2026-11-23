@@ -110,9 +110,9 @@ cd ~/<repository>/miniapp && npm run dev                         # terminal 2, p
 ```
 
 See the mini-app:
-1. In the Coder dashboard, open the workspace app **Mini-app**. It opens `https://miniapp--main--<workspace>--<owner>--<organisation>.cloudparse.app`.
-2. Or open the forwarded port 21515 directly: `https://21515--main--<workspace>--<owner>--<organisation>.cloudparse.app`. The Coder dashboard lists it under "Open ports".
-3. Both URLs are private. They open only for you, after the Coder sign-in. The app is owner-only. The port URL stays owner-only because the platform refuses port sharing.
+1. In the Coder dashboard, open the workspace app **Mini-app**. It opens `https://miniapp--<workspace>--<owner>--<organisation>.cloudparse.app`.
+2. Give only that address. The port URL `https://21515--main--<workspace>--<owner>--<organisation>.cloudparse.app` does not open the mini-app (checked 2026-11-23).
+3. The address is private. It opens only for you, after the Coder sign-in. The app is owner-only.
 4. The SDK simulator shows a phone frame. It asks for a test user. Pick one of the 15 DEV users.
 5. To change user, open the tab "Compte".
 
@@ -188,7 +188,7 @@ The Studio value is the one the platform uses. The display settings of `miniapp.
 
 | Question | Answer |
 | --- | --- |
-| No "Mini-app" app in Coder | The apps domain is off on your organisation's Coder. The app and the port URL both need it. Ask an admin of the organisation. |
+| No "Mini-app" app in Coder | The apps domain is off on your organisation's Coder. The app needs it. Ask an admin of the organisation. |
 | Vite says "Blocked request. This host is not allowed" | Add the host to the shell variable `DEV_ALLOWED_HOSTS` (comma separated). Restart `npm run dev`. |
 | API calls fail with 401 | The token is missing, expired or for another mini-app. A call without the SDK client (curl, a hand-written `fetch`) has no token: use `services/`. An expired token: pick the test user again in the tab "Compte". |
 | API calls fail with 503 "Authentication is not configured" | `api/.env` has no Hub key. Run `up-project-setup`. Restart the API. |
