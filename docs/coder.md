@@ -83,6 +83,14 @@ Coder workspace (dev-<organisation>)
   - The platform creates at most 100 workspaces ahead per organisation. It logs a warning when the cap is reached.
 - A workspace stopped for a while keeps `/home/coder`: your files and installed tools are still there when it starts again.
 
+## When the workspace is ready (template 0.5.15)
+
+- Pressing **Start** runs the startup script. The workspace is ready only when the whole script has ended well. Until then the **VS Code** button stays disabled and terminal logins wait.
+- The script first waits for your project. A new mini-app, its Git repository and your access to it are prepared by the platform at the same time, so the repository can be missing for a short while. The script retries with a growing delay for up to 10 minutes and writes what it waits for in the startup log of the workspace page, in French then English.
+- Then it clones the repository, checks that it has a commit, writes the DEV settings (`api/.env`) and installs the dependencies. Each of these steps is tried again when it fails.
+- If a step still fails, the log ends with "Le workspace n'est PAS prêt" and the editor stays disabled. The workspace keeps trying in the background for 2 hours: when the repository appears, **VS Code** turns available by itself. You can also stop and start the workspace again: every step is repeated and a half-done step is finished, nothing is lost.
+- A message "dépôt introuvable ou accès pas encore accordé" means the repository does not exist yet or your access to it is not granted yet. Wait a minute, then start the workspace again.
+
 ## Your shell and the project settings
 
 - The terminal of the workspace already has the project variables (`DATABASE_URL`, `CACHE_URL`, `STORAGE_*` and the others of the table above), the same names as in `api/.env`. `psql "$DATABASE_URL"` works in a new terminal.
