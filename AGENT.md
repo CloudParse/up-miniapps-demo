@@ -155,13 +155,13 @@ Ports:
   - Admin routes (`/api/v1/admin/...`, `require_admin`) let the mini-app's administrators put data in: content, settings, moderation.
   - The administrators call them from the Studio plugin (`plugin/`, `docs/plugin.md`), not from the mini-app's screens.
   - When you add an admin route, add or update the plugin page that calls it.
-  - The demo pairs `/api/v1/admin/demo/*` with the demo plugin page.
+  - The demo pairs `/api/v1/admin/demo/*` with the demo plugin pages. The page "Notes" writes rows of `demo_notes` through `POST /api/v1/admin/demo/notes`.
 - **Never leak internals**: error bodies are generic (`{"error": {"code", "message"}}`), tracebacks stay in the logs, interactive docs are off in production.
 - **No raw HTML.** Never use `dangerouslySetInnerHTML`; no string-built SQL (use a query builder or parameters).
 - **CORS is an explicit allow-list**, never `*` with credentials.
 - **Images**: pinned tags, no secret baked into an image.
 - **The DEV resources of the mini-app** (`api/.env`, written by the workspace) are shared by its members. Never copy them into the repository, a config file or a log. `api/.env` is gitignored.
-- **The demo data route** `POST /api/v1/demo/visit` (api/app/services/demo_service.py, card `DemoDataCard` of the home screen) is an example of the three resources (PostgreSQL row, cache counter with `CACHE_KEY_PREFIX`, one bucket object per user). It is not served in production (the routes answer 404 and the card hides): delete it with its route, schema, test and card before you ship. Its admin routes `/api/v1/admin/demo/*` (api/app/services/demo_admin_service.py) are what the demo plugin calls (`plugin/`): they are not served in production either.
+- **The demo data route** `POST /api/v1/demo/visit` (api/app/services/demo_service.py, card `DemoDataCard` of the home screen) is an example of the three resources (PostgreSQL row, cache counter with `CACHE_KEY_PREFIX`, one bucket object per user). It is not served in production (the routes answer 404 and the card hides): delete it with its route, schema, test and card before you ship. The demo plugin (`plugin/`) calls its admin routes `/api/v1/admin/demo/*` (api/app/services/demo_admin_service.py). The notes go to the table `demo_notes`. These routes are not served in production either.
 - **Dependencies**: add as few as possible, run `npm audit` (frontend) and `uvx pip-audit` (backend) before shipping, and justify each new one.
 
 ### 5.1 Protected files and forbidden actions

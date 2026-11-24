@@ -26,7 +26,11 @@ How it works, for each kind of data:
 2. A service of the plugin (`plugin/src/services/`) calls that route with `miniappApi`.
 3. A page of the plugin (`plugin/src/features/`) shows the rows in a `Table` and edits them in a `Modal`.
 
-The demo page only shows figures and one button. A real plugin usually also has a list, a create/edit modal and a delete action per kind of data. The plugin never writes to the database itself: the API does.
+The demo plugin has two pages:
+- "Resources": figures and one button (`DemoPage.tsx`).
+- "Notes": the usual job of a plugin. A `Table` lists the rows of the table `demo_notes`. The modal "New note" writes one row through `POST /api/v1/admin/demo/notes` (`NotesPage.tsx`, `NoteModal.tsx`). Copy its plugin side (page, modal, service) for your own data. On the API side, store your own data through `models/` and `repositories/` (`api/AGENT.md`), not with raw SQL in a service like the demo.
+
+A real plugin usually also has an edit modal and a delete action per kind of data. The plugin never writes to the database itself: the API does.
 
 ## What a plugin is
 
@@ -53,7 +57,8 @@ The demo page only shows figures and one button. A real plugin usually also has 
 | File | Role |
 | --- | --- |
 | `plugin/src/index.tsx` | `definePlugin({ id, name, pages, styles })`: the plugin and its pages. |
-| `plugin/src/features/demo/DemoPage.tsx` | The demo page: three figures and one button. |
+| `plugin/src/features/demo/DemoPage.tsx` | The page "Resources": three figures and one button. |
+| `plugin/src/features/demo/NotesPage.tsx`, `NoteModal.tsx` | The page "Notes": a table of the notes and the modal that writes one (no `<form>`, `ModalActions submitType="button"`). |
 | `plugin/src/services/demo.ts` | The calls to the API (`miniappApi`). |
 | `plugin/vite.config.ts` | The production build, `vite build` -> `dist/plugin.js`. |
 | `plugin/vite.dev.config.ts`, `plugin/index.html`, `plugin/dev/main.tsx` | The development page (`npm run dev`). Not shipped. |
@@ -70,6 +75,9 @@ The plugin calls the API with `miniappApi` from the SDK. The Studio runs the req
 export const demoService = {
   overview: () => miniappApi.get<DemoOverview>("/admin/demo/overview"),
   resetCache: () => miniappApi.post<DemoOverview>("/admin/demo/reset-cache"),
+  listNotes: () => miniappApi.get<DemoNote[]>("/admin/demo/notes"),
+  addNote: (text: string) =>
+    miniappApi.post<DemoNote>("/admin/demo/notes", { text }),
 };
 ```
 
@@ -84,6 +92,8 @@ The demo routes are in `api/app/api/routes/demo.py` (`admin_router`):
 | --- | --- | --- |
 | `GET /api/v1/admin/demo/overview` | admin | Counts the rows of `demo_visits`, reads the cache counter, counts the objects under `demo/` in the bucket. |
 | `POST /api/v1/admin/demo/reset-cache` | admin | Deletes the cache counter, returns the new overview. |
+| `GET /api/v1/admin/demo/notes` | admin | The 50 newest rows of `demo_notes`. 503 when the database is not configured or does not answer. |
+| `POST /api/v1/admin/demo/notes` | admin | `{"text": "..."}` (1 to 200 characters, trimmed): writes one row of `demo_notes`, answers 201 with it. 503 like `GET`. |
 
 Like the rest of the demo, they are not served in production (404): the demo data is an example. A demo plugin deployed to production shows the warning "The demo routes are not served in production" instead of the figures. For your own plugin, add admin routes the way `api/app/api/routes/admin.py` does (the guard `require_admin` is declared once on the router).
 

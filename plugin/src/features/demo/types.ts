@@ -5,3 +5,10 @@ export interface DemoOverview {
   databaseVisits: number | null;
   storageObjects: number | null;
 }
+
+// One note of the demo_notes table, written by an admin from the plugin (POST /admin/demo/notes).
+export interface DemoNote {
+  createdAt: string;
+  id: number;
+  text: string;
+}

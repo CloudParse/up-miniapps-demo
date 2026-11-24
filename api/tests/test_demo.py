@@ -192,7 +192,7 @@ def test_a_concurrent_table_creation_is_not_an_error(
         "app.services.demo_service.psycopg.connect", lambda *_a, **_k: Connection()
     )
 
-    demo_service._ensure_schema("postgres://x")  # must not raise
+    demo_service.ensure_schema("postgres://x")  # must not raise
 
 
 def test_a_missing_privilege_is_one_clear_line_and_not_retried(

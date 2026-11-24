@@ -67,7 +67,7 @@ class DemoActions:
             storage=(lambda user: _record_storage(config, user))
             if storage.endpoint and storage.bucket
             else None,
-            prepare=(lambda: _ensure_schema(db_url)) if db_url else None,
+            prepare=(lambda: ensure_schema(db_url)) if db_url else None,
         )
 
 
@@ -108,13 +108,19 @@ def prepare(actions: DemoActions) -> None:
             return
 
 
-def _ensure_schema(url: str) -> None:
+def ensure_schema(url: str) -> None:
     try:
         with psycopg.connect(url, connect_timeout=TIMEOUT_SECONDS) as connection:
             connection.execute(
                 "CREATE TABLE IF NOT EXISTS demo_visits ("
                 "id bigserial PRIMARY KEY, user_id text NOT NULL, "
                 "visited_at timestamptz NOT NULL DEFAULT now())"
+            )
+            # The notes the admins write from the plugin (demo_admin_service).
+            connection.execute(
+                "CREATE TABLE IF NOT EXISTS demo_notes ("
+                "id bigserial PRIMARY KEY, text text NOT NULL, "
+                "created_at timestamptz NOT NULL DEFAULT now())"
             )
     except pg_errors.UniqueViolation, pg_errors.DuplicateTable:
         # Two replicas creating it at the same moment: the other one won.
@@ -126,7 +132,7 @@ def _record_database(url: str, user_id: str) -> int:
         return _insert_visit(url, user_id)
     except pg_errors.UndefinedTable:
         # The table was not there at startup (database not ready yet): once, here.
-        _ensure_schema(url)
+        ensure_schema(url)
         return _insert_visit(url, user_id)
 
 

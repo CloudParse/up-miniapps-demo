@@ -27,4 +27,4 @@ npm run check:write && npm run typecheck && npm run build   # dist/plugin.js
 - The plugin never holds a database, cache or bucket credential, and nothing secret: everything goes through an admin route of `api/`.
 - Production output: ONE ES module, `dist/plugin.js` (`plugin` section of `miniapp.yaml`). No code splitting, no dynamic `import()`. `grep -c __UP_BACKOFFICE_SHARED__ dist/plugin.js` must print 3.
 - `dev/`, `index.html` and `vite.dev.config.ts` are the development page only. Never import them from `src/`.
-- `src/features/demo/`, `src/services/demo.ts` and the API routes `admin/demo/*` are the example: replace them with your own pages and routes.
+- `src/features/demo/`, `src/services/demo.ts` and the API routes `admin/demo/*` are the example: replace them with your own pages and routes. The page "Notes" (`NotesPage.tsx`, `NoteModal.tsx`, `POST /api/v1/admin/demo/notes`) is the plugin pattern to copy when admins put data into the database. On the API side, use `models/` and `repositories/` (`api/AGENT.md`), not raw SQL in a service like the demo.

@@ -1,6 +1,7 @@
 import { definePlugin } from "@cloudparse/up-backoffice-sdk";
 import { DemoPage } from "@plugin/features/demo/DemoPage";
-import { LayoutDashboard } from "lucide-react";
+import { NotesPage } from "@plugin/features/demo/NotesPage";
+import { LayoutDashboard, StickyNote } from "lucide-react";
 import styles from "./styles.css?inline";
 
 // The default export is the whole plugin: the Studio loads it and renders its pages.
@@ -19,6 +20,13 @@ export default definePlugin({
       icon: LayoutDashboard,
       path: "",
       title: "Resources",
+    },
+    {
+      component: NotesPage,
+      description: "Admins write notes into the mini-app's database.",
+      icon: StickyNote,
+      path: "notes",
+      title: "Notes",
     },
   ],
   styles,

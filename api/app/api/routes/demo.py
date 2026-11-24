@@ -7,7 +7,7 @@ from app.api.deps import (
     require_admin,
 )
 from app.schemas.demo import DemoState, DemoVisit
-from app.schemas.demo_admin import DemoOverview
+from app.schemas.demo_admin import DemoNote, DemoNoteCreate, DemoOverview
 
 # Mounted only outside production (app/main.py): in production these routes answer 404.
 router = APIRouter(tags=["demo"])
@@ -47,6 +47,18 @@ def read_overview(service: DemoAdminServiceDep) -> DemoOverview:
 )
 def reset_cache(service: DemoAdminServiceDep) -> DemoOverview:
     return service.reset_cache_visits()
+
+
+@admin_router.get("/notes", summary="The newest notes the admins wrote")
+def list_notes(service: DemoAdminServiceDep) -> list[DemoNote]:
+    return service.list_notes()
+
+
+@admin_router.post(
+    "/notes", status_code=201, summary="Write one note in the database of the mini-app"
+)
+def add_note(body: DemoNoteCreate, service: DemoAdminServiceDep) -> DemoNote:
+    return service.add_note(body.text)
 
 
 router.include_router(admin_router)
