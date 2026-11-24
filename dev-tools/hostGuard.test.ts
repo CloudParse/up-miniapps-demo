@@ -117,7 +117,10 @@ test("appButtonHosts derives the Coder app button host from the port URL", () =>
     "plugin--test2--thoughtful-lawson93--app.cloudparse.app",
   ]);
   assert.deepEqual(appButtonHosts(21516, "plugin", {}), []);
-  assert.deepEqual(appButtonHosts(21516, "plugin", { VSCODE_PROXY_URI: "nope" }), []);
+  assert.deepEqual(
+    appButtonHosts(21516, "plugin", { VSCODE_PROXY_URI: "nope" }),
+    [],
+  );
   assert.ok(
     isAllowedHost("plugin--test2--thoughtful-lawson93--app.cloudparse.app", [
       ...appButtonHosts(21516, "plugin", env),
