@@ -43,6 +43,17 @@
           }
         ]
       }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "command -v python3 >/dev/null || exit 0; python3 \"$CLAUDE_PROJECT_DIR/.claude/hooks/welcome.py\""
+          }
+        ]
+      }
     ]
   }
 }

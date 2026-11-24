@@ -33,7 +33,7 @@ Agent skills (Claude Code loads them on its own): `.claude/skills/`. The list is
 
 **Before you ship:** delete the demo of the DEV resources (`api/app/services/demo_service.py`, its route `api/app/api/routes/demo.py`, schema, test, and the card `miniapp/src/features/home/DemoDataCard.tsx`; with `api/app/services/demo_admin_service.py`, the plugin page `plugin/src/features/demo/` and its service). It is an example; the API does not serve it in production.
 
-## Features covered (last audit: 2026-11-23)
+## Features covered (last audit: 2026-11-24)
 
 What this template shows, and where. When the platform or the SDK gets a feature, add a line here and change the audit date.
 
@@ -47,7 +47,7 @@ What this template shows, and where. When the platform or the SDK gets a feature
 | Studio plugin | Boilerplate in light mode with the Studio palette and fonts (backoffice SDK 0.3.1), development page, admin routes | `plugin/`, `docs/plugin.md` |
 | Coder | Workspace created by the person's click on "Ouvrir mon workspace" (no pod before), project variables in the shell, `CLAUDE.local.md`, ports, buttons that open a tab, no sign-in rate limit in DEV | `docs/coder.md`, `SETUP.md` |
 | Deploy | `miniapp.yaml`, buttons in the Studio, Gitea CI, addresses registered by the platform, `publicIngress` | `docs/deploy.md`, `miniapp.yaml` |
-| Agent skills | Project, CI contract, platform guide, frontend, API, web launcher, realtime (draft), security reviewer | `.claude/skills/`, `.claude/agents/` |
+| Agent skills | Project, CI contract, platform guide, frontend, API, web launcher, realtime (draft), security reviewer. Welcome message at each `claude` start (`miniapp/`, `api/`, `plugin/`, "What do you want to build for Up?") | `.claude/skills/`, `.claude/agents/` |
 
 ## Dependency versions (last audit: 2026-11-23)
 

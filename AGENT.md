@@ -89,6 +89,8 @@ The project ships seven agent skills in `.claude/skills/` and one review agent i
 
 The SDK's own Claude Code plugin adds the skill `up-miniapp-builder` (SDK signatures and mini-app UI rules).
 
+Each time `claude` starts, the hook `.claude/hooks/welcome.py` (SessionStart, `startup` only) shows a welcome message. It explains `miniapp/`, `api/` and `plugin/` and asks "What do you want to build for Up?". Claude gets the same text. It plans a first message that describes something to build, and does a concrete task or question directly. Its test: `python3 .claude/hooks/welcome_test.py`.
+
 Sub-project specifics live in `miniapp/AGENT.md` and `api/AGENT.md`. When they conflict with this file, the sub-project file wins for its own folder.
 
 ## 3. Quick start

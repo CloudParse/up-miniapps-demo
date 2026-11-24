@@ -47,6 +47,7 @@ Coder workspace (dev-<organisation>)
 ## What the workspace gives you
 
 - Python 3.14 and `uv`, Node.js 26 LTS, Go, git, Claude Code (`claude`) and VS Code in the browser.
+- Claude Code is ready. The image ships it, `up-project-setup` installs the SDK's Claude Code plugin, and the project rules come with the repository. The first time, it asks you to pick a theme, sign in with your own Anthropic account (`/login`) and trust the project folder. Each time you start `claude`, it shows a welcome message about `miniapp/`, `api/` and `plugin/` and asks what you want to build for Up (`SETUP.md`, section 6).
 - No Docker daemon. No root: you are `uid 1000`.
 - Over the network: the organisation's coderd, its DEV backend, DEV PostgreSQL, DEV cache and DEV bucket, its Gitea and Vault, plus DNS and the internet. No Kubernetes API.
 - Only `/home/coder` survives a restart. Keep the project and every tool you install there.

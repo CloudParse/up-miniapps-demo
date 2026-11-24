@@ -63,12 +63,26 @@ The button opens `https://miniapp--<workspace>--<owner>--<organisation>.cloudpar
 
 ## 6. Start Claude Code
 
-From the root of the project, so it loads `CLAUDE.md` and `AGENT.md`. The workspace setup script (`up-project-setup`) also writes `CLAUDE.local.md` (root, `api/`, `miniapp/`) with the absolute paths of your workspace. Git ignores it. Sign in with your own Anthropic account (`/login`).
+Claude Code is ready in the workspace:
+- The workspace image ships Claude Code.
+- `up-project-setup` installs the SDK's Claude Code plugin (`up-miniapps-sdk`, not the Studio plugin of `plugin/`).
+- The project rules (`CLAUDE.md`, `AGENT.md`, `.claude/`) come with the repository.
+
+The first time, it only asks you to set it up once: pick a theme, sign in with your own Anthropic account (`/login`), and trust the project folder. The sign-in stays in `~/.claude` of your home volume.
+
+Start it from the root of the project, so it loads `CLAUDE.md` and `AGENT.md`. The workspace setup script (`up-project-setup`) also writes `CLAUDE.local.md` (root, `api/`, `miniapp/`) with the absolute paths of your workspace. Git ignores it.
 
 ```bash
 cd ~/<repository>
 claude
 ```
+
+Each time you start `claude`, it shows a welcome message (`.claude/hooks/welcome.py`):
+- `miniapp/`: the mini-app, shown inside the Up phone app and, when `deviceTypes` allows it, on the Up website;
+- `api/`: its backend, with the database, the cache and the bucket;
+- `plugin/`: the admin page in the Studio, where admins put data into the database.
+
+It then asks what you want to build for Up. Describe your idea: Claude plans it with you.
 
 After an SDK upgrade (`npm update` or a new version in `miniapp/package.json`), reinstall the plugin:
 
