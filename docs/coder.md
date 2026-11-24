@@ -83,13 +83,22 @@ Coder workspace (dev-<organisation>)
   - The platform creates at most 100 workspaces ahead per organisation. It logs a warning when the cap is reached.
 - A workspace stopped for a while keeps `/home/coder`: your files and installed tools are still there when it starts again.
 
-## When the workspace is ready (template 0.5.15)
+## When the workspace is ready (template 0.5.15, buttons 0.5.16)
 
-- Pressing **Start** runs the startup script. The workspace is ready only when the whole script has ended well. Until then the **VS Code** button stays disabled and terminal logins wait.
+- Pressing **Start** runs the startup script. The workspace is ready only when the whole script has ended well. Until then every button stays disabled and terminal logins wait. If the script ends in failure the buttons become clickable again, but the editor is not running (alert icon): read the startup log.
 - The script first waits for your project. A new mini-app, its Git repository and your access to it are prepared by the platform at the same time, so the repository can be missing for a short while. The script retries with a growing delay for up to 10 minutes and writes what it waits for in the startup log of the workspace page, in French then English.
 - Then it clones the repository, checks that it has a commit, writes the DEV settings (`api/.env`) and installs the dependencies. Each of these steps is tried again when it fails.
-- If a step still fails, the log ends with "Le workspace n'est PAS prêt" and the editor stays disabled. The workspace keeps trying in the background for 2 hours: when the repository appears, **VS Code** turns available by itself. You can also stop and start the workspace again: every step is repeated and a half-done step is finished, nothing is lost.
+- If a step still fails, the log ends with "Le workspace n'est PAS prêt" and the editor is not available (its button shows an alert icon "Unhealthy"). The workspace keeps trying in the background for 2 hours: when the repository appears, the **VS Code** alert icon goes away by itself. You can also stop and start the workspace again: every step is repeated and a half-done step is finished, nothing is lost.
 - A message "dépôt introuvable ou accès pas encore accordé" means the repository does not exist yet or your access to it is not granted yet. Wait a minute, then start the workspace again.
+
+## Are the Mini-app, API and Plugin buttons ready?
+
+- The buttons **Mini-app** (port 21515), **API** (21514) and **Plugin** (21516) show an alert icon and the text "Unhealthy" while nothing listens on their port. Coder 2.39 still lets you click them: the page then fails to load. A server that answers a status 500 or more on `/` is also "Unhealthy", while the line says "en marche". Start the server first.
+- The workspace page has three lines, "Mini-app (bouton)", "API (bouton)" and "Plugin (bouton)". Each says "en marche" or the exact command to run, refreshed every 5 seconds. While the project is not ready it says "Projet pas encore prêt".
+  - API: `cd api && SERVER_HOST=0.0.0.0 uv run --env-file .env python -m app`
+  - Mini-app: `cd miniapp && npm run dev -- --host 0.0.0.0`
+  - Plugin: `cd plugin && npm run dev`
+- The check reaches `127.0.0.1` inside the workspace. A server that listens on `127.0.0.1` or on `0.0.0.0` is "en marche". A server that listens only on `::1` (Node's `localhost` can resolve to `::1`) is not: use `--host 0.0.0.0`.
 
 ## Your shell and the project settings
 
