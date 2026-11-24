@@ -67,6 +67,12 @@ class CorsConfig(_Section):
     allowed_origins: list[str]
 
 
+class RealtimeConfig(_Section):
+    # False: /ws stays a public broadcast, a ticket is checked only when sent.
+    # True: /ws refuses a socket without a valid ticket.
+    require_ticket: bool = False
+
+
 class Config(_Section):
     # Top-level on purpose: it must bind to a plain ENVIRONMENT variable.
     environment: Literal["development", "test", "production"]
@@ -76,6 +82,7 @@ class Config(_Section):
     cache: CacheConfig
     storage: StorageConfig
     cors: CorsConfig
+    realtime: RealtimeConfig = RealtimeConfig()
 
     @property
     def is_development(self) -> bool:

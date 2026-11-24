@@ -49,19 +49,20 @@ A browser cannot set an `Authorization` header on a WebSocket. The mini-app asks
 1. `createWsService({ api: apiClient })` calls `POST /api/v1/ws-ticket` (its default `ticketPath` is `/ws-ticket`) inside the Up shell. The call carries the scoped Hub token like every route.
 2. The API stores a random 256-bit ticket in the mini-app's cache under `<CACHE_KEY_PREFIX>ws-ticket:<ticket>` with a 30-second lifetime, and answers `{ "ticket", "expiresIn" }`.
 3. The client opens `/api/v1/ws?ticket=<ticket>`.
-4. The socket route redeems the ticket with `GETDEL`: it is read and deleted in one step, so it works once. An unknown, used or expired ticket closes the socket with code 1008 before the upgrade.
+4. The socket route redeems the ticket with `GETDEL`: it is read and deleted in one step, so it works once. An unknown, used or expired ticket closes the socket with code 1008 before the upgrade. If the cache cannot be reached, the socket is closed with code 1013 and `POST /ws-ticket` answers 503 (`service_unavailable`).
 5. Without a cache (`CACHE_URL` empty), an in-memory store takes over. It is per process: fine for one development server, not for several replicas.
 
 Rules:
 - The ticket is a bearer secret for 30 seconds. Never log it. The query string is the only place it goes.
-- In this template the socket still accepts a connection without a ticket: the broadcast channel is public. A ticket, when present, must be valid. For a private channel, refuse a socket without a ticket in `realtime_socket`.
+- The socket is public by default. By default (`realtime.require_ticket = false`) it accepts a connection without a ticket. A ticket, when sent, must be valid. Nothing forces a client to ask for one.
+- To make the ticket mandatory, set `REALTIME_REQUIRE_TICKET=true` (or `require_ticket = true` under `[realtime]` in `api/configs/config.toml`). A socket without a valid ticket is then refused with code 1008. This only authenticates who opens the socket. The route still broadcasts to every socket and does not keep the user the ticket was issued to. A private channel also needs routing by user in `realtime_socket` (use the value `TicketService.redeem` returns).
 - A ticket carries the user (`sub`) and the admin flag it was issued for. `TicketService.redeem` returns them.
 - Outside the shell (a browser tab), the SDK uses `devToken` as a `token` query parameter instead. This API ignores it: use the ticket route.
 
 ## Channel mode (rooms)
 
-For a room or a group, create the service with `channelField` (for example `groupUuid`). The client sends `{ "action": "subscribe", "groupUuid": "<id>" }` and the server must route messages to the sockets of that room. Authenticate the socket first with a ticket (see "Tickets"): make it mandatory in `realtime_socket`, and route messages by the user the ticket was issued to. This template ships the broadcast mode only. The SDK README describes the wire protocol.
+For a room or a group, create the service with `channelField` (for example `groupUuid`). The client sends `{ "action": "subscribe", "groupUuid": "<id>" }` and the server must route messages to the sockets of that room. Authenticate the socket first with a ticket (see "Tickets"): set `REALTIME_REQUIRE_TICKET=true`, and route messages by the user the ticket was issued to. This template ships the broadcast mode only. The SDK README describes the wire protocol.
 
 ## Tests
 
-`api/tests/test_ws_ticket.py` covers the ticket route (signed in, 401, other audience), a ticket that opens the socket once, an unknown ticket (1008), the service, the expiry and the Redis store (prefix, lifetime, `GETDEL`). `api/tests/test_realtime.py` covers the broadcast to several sockets, the pong to the sender only, the ping id rules and the ping rate limit, no listener, a socket that leaves, an oversized client message (closed with 1009) and the limits of the hub. Run `cd api && uv run pytest`. The ping client is tested in `dev-tools/pingClient.test.ts` (`cd miniapp && npm test`).
+`api/tests/test_ws_ticket.py` covers the ticket route (signed in, 401), a ticket that opens the socket once, an unknown ticket (1008), the in-memory store (single use, expiry, the cap of 1000 tickets), the Redis store with a fake client (prefix, lifetime, `GETDEL`), the service (round trip, corrupt payloads), a cache failure (503 on the route, 1013 on the socket) and `REALTIME_REQUIRE_TICKET`. `api/tests/test_realtime.py` covers the broadcast to several sockets, the pong to the sender only, the ping id rules and the ping rate limit, no listener, a socket that leaves, an oversized client message (closed with 1009) and the limits of the hub. Run `cd api && uv run pytest`. The ping client is tested in `dev-tools/pingClient.test.ts` (`cd miniapp && npm test`).

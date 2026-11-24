@@ -21,6 +21,7 @@ from uuid import UUID
 import redis
 
 from app.core.config import Config
+from app.core.errors import ServiceUnavailableError
 from app.core.security import AuthenticatedUser
 
 # Long enough for the client to open the socket right after the request.
@@ -30,6 +31,7 @@ TIMEOUT_SECONDS = 5
 TICKET_BYTES = 32
 # The in-memory store forgets expired tickets; this caps what it keeps meanwhile.
 MEMORY_MAX_TICKETS = 1000
+UNAVAILABLE_MESSAGE = "The ticket store (cache) is not reachable."
 
 
 class TicketStore(Protocol):
@@ -109,15 +111,22 @@ class TicketService:
     def issue(self, user: AuthenticatedUser) -> str:
         ticket = secrets.token_urlsafe(TICKET_BYTES)
         payload = json.dumps({"sub": str(user.user_uuid), "admin": user.is_admin})
-        self._store.put(ticket, payload, TICKET_TTL_SECONDS)
+        try:
+            self._store.put(ticket, payload, TICKET_TTL_SECONDS)
+        except redis.RedisError as error:
+            raise ServiceUnavailableError(UNAVAILABLE_MESSAGE) from error
         return ticket
 
     def redeem(self, ticket: str) -> AuthenticatedUser | None:
         """The user the ticket was issued to, once.
 
-        ``None`` if the ticket is unknown, used or expired.
+        ``None`` if the ticket is unknown, used, expired or unreadable.
+        Raises ``ServiceUnavailableError`` if the cache cannot be reached.
         """
-        raw = self._store.take(ticket)
+        try:
+            raw = self._store.take(ticket)
+        except redis.RedisError as error:
+            raise ServiceUnavailableError(UNAVAILABLE_MESSAGE) from error
         if raw is None:
             return None
         try:
@@ -125,5 +134,5 @@ class TicketService:
             return AuthenticatedUser(
                 user_uuid=UUID(data["sub"]), is_admin=bool(data["admin"])
             )
-        except ValueError, KeyError, TypeError:
+        except ValueError, KeyError, TypeError, AttributeError:
             return None

@@ -16,9 +16,11 @@ export const QR_OPTIONS: IGenerateQrCodeOptions = {
   dotsType: "rounded",
   errorCorrectionLevel: "H",
   // Empty on purpose: no center logo. The QR library loads a logo through an XMLHttpRequest
-  // on its URL, and the host's CSP `connect-src` blocks that request for `data:` URLs (the
-  // inlined logo, and the SDK's default logo). The code is generated and read the same
-  // without it. `""` (not `undefined`) switches the default logo off: `null` is not typed.
+  // on its URL. The platform frame CSP used to block that request for `data:` URLs; its
+  // `connect-src` now allows `data:` (up/frontend `src/server/miniAppFrame.ts`), so a logo may
+  // work again. Not verified in a browser, so the logo stays off. The code is generated and
+  // read the same without it. `""` (not `undefined`) switches the default logo off: `null`
+  // is not typed.
   logo: "",
   size: 512,
 };

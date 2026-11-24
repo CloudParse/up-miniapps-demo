@@ -7,6 +7,8 @@ from fastapi import APIRouter, WebSocket, status
 from starlette.concurrency import run_in_threadpool
 
 from app.api.deps import CurrentUserDep, RealtimeHubDep, TicketServiceDep
+from app.core.config import Config
+from app.core.errors import ServiceUnavailableError
 from app.schemas.realtime import BroadcastRequest, BroadcastResult
 from app.schemas.ws_ticket import WsTicket
 from app.services.ticket_service import TICKET_TTL_SECONDS
@@ -64,13 +66,32 @@ def origin_allowed(websocket: WebSocket, allowed: list[str], development: bool) 
     return False
 
 
-async def ticket_allowed(websocket: WebSocket) -> bool:
-    """``True`` without a ``ticket`` parameter; with one, only if it is redeemed now."""
+async def ticket_allowed(websocket: WebSocket, require_ticket: bool) -> bool:
+    """Whether the socket may open.
+
+    Without a ``ticket`` parameter: yes, unless ``require_ticket``.
+    With one: only if it is redeemed now.
+    Raises ``ServiceUnavailableError`` if the ticket store cannot be reached.
+    """
     ticket = websocket.query_params.get("ticket")
     if ticket is None:
-        return True
+        return not require_ticket
     service = websocket.app.state.ticket_service
     return await run_in_threadpool(service.redeem, ticket) is not None
+
+
+async def connection_refusal(websocket: WebSocket, config: Config) -> int | None:
+    """The close code that refuses the upgrade, or ``None`` to accept it."""
+    if not origin_allowed(
+        websocket, config.cors.allowed_origins, config.is_development
+    ):
+        return status.WS_1008_POLICY_VIOLATION
+    try:
+        allowed = await ticket_allowed(websocket, config.realtime.require_ticket)
+    except ServiceUnavailableError:
+        # The cache is down: refuse, the client may retry later.
+        return status.WS_1013_TRY_AGAIN_LATER
+    return None if allowed else status.WS_1008_POLICY_VIOLATION
 
 
 def ping_id(text: str | None) -> tuple[bool, int | None]:
@@ -99,20 +120,18 @@ async def realtime_socket(websocket: WebSocket) -> None:
     may see, never a secret. Any website may open it (an Origin is checked, a cookie
     is not used), so it must carry nothing private. A ``ticket`` query parameter
     (from ``POST /ws-ticket``) is checked when present: an unknown, used or expired
-    ticket refuses the socket. For a private channel, make the ticket mandatory and
-    route by ``user`` (see ``docs/realtime.md``).
+    ticket refuses the socket. Without one the socket opens, unless
+    ``REALTIME_REQUIRE_TICKET=true`` (``realtime.require_ticket``): then a missing
+    ticket refuses it too. For a private channel, set that flag and route by user
+    (see ``docs/realtime.md``).
     """
     state = websocket.app.state
     hub = state.realtime_hub
     config = state.config
-    if not origin_allowed(
-        websocket, config.cors.allowed_origins, config.is_development
-    ):
+    refusal = await connection_refusal(websocket, config)
+    if refusal is not None:
         # Before accept(): the upgrade is refused with a 403.
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
-        return
-    if not await ticket_allowed(websocket):
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        await websocket.close(code=refusal)
         return
     await websocket.accept()
     if not hub.add(websocket, client_address(websocket)):

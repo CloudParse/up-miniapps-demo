@@ -16,7 +16,7 @@ function sourceFiles(directory: string): string[] {
 test("no source file of the plugin uses a form element or a submit button", () => {
   const root = new URL("../src", import.meta.url).pathname;
   for (const file of sourceFiles(root)) {
-    const code = readFileSync(file, "utf8").replace(/\/\/.*$/gm, "");
+    const code = readFileSync(file, "utf8").replace(/(^|[^:])\/\/.*$/gm, "$1");
     assert.doesNotMatch(code, /<form[\s>]/, `${file} uses <form>`);
     assert.doesNotMatch(
       code,

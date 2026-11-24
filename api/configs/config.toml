@@ -45,3 +45,8 @@ bucket = ""
 # Browser origins allowed in production. Local hosts are allowed automatically
 # when environment = "development".
 allowed_origins = []
+
+[realtime]
+# false: the WebSocket /api/v1/ws is a public broadcast (a ticket is checked only when sent).
+# true (REALTIME_REQUIRE_TICKET=true): a socket without a valid single-use ticket is refused.
+require_ticket = false

@@ -68,4 +68,4 @@ Locked versions at the audit. Every package is at its latest release, except the
 
 Held back: nothing. `npm outdated` still lists `@cloudparse/up-miniapps-sdk` "latest 0.2.3" and `@cloudparse/up-backoffice-sdk` "latest 0.1.1": npm sorts old dist-tags, the real latest releases are the versions in the table (`npm view <package> version`).
 
-Not covered on purpose: a private WebSocket channel (the ticket route exists, the socket stays a public broadcast: `docs/realtime.md`), several API replicas, payments with a real provider.
+Not covered on purpose: a private WebSocket channel (the ticket route exists and the socket stays a public broadcast until you set `REALTIME_REQUIRE_TICKET=true` and route by user: `docs/realtime.md`), several API replicas, payments with a real provider.
