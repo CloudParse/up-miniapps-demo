@@ -74,7 +74,7 @@ Also forbidden for these files:
 - One `.js` or `.mjs` file of at most 5 MiB, at `<plugin.dir>/<plugin.out>/<plugin.file>`.
 
 ### Development ports
-- API `127.0.0.1:21514`, Vite `21515`. The Coder workspace opens 21515. Do not change them.
+- API `0.0.0.0:21514`, Vite `21515`, plugin `21516`. The Coder workspace opens 21515. Do not change them.
 
 ## 4. Checks, then the security review
 

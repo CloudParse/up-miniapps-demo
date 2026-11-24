@@ -106,7 +106,7 @@ Coder workspace (dev-<organisation>)
 
 - The app "Mini-app": `https://miniapp--<workspace>--<owner>--<organisation>.cloudparse.app`. The address has no agent name.
 - The port URL `https://21515--main--<workspace>--<owner>--<organisation>.cloudparse.app` does not open the mini-app (checked 2026-11-23). Use the button address only.
-- The app "API" (port 21514) and the app "Plugin" (port 21516, the development page of `plugin/`): same URL shape with `api--` and `plugin--`. The three buttons (Mini-app, API, Plugin) hide their ports from "Open ports". The Plugin button needs `npm run dev` running in `plugin/`.
+- The app "API" (port 21514) and the app "Plugin" (port 21516, the development page of `plugin/`): same URL shape with `api--` and `plugin--`. The three buttons (Mini-app, API, Plugin) hide their ports from "Open ports". The Plugin button needs the plugin running: `npm run dev` in `plugin/`, or `dev-tools/up-dev.sh start` from the root (it starts the three parts).
 - `cloudparse.app` is the apps domain of the production platform, shared by every organisation's Coder.
 - The buttons open only for you, after the Coder sign-in. The apps are owner-only.
 

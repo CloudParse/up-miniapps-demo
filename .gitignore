@@ -16,3 +16,6 @@ __pycache__/
 # Local agent files: the workspace setup script writes them (absolute paths of this workspace).
 CLAUDE.local.md
 AGENTS.local.md
+
+# Background dev servers of dev-tools/up-dev.sh: logs and process ids.
+.up-dev/

@@ -71,11 +71,12 @@ The repository root is **not** an application: no code lives there, only the doc
 
 ### Skills
 
-The project ships seven agent skills in `.claude/skills/` and one review agent in `.claude/agents/`. Claude Code loads them on its own. Another agent reads the `SKILL.md` it needs.
+The project ships eight agent skills in `.claude/skills/` and one review agent in `.claude/agents/`. Claude Code loads them on its own. Another agent reads the `SKILL.md` it needs.
 
 | Skill | Use it for |
 | --- | --- |
 | `.claude/skills/up-miniapp-project/` | Any change in this repository: how the project is built, run, checked and reviewed. Start here. |
+| `.claude/skills/up-miniapp-start/` | Start, stop, restart or check the API, the mini-app and the plugin with one command (`dev-tools/up-dev.sh`). |
 | `.claude/skills/up-miniapp-ci-contract/` | **Mandatory for every change.** The protected files, the forbidden actions, and what the deployment CI relies on. Breaking one rule makes the mini-app impossible to deploy. |
 | `.claude/skills/up-platform-guide/` | Questions about Up: what it is, roles and permissions (Classic, Dev, Admin mini-app, Admin), development in Coder, deployment from the Studio of `up.cloudparse.fr`, the web via `deviceTypes`, common problems. |
 | `.claude/skills/up-miniapp-frontend/` | Code in `miniapp/`: Jotai state, services, components, styling, WebView rules, frontend security. |
@@ -95,7 +96,19 @@ Sub-project specifics live in `miniapp/AGENT.md` and `api/AGENT.md`. When they c
 
 ## 3. Quick start
 
-The full list is in `SETUP.md`. The workspace already cloned the project, wrote `api/.env` and installed the dependencies. In short:
+The full list is in `SETUP.md`. The workspace already cloned the project, wrote `api/.env` and installed the dependencies.
+
+**Agents: the user asks to start the project ("start everything", "démarre tout")? Run `dev-tools/up-dev.sh start` from the repository root at once.** Do not explore the project first. The same applies to one part, a restart or a status check.
+
+`up-dev.sh` does this:
+- starts `api/`, `miniapp/` and `plugin/` in the background;
+- installs the missing dependencies;
+- waits until each part answers;
+- prints the addresses to give the user.
+
+Details, the other commands (`status`, `logs`, `restart`, `stop`) and what to do on a failure: skill `up-miniapp-start`.
+
+By hand, one terminal per part:
 
 ```bash
 cd api && uv run python -m app      # terminal 1
@@ -130,6 +143,7 @@ Ports:
 
 - Every path in the `AGENT.md` files is relative to the repository root.
 - The absolute paths of this workspace are in `CLAUDE.local.md` (the repository root, `api/` and `miniapp/`). The workspace setup script `up-project-setup` writes them. They are git-ignored (`CLAUDE.local.md`, `AGENTS.local.md`): never commit them, never copy an absolute path into a file of the repository.
+- Dev servers: `dev-tools/up-dev.sh` (start, stop, status and logs of the three parts; check it with `shellcheck`).
 - Dev helper: `dev-tools/hostGuard.ts` (Host check of the two Vite dev servers), tested by `npm test` in `miniapp/`.
 - Code: `api/app/` (routes, services, schemas), `miniapp/src/`, `plugin/src/`. Docs: `docs/`. Deployment settings: `miniapp.yaml`.
 

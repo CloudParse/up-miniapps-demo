@@ -14,6 +14,8 @@ This Up mini-app project has three parts:
 - api/: its backend (FastAPI). It keeps the data in PostgreSQL, the cache and the bucket, and checks the Up user tokens.
 - plugin/: the admin page of the mini-app, in the Studio. Admins use it to put data into the database: content, settings, moderation.
 
+To run it, say "start everything": Claude runs dev-tools/up-dev.sh start and gives you the addresses.
+
 What do you want to build for Up? Describe your idea and Claude plans it with you."""
 
 CONTEXT = (
@@ -22,6 +24,7 @@ CONTEXT = (
     + "\n\nIf the user's first message describes something to build, treat it as the answer: "
     "follow the skill up-miniapp-project, say which parts (miniapp/, api/, plugin/) it touches and plan it with the user. "
     "If it is a concrete task or a question, do it directly. "
+    "If it asks to start or run the project, follow the skill up-miniapp-start: run dev-tools/up-dev.sh start at once. "
     "If it is only a greeting, briefly ask again what they want to build for Up."
 )
 

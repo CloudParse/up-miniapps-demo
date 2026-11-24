@@ -139,7 +139,9 @@ cd plugin
 npm run dev          # terminal 3, port 21516
 ```
 
-Open it with the button **Plugin** of the Coder dashboard. The button works only while `npm run dev` runs in `plugin/`. Coder hides port 21516 from "Open ports" because the button exists. The button opens:
+`dev-tools/up-dev.sh start plugin` from the root runs it in the background instead. `dev-tools/up-dev.sh start` runs the API, the mini-app and the plugin together.
+
+Open it with the button **Plugin** of the Coder dashboard. The button works only while the plugin dev server runs (`npm run dev` in `plugin/`, or `dev-tools/up-dev.sh start`). Coder hides port 21516 from "Open ports" because the button exists. The button opens:
 
 ```text
 https://plugin--<workspace>--<owner>--<organisation>.cloudparse.app

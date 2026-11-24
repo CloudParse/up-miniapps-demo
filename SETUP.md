@@ -20,6 +20,28 @@ The repository also got `miniapp.yaml` at its root (see "Settings of the mini-ap
 
 Nothing to configure. If a step failed (a warning in the workspace's startup log), run it again from a terminal: `up-project-setup`.
 
+## Start everything in one command
+
+From the root of the project:
+
+```bash
+dev-tools/up-dev.sh start
+```
+
+`up-dev.sh` does this:
+- starts the API (21514), the mini-app (21515) and the plugin (21516) in the background;
+- installs the missing dependencies;
+- waits until each part answers;
+- prints the address to open for each part.
+
+Other commands:
+- `dev-tools/up-dev.sh status` shows what runs. `dev-tools/up-dev.sh logs api` shows the log of a part. `dev-tools/up-dev.sh stop` stops everything.
+- Logs are in `.up-dev/` (git-ignored).
+
+Or ask Claude Code: "start everything" ("démarre tout"). The project skill `up-miniapp-start` makes it run this script at once and give you the addresses.
+
+Sections 1 to 3 below start each part by hand, in its own terminal. Use them to see the logs live.
+
 ## 1. API (terminal 1)
 
 ```bash
