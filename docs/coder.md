@@ -83,7 +83,7 @@ Coder workspace (dev-<organisation>)
   - The platform creates at most 100 workspaces ahead per organisation. It logs a warning when the cap is reached.
 - A workspace stopped for a while keeps `/home/coder`: your files and installed tools are still there when it starts again.
 
-## When the workspace is ready (template 0.5.15, buttons 0.5.16)
+## When the workspace is ready (template 0.5.17)
 
 - Pressing **Start** runs the startup script. The workspace is ready only when the whole script has ended well. Until then every button stays disabled and terminal logins wait. If the script ends in failure the buttons become clickable again, but the editor is not running (alert icon): read the startup log.
 - The script first waits for your project. A new mini-app, its Git repository and your access to it are prepared by the platform at the same time, so the repository can be missing for a short while. The script retries with a growing delay for up to 10 minutes and writes what it waits for in the startup log of the workspace page, in French then English.
@@ -91,14 +91,26 @@ Coder workspace (dev-<organisation>)
 - If a step still fails, the log ends with "Le workspace n'est PAS prêt" and the editor is not available (its button shows an alert icon "Unhealthy"). The workspace keeps trying in the background for 2 hours: when the repository appears, the **VS Code** alert icon goes away by itself. You can also stop and start the workspace again: every step is repeated and a half-done step is finished, nothing is lost.
 - A message "dépôt introuvable ou accès pas encore accordé" means the repository does not exist yet or your access to it is not granted yet. Wait a minute, then start the workspace again.
 
+## The banner "Workspace agent is connecting"
+
+- Coder shows it from the moment the pod exists until the workspace agent has connected. It is Coder's own message: nothing in the template can hide it.
+- The agent should connect within a few seconds after the pod starts (template 0.5.17; 30 seconds more before). The first start after a new template release also downloads the workspace image once (about 30 seconds); later starts do not.
+- Then the startup log runs (about 40 seconds: repository, settings, dependencies, editor). The workspace is ready when the log ends with "Workspace prêt / workspace ready".
+- If the banner stays for more than 3 minutes, open the startup log on the workspace page and restart the workspace.
+
 ## Are the Mini-app, API and Plugin buttons ready?
 
-- The buttons **Mini-app** (port 21515), **API** (21514) and **Plugin** (21516) show an alert icon and the text "Unhealthy" while nothing listens on their port. Coder 2.39 still lets you click them: the page then fails to load. A server that answers a status 500 or more on `/` is also "Unhealthy", while the line says "en marche". Start the server first.
-- The workspace page has three lines, "Mini-app (bouton)", "API (bouton)" and "Plugin (bouton)". Each says "en marche" or the exact command to run, refreshed every 5 seconds. While the project is not ready it says "Projet pas encore prêt".
-  - API: `cd api && SERVER_HOST=0.0.0.0 uv run --env-file .env python -m app`
-  - Mini-app: `cd miniapp && npm run dev -- --host 0.0.0.0`
-  - Plugin: `cd plugin && npm run dev`
-- The check reaches `127.0.0.1` inside the workspace. A server that listens on `127.0.0.1` or on `0.0.0.0` is "en marche". A server that listens only on `::1` (Node's `localhost` can resolve to `::1`) is not: use `--host 0.0.0.0`.
+- The buttons **Mini-app** (port 21515), **API** (21514) and **Plugin** (21516) show an alert icon and the text "Unhealthy" while nothing listens on their port. Coder 2.39 still lets you click them: the page then fails to load. A server that answers a status 500 or more on `/` is also "Unhealthy", while the line says "EN MARCHE". Start the server first.
+- The workspace page has three lines, "Mini-app (bouton)", "API (bouton)" and "Plugin (bouton)". Each is one short line, refreshed every 5 seconds:
+  - "EN MARCHE": the server listens.
+  - "ARRÊTÉE : tape up-api" (or `up-miniapp`, `up-plugin`): type that command in a terminal of the workspace.
+  - "Pas prêt : voir le journal": the project is not ready yet (see the startup log).
+  - "Pas de plugin/ ici": this project has no `plugin/` folder.
+- Three short commands, from any folder. Each runs in the foreground, so its logs stay on screen, and Ctrl+C stops it. Each refuses with a clear message when the project is not ready, `api/.env` or `node_modules` is missing or its port is already in use. `up-status` says which of the three runs.
+  - `up-api` runs `cd api && SERVER_HOST=0.0.0.0 uv run --env-file .env python -m app`
+  - `up-miniapp` runs `cd miniapp && npm run dev -- --host 0.0.0.0`
+  - `up-plugin` runs `cd plugin && npm run dev`
+- The check reaches `127.0.0.1` inside the workspace. A server that listens on `127.0.0.1` or on `0.0.0.0` is "EN MARCHE". A server that listens only on `::1` (Node's `localhost` can resolve to `::1`) is not: use `--host 0.0.0.0`.
 
 ## Your shell and the project settings
 
@@ -123,7 +135,7 @@ Coder workspace (dev-<organisation>)
 
 - The app "Mini-app": `https://miniapp--<workspace>--<owner>--<organisation>.cloudparse.app`. The address has no agent name.
 - The port URL `https://21515--main--<workspace>--<owner>--<organisation>.cloudparse.app` does not open the mini-app (checked 2026-11-23). Use the button address only.
-- The app "API" (port 21514) and the app "Plugin" (port 21516, the development page of `plugin/`): same URL shape with `api--` and `plugin--`. The three buttons (Mini-app, API, Plugin) hide their ports from "Open ports". The Plugin button needs the plugin running: `npm run dev` in `plugin/`, or `dev-tools/up-dev.sh start` from the root (it starts the three parts).
+- The app "API" (port 21514) and the app "Plugin" (port 21516, the development page of `plugin/`): same URL shape with `api--` and `plugin--`. The three buttons (Mini-app, API, Plugin) hide their ports from "Open ports". The Plugin button needs the plugin running: `up-plugin` (`npm run dev` in `plugin/`), or `dev-tools/up-dev.sh start` from the root (it starts the three parts).
 - `cloudparse.app` is the apps domain of the production platform, shared by every organisation's Coder.
 - The buttons open only for you, after the Coder sign-in. The apps are owner-only.
 
