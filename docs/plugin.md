@@ -147,6 +147,7 @@ Limits:
 
 Theme and fonts:
 - A plugin is light by default, like the Studio. Never add a dark theme.
+- The SDK components (0.4.0 and later) look like the Studio pages. Write your own markup the same way: mixed case, no `uppercase` or `font-black`, the `field` utility on hand-written inputs and selects, `rounded-card` cards, titles in `font-display font-bold text-title`. Details: section "Studio look" of `references/sdk-api.md` in the skill `up-backoffice-plugin-builder`.
 - Its fonts are the Studio fonts: Figtree for text, Bricolage Grotesque for display titles (`font-display`). Never add another font.
 - The backoffice SDK (0.3.0 and later) ships the palette and the font tokens. It ships no font file. `plugin/src/styles.css` only imports the SDK stylesheet.
 - In the Studio, the fonts and the page background come from the Studio.

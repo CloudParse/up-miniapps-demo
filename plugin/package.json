@@ -13,7 +13,7 @@
     "check:write": "biome check . --write --max-diagnostics 10000 --diagnostic-level error"
   },
   "dependencies": {
-    "@cloudparse/up-backoffice-sdk": "^0.3.1",
+    "@cloudparse/up-backoffice-sdk": "^0.4.0",
     "lucide-react": "^1.55.0"
   },
   "devDependencies": {

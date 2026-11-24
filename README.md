@@ -44,7 +44,7 @@ What this template shows, and where. When the platform or the SDK gets a feature
 | Web launcher | Phone mock and device picker on a computer, fullscreen on a phone or in a narrow window (with a **Plein écran** button where the browser allows it), install on the home screen, web host limits with a clear message | `docs/web-launcher.md`, `miniapp/src/lib/errors.ts` |
 | Realtime | WebSocket route `/api/v1/ws`, hub, push example, listening client, **Ping / pong button with the round trip**, works in development behind a Coder URL (Vite proxy with `ws: true`, same-site Origin), demo routes only in development (a production build calls none), tests | `docs/realtime.md`, `api/app/api/routes/realtime.py` |
 | API | FastAPI, access levels (public, user, admin), Hub tokens and the admin scope, `.env` loader, Host guard, `0.0.0.0` dev servers, database, cache, bucket, tests | `api/`, `api/AGENT.md` |
-| Studio plugin | Boilerplate in light mode with the Studio palette and fonts (backoffice SDK 0.3.1), development page, admin routes | `plugin/`, `docs/plugin.md` |
+| Studio plugin | Boilerplate with the Studio look: palette, fonts and components (backoffice SDK 0.4.0), development page, admin routes | `plugin/`, `docs/plugin.md` |
 | Coder | Workspace created by the person's click on "Ouvrir mon workspace" (no pod before), project variables in the shell, `CLAUDE.local.md`, ports, buttons that open a tab, no sign-in rate limit in DEV | `docs/coder.md`, `SETUP.md` |
 | Deploy | `miniapp.yaml`, buttons in the Studio, Gitea CI, addresses registered by the platform, `publicIngress` | `docs/deploy.md`, `miniapp.yaml` |
 | Agent skills | Project, CI contract, platform guide, frontend, API, web launcher, realtime (draft), security reviewer. Welcome message at each `claude` start (`miniapp/`, `api/`, `plugin/`, "What do you want to build for Up?") | `.claude/skills/`, `.claude/agents/` |
@@ -59,7 +59,7 @@ Locked versions at the audit. Every package is at its latest release, except the
 | miniapp | react, react-dom | 19.3.1 |
 | miniapp | vite, tailwindcss, typescript | 8.3.8, 4.3.5, 7.0.2 |
 | miniapp | maplibre-gl, jotai, lucide-react, biome | 6.19.0, 3.0.2, 1.78.0, 2.6.8 |
-| plugin | `@cloudparse/up-backoffice-sdk` | 0.3.1 (latest published) |
+| plugin | `@cloudparse/up-backoffice-sdk` | 0.4.0 (latest published) |
 | plugin | react, vite, typescript | 19.3.1, 8.3.8, 7.0.2 |
 | api | python, uv (Docker image) | 3.14.10 slim trixie, 0.13.9 (both latest) |
 | api | fastapi, uvicorn, pydantic, pyjwt, redis, boto3, psycopg | 0.165.0, 0.54.0, 2.14.4, 2.15.1, 8.2.0, 1.44.9, 3.3.9 |
