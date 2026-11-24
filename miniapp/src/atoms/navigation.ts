@@ -6,6 +6,7 @@ export type ToolsPage =
   | "network"
   | "realtime"
   | "haptics"
+  | "routing"
   | "permissions"
   | "storage"
   | "ui-kit"

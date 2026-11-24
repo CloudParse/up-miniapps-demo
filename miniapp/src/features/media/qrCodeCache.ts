@@ -1,4 +1,3 @@
-import logoUrl from "@app/assets/logo.svg";
 import { APP_CONFIG } from "@app/config/env";
 import { BRAND_COLORS } from "@app/utils/constants/brand";
 import { type IGenerateQrCodeOptions, sdk } from "@cloudparse/up-miniapps-sdk";
@@ -16,7 +15,11 @@ export const QR_OPTIONS: IGenerateQrCodeOptions = {
   },
   dotsType: "rounded",
   errorCorrectionLevel: "H",
-  logo: logoUrl,
+  // Empty on purpose: no center logo. The QR library loads a logo through an XMLHttpRequest
+  // on its URL, and the host's CSP `connect-src` blocks that request for `data:` URLs (the
+  // inlined logo, and the SDK's default logo). The code is generated and read the same
+  // without it. `""` (not `undefined`) switches the default logo off: `null` is not typed.
+  logo: "",
   size: 512,
 };
 

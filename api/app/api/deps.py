@@ -16,6 +16,7 @@ from app.services.demo_service import DemoActions, DemoService
 from app.services.hello_service import HelloService
 from app.services.realtime_service import RealtimeHub
 from app.services.resource_service import ResourceProbes, ResourceService
+from app.services.ticket_service import TicketService
 
 # auto_error=False: a missing header becomes our own 401 JSON error.
 _bearer_scheme = HTTPBearer(auto_error=False)
@@ -43,6 +44,11 @@ def get_demo_admin_service(request: Request) -> DemoAdminService:
 def get_realtime_hub(request: Request) -> RealtimeHub:
     hub: RealtimeHub = request.app.state.realtime_hub
     return hub
+
+
+def get_ticket_service(request: Request) -> TicketService:
+    service: TicketService = request.app.state.ticket_service
+    return service
 
 
 def get_token_verifier(request: Request) -> TokenVerifier:
@@ -79,3 +85,4 @@ DemoServiceDep = Annotated[DemoService, Depends(get_demo_service)]
 RealtimeHubDep = Annotated[RealtimeHub, Depends(get_realtime_hub)]
 DemoAdminServiceDep = Annotated[DemoAdminService, Depends(get_demo_admin_service)]
 CurrentUserDep = Annotated[AuthenticatedUser, Depends(get_current_user)]
+TicketServiceDep = Annotated[TicketService, Depends(get_ticket_service)]

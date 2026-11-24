@@ -4,9 +4,12 @@ import time
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, WebSocket, status
+from starlette.concurrency import run_in_threadpool
 
-from app.api.deps import CurrentUserDep, RealtimeHubDep
+from app.api.deps import CurrentUserDep, RealtimeHubDep, TicketServiceDep
 from app.schemas.realtime import BroadcastRequest, BroadcastResult
+from app.schemas.ws_ticket import WsTicket
+from app.services.ticket_service import TICKET_TTL_SECONDS
 
 router = APIRouter(tags=["realtime"])
 
@@ -61,6 +64,15 @@ def origin_allowed(websocket: WebSocket, allowed: list[str], development: bool) 
     return False
 
 
+async def ticket_allowed(websocket: WebSocket) -> bool:
+    """``True`` without a ``ticket`` parameter; with one, only if it is redeemed now."""
+    ticket = websocket.query_params.get("ticket")
+    if ticket is None:
+        return True
+    service = websocket.app.state.ticket_service
+    return await run_in_threadpool(service.redeem, ticket) is not None
+
+
 def ping_id(text: str | None) -> tuple[bool, int | None]:
     """Whether the text frame is a ping, and its id.
 
@@ -85,8 +97,10 @@ async def realtime_socket(websocket: WebSocket) -> None:
 
     Public on purpose, like a live feed of counters: push only data every member
     may see, never a secret. Any website may open it (an Origin is checked, a cookie
-    is not used), so it must carry nothing private. For a private channel, add a
-    route that asks the client for a ticket first (see ``docs/realtime.md``).
+    is not used), so it must carry nothing private. A ``ticket`` query parameter
+    (from ``POST /ws-ticket``) is checked when present: an unknown, used or expired
+    ticket refuses the socket. For a private channel, make the ticket mandatory and
+    route by ``user`` (see ``docs/realtime.md``).
     """
     state = websocket.app.state
     hub = state.realtime_hub
@@ -95,6 +109,9 @@ async def realtime_socket(websocket: WebSocket) -> None:
         websocket, config.cors.allowed_origins, config.is_development
     ):
         # Before accept(): the upgrade is refused with a 403.
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+    if not await ticket_allowed(websocket):
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
     await websocket.accept()
@@ -135,6 +152,14 @@ async def realtime_socket(websocket: WebSocket) -> None:
                     )
     finally:
         hub.remove(websocket)
+
+
+@router.post("/ws-ticket", summary="Get a single-use ticket to open the WebSocket")
+async def create_ws_ticket(user: CurrentUserDep, tickets: TicketServiceDep) -> WsTicket:
+    """Signed in with the scoped Hub token, like every route. The SDK client
+    (``createWsService``) calls this path before it opens ``/ws``."""
+    ticket = await run_in_threadpool(tickets.issue, user)
+    return WsTicket(ticket=ticket, expires_in=TICKET_TTL_SECONDS)
 
 
 # The example that pushes. Mounted only outside production (app/main.py),

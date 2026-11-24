@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite --config vite.dev.config.ts",
     "build": "tsc --noEmit && vite build",
-    "test": "node --test dev/devHost.test.ts",
+    "test": "node --test dev/devHost.test.ts dev/noForm.test.ts",
     "typecheck": "tsc --noEmit",
     "lint": "biome check . --max-diagnostics 10000 --diagnostic-level error",
     "check:write": "biome check . --write --max-diagnostics 10000 --diagnostic-level error"

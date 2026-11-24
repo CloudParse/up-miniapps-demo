@@ -14,6 +14,7 @@ from app.services.demo_admin_service import DemoAdminActions
 from app.services.demo_service import DemoActions, prepare
 from app.services.realtime_service import RealtimeHub
 from app.services.resource_service import ResourceProbes
+from app.services.ticket_service import TicketService, build_ticket_store
 
 API_PREFIX = "/api/v1"
 # Any port on a local host, development only.
@@ -47,6 +48,7 @@ def create_app(config: Config | None = None) -> FastAPI:
     app.state.demo_actions = DemoActions.from_config(config)
     app.state.demo_admin_actions = DemoAdminActions.from_config(config)
     app.state.realtime_hub = RealtimeHub()
+    app.state.ticket_service = TicketService(build_ticket_store(config))
 
     _add_cors(app, config)
     register_error_handlers(app)

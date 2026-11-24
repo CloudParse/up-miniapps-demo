@@ -5,6 +5,7 @@ import { HapticsDemo } from "@app/features/tools/HapticsDemo";
 import { NetworkDemo } from "@app/features/tools/NetworkDemo";
 import { PermissionsDemo } from "@app/features/tools/PermissionsDemo";
 import { RealtimeDemo } from "@app/features/tools/RealtimeDemo";
+import { RoutingDemo } from "@app/features/tools/RoutingDemo";
 import { StorageDemo } from "@app/features/tools/StorageDemo";
 import { SystemDemo } from "@app/features/tools/SystemDemo";
 import { UiKitDemo } from "@app/features/tools/UiKitDemo";
@@ -16,6 +17,7 @@ import {
   type LucideIcon,
   Network,
   Radio,
+  Route,
   Settings2,
   ShieldCheck,
   Vibrate,
@@ -40,6 +42,12 @@ const TOOL_ENTRIES: readonly ToolEntry[] = [
     icon: Radio,
     id: "realtime",
     title: "Temps réel",
+  },
+  {
+    description: "Calculer, tracer et effacer un itinéraire (sdk.routing).",
+    icon: Route,
+    id: "routing",
+    title: "Itinéraire",
   },
   {
     description: "Les huit styles de retour haptique.",
@@ -119,6 +127,7 @@ export function ToolsScreen() {
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-1 pb-6">
       {page === "network" ? <NetworkDemo /> : null}
       {page === "realtime" ? <RealtimeDemo /> : null}
+      {page === "routing" ? <RoutingDemo /> : null}
       {page === "haptics" ? <HapticsDemo /> : null}
       {page === "permissions" ? <PermissionsDemo /> : null}
       {page === "storage" ? <StorageDemo /> : null}

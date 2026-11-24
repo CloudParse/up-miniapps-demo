@@ -8,6 +8,7 @@ import {
   PullToRefresh,
   SwipeCarousel,
   type SwipeCarouselItem,
+  type SystemBarStyle,
   sdk,
 } from "@cloudparse/up-miniapps-sdk";
 import { useState } from "react";
@@ -41,6 +42,12 @@ const CAROUSEL_ITEMS: SwipeCarouselItem[] = [
 
 type Density = "compact" | "comfortable";
 
+const BAR_STYLES: readonly { value: SystemBarStyle; label: string }[] = [
+  { label: "Auto", value: "auto" },
+  { label: "Clair", value: "light" },
+  { label: "Sombre", value: "dark" },
+];
+
 const PULL_ROWS = Array.from({ length: 12 }, (_, n) => `Ligne ${n + 1}`);
 
 export function UiKitDemo() {
@@ -50,6 +57,7 @@ export function UiKitDemo() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [hideStatusBar, setHideStatusBar] = useState(false);
   const [hideNavigationBar, setHideNavigationBar] = useState(false);
+  const [barStyle, setBarStyle] = useState<SystemBarStyle>("auto");
 
   return (
     <div className="flex flex-col gap-5">
@@ -152,6 +160,22 @@ export function UiKitDemo() {
               setHideNavigationBar(checked);
               void sdk.ui.setSystemBarsHidden({ navigationBar: checked });
             }}
+          />
+        </Card>
+        <Card className="flex flex-col gap-2">
+          <span className="text-sm-plus text-ink-bright">
+            Icônes des barres système
+          </span>
+          <SegmentedControl
+            onChange={(style) => {
+              setBarStyle(style);
+              void sdk.ui.setSystemBarsStyle({
+                navigationBar: style,
+                statusBar: style,
+              });
+            }}
+            options={BAR_STYLES}
+            value={barStyle}
           />
         </Card>
         <p className="text-xs-plus text-ink-faint">

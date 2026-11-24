@@ -39,10 +39,10 @@ What this template shows, and where. When the platform or the SDK gets a feature
 
 | Area | Covered | Where |
 | --- | --- | --- |
-| SDK | `@cloudparse/up-miniapps-sdk` 0.17.0 pinned. Boot (`initialize`, context, insets), user profile, `createApiService`, `createWsService` (broadcast), storage and secure storage, permissions, haptics, location, map and routing, journey, QR scan and generation, media, payment, fidelity, achievements, network, system UI and exit | `miniapp/src/` (`features/`, `services/`) |
+| SDK | `@cloudparse/up-miniapps-sdk` 0.17.0 pinned. Boot (`initialize`, context, insets), user profile, `createApiService`, `createWsService` (broadcast), storage and secure storage, permissions, haptics, location, map, routing (`getRoute`, `drawRoute`, `clearRoute`), journey, QR scan and generation, media, payment, fidelity, achievements, network, system UI (scroll, bars hidden, bars style) and exit | `miniapp/src/` (`features/`, `services/`) |
 | Backend addresses | Given by the platform only: `window.__UP_BACKEND_URLS__`, `env`, `UPDATE_CONTEXT` when the backend is registered later. Never in the code | `docs/web-launcher.md`, `miniapp/src/services/backend.ts` |
 | Web launcher | Phone mock and device picker on a computer, fullscreen on a phone or in a narrow window (with a **Plein écran** button where the browser allows it), install on the home screen, web host limits with a clear message | `docs/web-launcher.md`, `miniapp/src/lib/errors.ts` |
-| Realtime | WebSocket route `/api/v1/ws`, hub, push example, listening client, **Ping / pong button with the round trip**, works in development behind a Coder URL (Vite proxy with `ws: true`, same-site Origin), demo routes only in development (a production build calls none), tests | `docs/realtime.md`, `api/app/api/routes/realtime.py` |
+| Realtime | WebSocket route `/api/v1/ws`, **`POST /api/v1/ws-ticket`** (single-use ticket in the cache, what `createWsService` asks for), hub, push example, listening client, **Ping / pong button with the round trip**, works in development behind a Coder URL (Vite proxy with `ws: true`, same-site Origin), demo routes only in development (a production build calls none), tests | `docs/realtime.md`, `api/app/api/routes/realtime.py` |
 | API | FastAPI, access levels (public, user, admin), Hub tokens and the admin scope, `.env` loader, Host guard, `0.0.0.0` dev servers, database, cache, bucket, tests | `api/`, `api/AGENT.md` |
 | Studio plugin | Boilerplate with the Studio look: palette, fonts and components (backoffice SDK 0.4.0), development page, admin routes, a "Notes" page where admins write rows of the database | `plugin/`, `docs/plugin.md` |
 | Coder | Workspace created by the person's click on "Ouvrir mon workspace" (no pod before), project variables in the shell, `CLAUDE.local.md`, ports, buttons that open a tab, no sign-in rate limit in DEV | `docs/coder.md`, `SETUP.md` |
@@ -68,4 +68,4 @@ Locked versions at the audit. Every package is at its latest release, except the
 
 Held back: nothing. `npm outdated` still lists `@cloudparse/up-miniapps-sdk` "latest 0.2.3" and `@cloudparse/up-backoffice-sdk` "latest 0.1.1": npm sorts old dist-tags, the real latest releases are the versions in the table (`npm view <package> version`).
 
-Not covered on purpose: a private WebSocket channel with tickets (described in `docs/realtime.md`), several API replicas, payments with a real provider.
+Not covered on purpose: a private WebSocket channel (the ticket route exists, the socket stays a public broadcast: `docs/realtime.md`), several API replicas, payments with a real provider.
