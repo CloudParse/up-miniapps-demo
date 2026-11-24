@@ -39,7 +39,9 @@ The website answers the bridge requests below. Everything else answers `<REQUEST
 
 | Works | Does nothing (accepted, no effect) | Not supported on the website |
 | --- | --- | --- |
-| `sdk.initialize`, context, user profile, network requests, storage and secure storage (in memory), permissions request, exit | debug log, scroll configuration, system bars, haptics | fidelity points (balance, history, spend), location, camera and QR scan, media, payment, achievements, routing and navigation, activity |
+| `sdk.initialize`, context, user profile, network requests, storage and secure storage (in memory), permissions request (asks the person for this mini-app, then the browser), location and location stream, image pick and save, camera (QR scan), fidelity points (balance, history, spend), achievements (list and by slug), user data in the database, exit | debug log, scroll configuration, system bars, haptics | payment (coming soon, no host handles it yet), routing and navigation, activity |
+
+The first location read or camera use asks the person on the website. A refusal answers an error: show a clear message.
 
 Design your screens so that an unsupported capability shows a clear message, not a crash. `miniapp/src/lib/errors.ts` turns the web host answer into a French message for the person, and every card of the demo uses it.
 

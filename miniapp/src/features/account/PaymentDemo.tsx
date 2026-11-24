@@ -3,21 +3,12 @@ import { Button } from "@app/components/ui/button";
 import { Card } from "@app/components/ui/card";
 import { Input } from "@app/components/ui/input";
 import { useAction } from "@app/hooks/useAction";
-import { sdk, useIsMocked } from "@cloudparse/up-miniapps-sdk";
+import { sdk } from "@cloudparse/up-miniapps-sdk";
 import { useState } from "react";
 
-const DEMO_PAYMENT = {
-  amount: 1,
-  currency: "EUR",
-  items: [{ item: "Up Demo", price: 1, quantity: 1 }],
-  total: 1,
-};
-
-// A real payment request charges real money on a device. The demo only runs
-// inside the simulator (BridgeMocker), where no transaction can happen.
+// Payment is not available yet: no host handles PAYMENT_REQUEST (neither the shell nor the
+// website). The card says so and the points spend below still works everywhere.
 export function PaymentDemo() {
-  const isMocked = useIsMocked();
-  const payment = useAction(() => sdk.payment.request(DEMO_PAYMENT));
   const [intentUuid, setIntentUuid] = useState("");
   const spend = useAction((uuid: string) => sdk.fidelity.spendFPoints(uuid));
 
@@ -27,33 +18,17 @@ export function PaymentDemo() {
         <p className="text-sm-plus font-semibold text-ink-bright">
           Paiement et points
         </p>
-        <Badge tone="warning">Démo</Badge>
+        <Badge tone="warning">Paiement : bientôt disponible</Badge>
       </div>
 
       <div className="flex flex-col gap-2">
-        <Button
-          disabled={!isMocked}
-          onClick={() => void payment.run()}
-          variant="outline"
-        >
-          Paiement de démonstration (1,00 €)
+        <Button disabled variant="outline">
+          Paiement
         </Button>
-        {!isMocked ? (
-          <p className="text-xs-plus text-ink-faint">
-            Désactivé sur l'appareil : une vraie demande de paiement débiterait
-            une carte.
-          </p>
-        ) : null}
-        {payment.state.status === "success" ? (
-          <p className="text-xs-plus text-accent-success">
-            Simulé — transaction {payment.state.result.transactionId}
-          </p>
-        ) : null}
-        {payment.state.status === "error" ? (
-          <p className="text-xs-plus text-accent-danger">
-            {payment.state.message}
-          </p>
-        ) : null}
+        <p className="text-xs-plus text-ink-faint">
+          Bientôt disponible. Le paiement n'est pas encore géré par l'app UP ni
+          par le site.
+        </p>
       </div>
 
       <div className="flex flex-col gap-2">
