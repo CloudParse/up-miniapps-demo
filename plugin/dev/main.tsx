@@ -1,14 +1,24 @@
 // Development only: runs the plugin in a plain page, with a host that is a stand-in for the Studio.
 //
 // What it keeps: the real plugin code, hot reload, and the real calls to the demo API.
-// What it does not: the sandbox, the Studio layout, the host styles. After a change,
-// check the plugin once in the real Studio (docs/plugin.md, "Run it in the Studio").
+// What it does not: the sandbox and the Studio layout. It loads the Studio fonts (Figtree,
+// Bricolage Grotesque) and the light page colours itself: the Studio gives them to the real frame.
+// After a change, check the plugin once in the real Studio (docs/plugin.md, "Run it in the Studio").
 import {
   ApiService,
   type PluginHost,
   type PluginPage,
 } from "@cloudparse/up-backoffice-sdk";
 import plugin from "@plugin/index";
+import "@fontsource/figtree/latin-400.css";
+import "@fontsource/figtree/latin-500.css";
+import "@fontsource/figtree/latin-600.css";
+import "@fontsource/figtree/latin-700.css";
+import "@fontsource/figtree/latin-800.css";
+import "@fontsource/figtree/latin-900.css";
+import "@fontsource/bricolage-grotesque/latin-600.css";
+import "@fontsource/bricolage-grotesque/latin-700.css";
+import "@fontsource/bricolage-grotesque/latin-800.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { apiProblem, devBaseUrls } from "./devHost";
@@ -91,6 +101,9 @@ const host: PluginHost = {
 const style = document.createElement("style");
 style.textContent = plugin.styles ?? "";
 document.head.append(style);
+// The light Studio page: the same background, text colour and font as the real frame.
+document.body.className =
+  "m-0 min-h-screen bg-background font-sans text-foreground antialiased";
 
 function currentPage(): Omit<PluginPage, "component"> | undefined {
   const path = window.location.hash.replace(/^#/, "");

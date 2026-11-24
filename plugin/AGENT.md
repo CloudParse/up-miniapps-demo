@@ -2,6 +2,10 @@
 
 Read the root `AGENT.md` first (security rules, review). Guide with the commands, the dev page and the publishing: `docs/plugin.md`. This file covers the plugin only.
 
+## What the plugin is for
+
+The plugin is the admin page of the mini-app, in the Studio. Most often, the admins use it to put data into the mini-app's database: content (events, places, products, categories), settings, moderation. For each kind of data: an admin route in `api/`, a service in `src/services/`, a page with a `Table` and a create/edit `Modal` in `src/features/`. The plugin never writes to the database itself. Details: `docs/plugin.md`, "What a plugin is for".
+
 ## Stack and commands
 
 React 19, TypeScript (strict), Vite, Tailwind CSS v4, Biome, `@cloudparse/up-backoffice-sdk`. Node.js 26 LTS.
@@ -15,6 +19,7 @@ npm run check:write && npm run typecheck && npm run build   # dist/plugin.js
 ## Rules
 
 - `src/index.tsx` default-exports `definePlugin({ id, name, pages, styles })`. The `id` is lowercase. Rename the template's `up-miniapps-demo` to your mini-app's own id: two mini-apps made from the template would publish the same one.
+- Light Studio theme and Studio fonts by default (Figtree, Bricolage Grotesque through `font-display`). Never a dark theme, never another font.
 - This is Studio code, not mini-app code. Use the SDK UI kit (`SectionHeader`, `StatTile`, `Table`, `Modal`, `Banner`, ...), English text, Tailwind theme tokens (the light Studio theme comes from the SDK 0.3.0, `src/styles.css` only imports it; no `white/…` or `black/…` opacity classes, no hard-coded colors), no arbitrary values, no `any`. No `alert`, `confirm`, `window.open`, cookies or web storage: the plugin runs in a sandboxed iframe.
 - No `<form>` element and no `type="submit"` button. The iframe is sandboxed without `allow-forms`, so the browser blocks the submission before `onSubmit` runs. Use a `<div>`, `ModalActions submitType="button" onSubmit={handleSubmit}` and `type="button"` buttons with `onClick`. The development page has no sandbox and does not show this bug.
 - API calls only through `miniappApi` (`src/services/`). Paths start after the API base URL, which ends with `/api/v1`. Check errors with `isApiError()`, never `instanceof ApiError`.

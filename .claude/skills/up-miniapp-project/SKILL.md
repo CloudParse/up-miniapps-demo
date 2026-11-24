@@ -84,9 +84,10 @@ Start:
    - state in `miniapp/src/atoms/`;
    - screens in `miniapp/src/features/`.
 4. A new setting: key in `api/configs/config.toml`, field in `api/app/core/config.py`, test in `api/tests/test_config.py`.
-5. Studio plugin (the admin page, see `plugin/AGENT.md` and `docs/plugin.md`). An admin route usually comes with a plugin page. Then:
+5. Studio plugin (the admin page, see `plugin/AGENT.md` and `docs/plugin.md`). Admins use it to put data into the database: content, settings, moderation. An admin route usually comes with a plugin page. Then:
    - one service per resource in `plugin/src/services/`, through `miniappApi`, never `fetch`;
-   - pages in `plugin/src/features/`, built with the SDK UI kit;
+   - pages in `plugin/src/features/`, built with the SDK UI kit: a `Table` of the rows, a create/edit `Modal`, a delete action;
+   - light Studio theme and Studio fonts (the SDK sets the tokens, the Studio gives the fonts): never a dark theme, never another font;
    - no `<form>` element and no `type="submit"` button: the Studio iframe is sandboxed without `allow-forms` and blocks the submission. Use `ModalActions submitType="button" onSubmit={handleSubmit}` and `type="button"` buttons. The development page has no sandbox and does not show this bug.
 
 ## Checks, then the review

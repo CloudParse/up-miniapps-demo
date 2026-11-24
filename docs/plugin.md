@@ -9,6 +9,25 @@ The template ships a small working plugin. It shows the three things you need:
 
 Delete `plugin/` and the `plugin` section of `miniapp.yaml` if your mini-app has no admin page.
 
+## What a plugin is for
+
+Most often, the plugin is where the admins of the mini-app put data into its database. The mini-app's users only read that data, or react to it.
+
+Examples:
+- Content: events, places, products, articles, categories, tags. The admin creates, edits and deletes them in a table and a form.
+- Settings: values the mini-app reads at run time (opening hours, limits, texts).
+- Moderation: read what users posted, hide or delete it.
+- Figures: counts and checks on the data, like the demo page.
+
+The by-night mini-app works this way: its admins enter the establishments, events, tags and venue types in the plugin, and the app shows them.
+
+How it works, for each kind of data:
+1. An admin route of `api/` (`/api/v1/admin/...`, guard `require_admin`) reads or writes the table.
+2. A service of the plugin (`plugin/src/services/`) calls that route with `miniappApi`.
+3. A page of the plugin (`plugin/src/features/`) shows the rows in a `Table` and edits them in a `Modal`.
+
+The demo page only shows figures and one button. A real plugin usually also has a list, a create/edit modal and a delete action per kind of data. The plugin never writes to the database itself: the API does.
+
 ## What a plugin is
 
 - A folder of the repository: `plugin/`. Its own `package.json`, built with Vite and `@cloudparse/up-backoffice-sdk`.
@@ -123,7 +142,16 @@ The page needs the API (terminal 1, port 21514) and the DEV backend. How it work
 
 Limits:
 - The admin routes need the scope `profile:miniapp:admin`. The DEV backend gives it only to a test user with the global Hub flag `miniapp_admin`. With another user, the page shows "The API refuses this account". Pick a user with `?user=<local number>` (the numbers are in `miniapp/src/dev/devHub.ts`). Ask an admin of your organisation to flag a test user if none is.
-- The page has no sandbox, no Studio layout and no host styles. The plugin is light, like the Studio: the backoffice SDK (0.3.0 and later) ships the Studio palette, with Figtree for text and Bricolage Grotesque for display titles. `plugin/src/styles.css` only imports the SDK stylesheet. A plugin built with an older SDK (before 0.3.0) keeps the dark look: update `@cloudparse/up-backoffice-sdk` to the latest release and rebuild. Look once in the real Studio before you ship: press **Déployer le plugin**, then open the mini-app in the Studio, tab "Plugin".
+- The page has no sandbox and no Studio layout.
+- Look once in the real Studio before you ship: press **Déployer le plugin**, then open the mini-app in the Studio, tab "Plugin".
+
+Theme and fonts:
+- A plugin is light by default, like the Studio. Never add a dark theme.
+- Its fonts are the Studio fonts: Figtree for text, Bricolage Grotesque for display titles (`font-display`). Never add another font.
+- The backoffice SDK (0.3.0 and later) ships the palette and the font tokens. It ships no font file. `plugin/src/styles.css` only imports the SDK stylesheet.
+- In the Studio, the fonts and the page background come from the Studio.
+- On the development page, `plugin/dev/main.tsx` loads the same fonts (`@fontsource/figtree`, `@fontsource/bricolage-grotesque`, development only) and sets the same light background.
+- A plugin built with an SDK older than 0.3.0 keeps the dark look. Update `@cloudparse/up-backoffice-sdk` to the latest release and rebuild.
 
 ## Checks
 
