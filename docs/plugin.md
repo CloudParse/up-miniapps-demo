@@ -14,6 +14,21 @@ Delete `plugin/` and the `plugin` section of `miniapp.yaml` if your mini-app has
 - A folder of the repository: `plugin/`. Its own `package.json`, built with Vite and `@cloudparse/up-backoffice-sdk`.
 - One ES module: `plugin/dist/plugin.js`. React comes from the Studio, everything else is bundled.
 - It runs in a sandboxed iframe of the Studio. It has no cookie, no storage, no session and no secret. `window.open`, `alert` and `confirm` do not work: use the SDK components.
+- A `<form>` does not work either. The iframe is sandboxed without `allow-forms`. The browser blocks the submission before `onSubmit` runs. The console shows `Blocked form submission to '' because the form's frame is sandboxed and the 'allow-forms' permission is not set.`
+
+  Put the fields in a `<div>` and send the data from a button:
+
+  ```tsx
+  <ModalActions
+    isSubmitting={saving}
+    onCancel={close}
+    onSubmit={handleSubmit}   // async () => { await myService.save(data) }, through miniappApi
+    submitLabel="Save"
+    submitType="button"       // the default "submit" needs a <form>
+  />
+  ```
+
+  Every other action button is `type="button"` with an `onClick` handler.
 - Its page code is Studio code, not mini-app code. Use the SDK UI kit, English text and no `any`.
 
 | File | Role |
