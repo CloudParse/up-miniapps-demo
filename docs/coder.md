@@ -78,9 +78,12 @@ Coder workspace (dev-<organisation>)
 - A workspace created before 2026-11-23 can show the Coder warning "Ephemeral Parameters Detected" when you press Start. In Coder, open the workspace and press **Update** to get the current template (0.5.13): the warning is gone after it, and the workspace keeps its files.
 - The workspace has a parameter "Créé sans pod" (`hold_first_start`) managed by the platform. Do not change it: the platform sets it back to false so that your Start runs the pod.
 - Cost of the workspaces created ahead:
-  - The Coder namespaces use the StorageClass `local-path` (`WaitForFirstConsumer`). A workspace that never ran keeps a pending volume claim and uses no disk before its first Start.
-  - A started workspace grows without a limit per volume, and a deleted workspace keeps its directory on the node (`Retain`).
-  - The platform creates at most 100 workspaces ahead per organisation. It logs a warning when the cap is reached.
+  - A workspace created ahead has no volume and no pod: its first build creates nothing in the cluster, so it cannot fail for lack of sign-in or quota, and it uses no disk. The home volume (10 GiB requested) is created by your first **Start**, and is kept by every stop.
+  - The Coder namespaces use the StorageClass `local-path` (`WaitForFirstConsumer`): a started workspace grows without a limit per volume, and a deleted workspace keeps its directory on the node (`Retain`).
+  - The namespace of your organisation accepts 60 started workspaces (one volume claim each, 10 GiB nominal each). A workspace of a mini-app you started once keeps its claim until it is deleted. There is no other per-person limit for now.
+  - The running workspaces are bounded by the memory of your organisation: each takes 4 GiB while it runs. A **Start** above it fails with "exceeded quota: coder-workspaces": stop a workspace you do not use, or ask a super user to raise the memory of the organisation. The node has a real limit too: when it is full a Start waits ("Workspace agent is connecting") until a workspace stops.
+  - A workspace stops by itself after 2 hours without use (the activity of VS Code, a terminal or the apps extends it by 1 hour).
+  - The platform creates at most 500 workspaces ahead per organisation. It logs a warning when the cap is reached.
 - A workspace stopped for a while keeps `/home/coder`: your files and installed tools are still there when it starts again.
 
 ## When the workspace is ready (template 0.5.17)
@@ -134,14 +137,14 @@ Safety of the console:
 
 ## Memory and CPU
 
-Every workspace is capped at **2 CPU cores and 2 GiB of memory** in total. The cap is in the template, not in a setting: nobody can raise it from the workspace. The card shows "CPU 0.1/2" and "Mémoire 0.3/2.0 GiB" against that limit.
+Every workspace is capped at **2 CPU cores and 4 GiB of memory** in total. The cap is in the template, not in a setting: nobody can raise it from the workspace. The card shows "CPU 0.1/2" and "Mémoire 0.3/4.0 GiB" against that limit.
 
 Measured on a workspace of this template (image 0.5.17, 2026-11-25):
 - the three parts running (API with its reload worker, mini-app, plugin) and the console: about 930 MiB of process memory;
 - Vite alone: about 330 MiB at rest, up to 500 MiB after the page loaded. Each Vite server runs with a cap on its JavaScript heap (384 MiB for the mini-app, 320 MiB for the plugin): a runaway server stops with "JavaScript heap out of memory" instead of filling the workspace;
 - VS Code in the browser (code-server) takes 0.3 GiB idle and up to 1.2 GiB with a window open; Claude Code takes about 0.6 GiB; the Coder agent about 0.2 GiB.
 
-So 2 GiB holds the editor, Claude Code and the three parts only when none of them grows. Advice:
+So 4 GiB holds the editor, Claude Code and the three parts together with room to spare, but not unlimited growth. Advice:
 - Start only the parts you need. The console shows the memory in its header and refuses to start a part when less than 200 MiB is free.
 - Close the VS Code windows and terminals you do not use.
 - When the memory is full the sandbox kills a process. The console starts the parts with a higher kill priority than the workspace agent, so a dev server goes first; start it again from the console.
@@ -153,7 +156,7 @@ So 2 GiB holds the editor, Claude Code and the three parts only when none of the
   - **Projet**: "prêt", or "préparation" while the startup runs (see the startup log).
   - **Console**: "ouverte", or "tape up-dev".
   - **API**, **Mini-app**, **Plugin**: "en marche" or "arrêtée". The plugin says "pas de plugin/" when the project has no `plugin/` folder.
-  - **CPU**, **Mémoire**, **Disque**: use against the cap above.
+  - **CPU**, **Mémoire**: use against the cap above. **Disque**: what you have used in your home, against its nominal 10 GiB ("1.2/10 Go", counted every 5 minutes, "calcul..." the first time). The card no longer shows the disk of the machine.
 - From a terminal, three short commands do the same as the console, one part each, from any folder. Each runs in the foreground, so its logs stay on screen, and Ctrl+C stops it. Each refuses with a clear message when the project is not ready, `api/.env` or `node_modules` is missing or its port is already in use. `up-status` says which of the three runs.
   - `up-api` runs `cd api && SERVER_HOST=0.0.0.0 uv run --env-file .env python -m app`
   - `up-miniapp` runs `cd miniapp && npm run dev -- --host 0.0.0.0`

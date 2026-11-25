@@ -1,4 +1,4 @@
-// Memory of the workspace, for the console. A Coder workspace is capped at 2 GiB (template org-miniapp, story 055.8): when it is full the
+// Memory of the workspace, for the console. A Coder workspace is capped at 4 GiB (template org-miniapp, story 055.8): when it is full the
 // sandbox kills processes, and a Vite server (about 350 MB) is the usual victim. The console shows the figure and refuses to start a part
 // when too little is free, with a message, instead of letting the sandbox decide.
 import { readFileSync } from "node:fs";

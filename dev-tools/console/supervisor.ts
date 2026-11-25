@@ -3,7 +3,7 @@
 //
 // What it runs is fixed here, never taken from a request: the same commands as `up-api`, `up-miniapp` and `up-plugin` of the
 // workspace (and dev-tools/up-dev.sh), except that Vite is started directly (`node_modules/.bin/vite` is what `npm run dev` runs;
-// the npm wrapper alone costs about 160 MB of the 2 GiB of a workspace).
+// the npm wrapper alone costs about 160 MB of the 4 GiB of a workspace).
 import { type ChildProcess, spawn } from "node:child_process";
 import { EventEmitter } from "node:events";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";

@@ -5,7 +5,7 @@ description: Start, stop, restart or check the development servers of this proje
 
 # Start the project
 
-In a Coder workspace the person also has the project console (`up-dev`, the Coder button "Console du projet"): a page with Lancer, Redémarrer and Arrêter per part, logs and previews. Tell them about it when they prefer a page to a command. Agents keep using `dev-tools/up-dev.sh` below. A part started by one of the two shows as started elsewhere in the other: use one for a given part. The workspace is capped at 2 CPU cores and 2 GiB of memory: start only the parts the task needs.
+In a Coder workspace the person also has the project console (`up-dev`, the Coder button "Console du projet"): a page with Lancer, Redémarrer and Arrêter per part, logs and previews. Tell them about it when they prefer a page to a command. Agents keep using `dev-tools/up-dev.sh` below. A part started by one of the two shows as started elsewhere in the other: use one for a given part. The workspace is capped at 2 CPU cores and 4 GiB of memory: start only the parts the task needs.
 
 One script runs every part in the background: `dev-tools/up-dev.sh`. Run it from the repository root. Do not explore the project first: the script already knows the folders, the ports and the commands.
 
