@@ -178,7 +178,7 @@ Registration creates an **Application** on the Hub. The Hub returns two things:
 | `uuid` | Public identity of the mini-app. Becomes the `aud` (audience) of every user token minted for it. | Public |
 | `clientSecret` | Password of your backend towards the Hub. **Shown once.** | **Secret** |
 
-It also stores the metadata the shell needs: `name`, `httpBackendUrl` (where the frontend should call your backend), optional `wsBackendUrl`, `allowedOrigins`, `isDarkTheme`, `cardStyle`, `deviceTypes`. The shell receives `httpBackendUrl` at launch, which is how the frontend finds your backend without hardcoding it.
+It also stores the metadata the shell needs: `name`, `httpBackendUrl` (where the frontend should call your backend), optional `wsBackendUrl`, `allowedOrigins`, `isDarkTheme`, `deviceTypes`. The shell receives `httpBackendUrl` at launch, which is how the frontend finds your backend without hardcoding it.
 
 ### How it registers
 
@@ -190,12 +190,11 @@ An admin calls `POST /api/v1/admin/applications` on the Hub (in production, from
   "description": "What it does",
   "httpBackendUrl": "https://api.my-miniapp.example/api/v1",
   "allowedOrigins": ["https://api.my-miniapp.example"],
-  "isDarkTheme": true,
-  "cardStyle": "navy"
+  "isDarkTheme": true
 }
 ```
 
-Response (`201`): `{ "application": { "uuid": "...", ... }, "clientSecret": "..." }`. `name` must be unique (min 3 characters). `cardStyle` is required: the gradient of the mini-app's card on the shell home screen, one of `navy`, `blush`, `night`, `mist`, `violet`. A lost secret cannot be read back: an admin calls `POST /api/v1/admin/applications/{uuid}/regenerate-secret`, and you update your environment.
+Response (`201`): `{ "application": { "uuid": "...", ... }, "clientSecret": "..." }`. `name` must be unique (min 3 characters). A lost secret cannot be read back: an admin calls `POST /api/v1/admin/applications/{uuid}/regenerate-secret`, and you update your environment.
 
 ### Getting the credentials
 

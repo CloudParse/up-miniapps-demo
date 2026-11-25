@@ -37,7 +37,7 @@ Start:
 - `miniapp.yaml` sits at the root. This template holds it with placeholders. Its format is `miniapp.schema.json`.
 - The platform writes it when it is missing. It never overwrites it.
 - Identity fields: `uuid` and `slug`. Never change them.
-- Display fields: `name`, `description`, `logo` (a `.webp` of the repository, or `null`), `cardStyle`, `darkTheme`, `deviceTypes`.
+- Display fields: `name`, `description`, `logo` (a `.webp` of the repository, or `null`), `darkTheme`, `deviceTypes`. The shell computes the card gradient from the logo. A `cardStyle` line of an older file is ignored: delete it.
 - CI does not apply the display fields yet (2026-11-20). The Studio value is the one used. Change it in the Studio too, and keep both equal.
 - `version: 2` adds the deployment sections. The platform reads them at each deploy.
   - `api`: `dir`, `port` (1024 or more), `healthPath`, `command`, `publicIngress`.

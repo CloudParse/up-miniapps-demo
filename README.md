@@ -27,7 +27,7 @@ How the Studio plugin works, how it reaches the API, the database, the cache and
 
 How it goes to production (buttons in the platform for the backend, the frontend and the plugin, Gitea CI, everything configured in `miniapp.yaml`): [`docs/deploy.md`](docs/deploy.md).
 
-The settings of the mini-app (name, description, logo, card style, theme, devices) live in `miniapp.yaml` at the root of each project repository, written by the platform whenever it is missing (never overwritten); [`miniapp.schema.json`](miniapp.schema.json) describes the format. See `SETUP.md`, "Settings of the mini-app".
+The settings of the mini-app (name, description, logo, theme, devices) live in `miniapp.yaml` at the root of each project repository, written by the platform whenever it is missing (never overwritten); [`miniapp.schema.json`](miniapp.schema.json) describes the format. See `SETUP.md`, "Settings of the mini-app".
 
 Agent skills (Claude Code loads them on its own): `.claude/skills/`. The list is in `AGENTS.md`, section "Skills".
 

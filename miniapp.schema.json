@@ -46,14 +46,8 @@
       "description": "Path of a .webp image in this repository (e.g. assets/logo.webp); null keeps the logo set in the backoffice."
     },
     "cardStyle": {
-      "enum": [
-        "navy",
-        "blush",
-        "night",
-        "mist",
-        "violet"
-      ],
-      "description": "Gradient of the mini-app's card on the shell home screen."
+      "deprecated": true,
+      "description": "Ignored. Older files hold it; delete the line. The shell computes the card gradient from the logo."
     },
     "darkTheme": {
       "type": [

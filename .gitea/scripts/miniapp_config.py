@@ -35,7 +35,6 @@ LOGO = re.compile(rf"^(?=.*\.webp$){_SEGMENT}(?:/{_SEGMENT})*$")
 VERSION = re.compile(VERSION_PATTERN)
 KEY = re.compile(r"^([A-Za-z][A-Za-z0-9]*):(?: +(.*))?$")
 
-CARD_STYLES = ("navy", "blush", "night", "mist", "violet")
 DEVICE_TYPES = ("PHONE", "TABLET", "DESKTOP", "TV", "WEB")
 SERVICES = ("postgres", "cache", "bucket")
 MIN_PORT = 1024  # the image runs as a non-root user
@@ -47,9 +46,11 @@ SECTION_KEYS: dict[str, tuple[str, ...]] = {
     "plugin": ("dir", "build", "out", "file"),
 }
 TOP_LEVEL_KEYS = (
-    "version", "uuid", "slug", "name", "description", "logo", "cardStyle", "darkTheme", "deviceTypes",
+    "version", "uuid", "slug", "name", "description", "logo", "darkTheme", "deviceTypes",
     *SECTION_KEYS,
 )
+# Keys of older files that are read and ignored, never refused. The shell computes the card gradient from the logo.
+LEGACY_KEYS = ("cardStyle",)
 SECTION_OF_TARGET = {"backend": "api", "frontend": "miniapp", "plugin": "plugin"}
 TARGETS = tuple(SECTION_OF_TARGET)
 MAX_DESCRIPTION = 2000
@@ -317,8 +318,6 @@ def _check_identity(config: dict[str, Any]) -> None:
     logo = config.get("logo")
     if logo is not None and (not isinstance(logo, str) or not LOGO.match(logo)):
         raise ConfigError("logo: must be a .webp path of this repository, or null")
-    if config.get("cardStyle") is not None and config["cardStyle"] not in CARD_STYLES:
-        raise ConfigError(f"cardStyle: must be one of {', '.join(CARD_STYLES)}")
     if config.get("darkTheme") is not None and not isinstance(config["darkTheme"], bool):
         raise ConfigError("darkTheme: must be true, false or null")
     devices = config.get("deviceTypes")
@@ -331,7 +330,7 @@ def _check_identity(config: dict[str, Any]) -> None:
 
 def validate(config: dict[str, Any]) -> None:
     """Raise ConfigError with a message the developer can act on."""
-    unknown = sorted(set(config) - set(TOP_LEVEL_KEYS))
+    unknown = sorted(set(config) - set(TOP_LEVEL_KEYS) - set(LEGACY_KEYS))
     if unknown:
         raise ConfigError(f"{unknown[0]}: unknown key (allowed: {', '.join(TOP_LEVEL_KEYS)})")
     _check_identity(config)

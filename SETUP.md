@@ -129,7 +129,7 @@ claude plugin install up-miniapps-sdk@up-miniapps
 - The platform reads its deployment sections at each deploy (`docs/deploy.md`).
 - CI does not apply its display settings to the backoffice yet (2026-11-20). The value set in the Studio (the backoffice) is the one used. Keep both equal.
 - `deviceTypes` is left out (a comment instead) while the backoffice holds no known device.
-- Fields: `uuid` and `slug` (never change), `name`, `description`, `logo`, `cardStyle`, `darkTheme`, `deviceTypes`. `miniapp.schema.json` describes each one; editors that read the `yaml-language-server` comment check the file as you type.
+- Fields: `uuid` and `slug` (never change), `name`, `description`, `logo`, `darkTheme`, `deviceTypes`. `miniapp.schema.json` describes each one; editors that read the `yaml-language-server` comment check the file as you type. The shell computes the gradient of the app card from the logo. An older file may still hold `cardStyle`: the CI ignores it, delete the line.
 - `logo` is the path of a `.webp` image of this repository, for example `assets/logo.webp`; `null` keeps the logo set in the backoffice.
 - Never put a secret or an environment variable in it.
 

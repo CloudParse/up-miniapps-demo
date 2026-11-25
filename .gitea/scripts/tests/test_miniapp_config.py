@@ -35,6 +35,7 @@ def refused(text: str) -> bool:
 
 class ParseTest(unittest.TestCase):
     def test_platform_written_file(self) -> None:
+        # Written by an older platform: `cardStyle` is a legacy key, still read.
         text = (
             "# comment\nversion: 1\nuuid: 5b5101d1-0f4c-4b7e-9a35-2d6f1f0c7a11\nslug: atlas\nname: \"Atlas #1\"  # x\n"
             "description: ''\nlogo: null\ncardStyle: navy\ndarkTheme: null\ndeviceTypes: [PHONE, TABLET]  # a | b\n"
@@ -136,6 +137,13 @@ class ValidateTest(unittest.TestCase):
             with self.subTest(key), self.assertRaisesRegex(mc.ConfigError, "unknown key"):
                 check(key + "\n")
 
+    def test_legacy_card_style_is_ignored(self) -> None:
+        # Mini-apps created from an older template still hold `cardStyle: navy`: any value is accepted.
+        for value in ("navy", "pink", "null", "3"):
+            with self.subTest(value):
+                check(f"cardStyle: {value}\n")
+                check(f"cardStyle: {value}\napi:\n  dir: api\n  port: 8000\n")
+
     def test_v1_is_valid_and_every_target_is_skipped(self) -> None:
         config = mc.parse(BASE.replace("version: 2", "version: 1"))
         mc.validate(config)
@@ -211,7 +219,7 @@ class SchemaParityTest(unittest.TestCase):
     """The hand-written validator and the JSON schema must accept and refuse the same files."""
 
     def test_same_keys(self) -> None:
-        self.assertEqual(set(SCHEMA["properties"]), set(mc.TOP_LEVEL_KEYS))
+        self.assertEqual(set(SCHEMA["properties"]), set(mc.TOP_LEVEL_KEYS) | set(mc.LEGACY_KEYS))
         self.assertFalse(SCHEMA["additionalProperties"])
         for section, keys in mc.SECTION_KEYS.items():
             self.assertEqual(set(SCHEMA["properties"][section]["properties"]), set(keys), section)
@@ -229,7 +237,9 @@ class SchemaParityTest(unittest.TestCase):
             BASE + "api:\n  dir: api\n  port: 8000\nservices:\n  postgres: true\n",
             BASE + "plugin:\n  dir: p\n  build: b\n  out: dist\n  file: a.mjs\n",
             BASE + "miniapp:\n  dir: m\n  build: b\n  out: dist\n",
-            BASE + "cardStyle: navy\ndarkTheme: null\ndeviceTypes: [PHONE, TV]\nlogo: assets/logo.webp\n",
+            BASE + "darkTheme: null\ndeviceTypes: [PHONE, TV]\nlogo: assets/logo.webp\n",
+            BASE + "cardStyle: navy\n",
+            BASE + "cardStyle: pink\n",
             (ROOT / "miniapp.yaml").read_text(),
         ]
         bad = [
@@ -245,7 +255,6 @@ class SchemaParityTest(unittest.TestCase):
             BASE + "plugin:\n  dir: p\n  build: b\n  out: dist\n  file: a.zip\n",
             BASE + "miniapp:\n  dir: m\n  out: dist\n",
             BASE + "extra: 1\n",
-            BASE + "cardStyle: pink\n",
             BASE + "deviceTypes: [PHONE, PHONE]\n",
             BASE + "logo: a.png\n",
         ]

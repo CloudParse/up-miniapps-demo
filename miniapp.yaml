@@ -3,7 +3,7 @@
 # miniapp.yaml: everything the Up platform needs to know about this mini-app. It sits at the root of this repository.
 #
 # You do NOT fill the first block by hand. When the mini-app is created, the platform replaces the values of
-# `uuid`, `slug`, `name`, `description`, `cardStyle`, `darkTheme` and `deviceTypes` with the ones of your mini-app
+# `uuid`, `slug`, `name`, `description`, `darkTheme` and `deviceTypes` with the ones of your mini-app
 # (the ones you chose in Studio). Everything else below stays as written here: comments, sections and values.
 # After that the file is yours. The platform never rewrites it again.
 #
@@ -18,7 +18,6 @@ slug: my-mini-app                            # short name chosen at creation, ne
 name: "My mini-app"                          # name shown in the shell
 description: "Describe your mini-app in one sentence."   # one sentence, shown in the shell
 logo: null                                   # a .webp image of this repository (e.g. assets/logo.webp); null keeps the one set in Studio
-cardStyle: navy                              # navy | blush | night | mist | violet
 darkTheme: null                              # true, false, or null (null: the shell follows the mini-app)
 deviceTypes: [PHONE, WEB]                    # PHONE | TABLET | DESKTOP | TV | WEB. WEB: the page Apps of the Up website
 

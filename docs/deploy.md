@@ -14,7 +14,7 @@ Each button starts one Gitea Actions workflow of this repository: `.gitea/workfl
 
 ## 1. Configure `miniapp.yaml`
 
-The file [`../miniapp.yaml`](../miniapp.yaml) is already in your project, written with values you can change and with a comment on every line. When your mini-app was created, the platform replaced the identity and display values (`uuid`, `slug`, `name`, `description`, `cardStyle`, `darkTheme`, `deviceTypes`) with the ones of your mini-app, and left the rest as the template wrote it. After that the file is yours: the platform never rewrites it. Delete the sections you do not use. The format: [`../miniapp.schema.json`](../miniapp.schema.json).
+The file [`../miniapp.yaml`](../miniapp.yaml) is already in your project, written with values you can change and with a comment on every line. When your mini-app was created, the platform replaced the identity and display values (`uuid`, `slug`, `name`, `description`, `darkTheme`, `deviceTypes`) with the ones of your mini-app, and left the rest as the template wrote it. After that the file is yours: the platform never rewrites it. Delete the sections you do not use. The format: [`../miniapp.schema.json`](../miniapp.schema.json).
 
 A file that still holds the placeholder `uuid` (`00000000-0000-0000-0000-000000000000`) is refused by every workflow: the platform has not filled it yet. It does so at the next Git synchronisation (a few seconds after the mini-app is created).
 
