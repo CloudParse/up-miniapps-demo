@@ -109,8 +109,15 @@ What the page shows:
 - One card per part, with a short explanation (what it is, its port, its folder, the exact command it runs), its state (arrêtée, démarrage, en marche, plantée) and three buttons: **Lancer**, **Redémarrer**, **Arrêter**.
 - A link per part, opening it alone in a new tab: **Tester l'API** (the API documentation), **Voir la mini-app**, **Voir le plugin**.
 - The mini-app and the plugin side by side, in two previews. Each part updates itself when you save a file: Vite pushes the change to the page through its own WebSocket (hot reload), and the API reloads its code (uvicorn). If a preview stays empty, open the part alone with its link.
-- The live log of each part (the last 500 lines, streamed by WebSocket). The page reconnects by itself.
+- The live log of each part (the last 500 lines, streamed by WebSocket), in a drawer over the bottom of the page. The page reconnects by itself.
 - The memory of the workspace (see "Memory and CPU").
+
+Room for the previews:
+- The header is one slim line. **Masquer les services** hides the three cards. The state of each part stays in the header, with the buttons ▶ (lancer), ↻ (redémarrer) and ■ (arrêter), so you keep control without opening the cards. **Afficher les services** brings them back. An error of an action stays visible in the header.
+- With the cards hidden, the two previews fill the window under the header (more than 90 % of its height). The phone of the mini-app shrinks to fit the height. With the cards shown, the previews keep at least 60 % of the window height and the page scrolls.
+- **Journaux ▸** opens the logs as a drawer (40 % of the window height) over the previews, with a tab per part and **Effacer l'affichage**. It never takes height from the previews.
+- **Aperçus plein écran** hides the cards and the logs in one click. **Échap** leaves the full screen. Pressed again, it closes the logs. The log drawer covers the bottom 40 % of the window while it is open.
+- Keys (when the page has the focus, not an iframe): **P** full-screen previews, **L** logs, **S** services, **Échap** leave full screen or close the logs. The choice of cards and logs is kept in this browser (`localStorage`, key `console.layout`); the full-screen mode is never kept. By default the cards are shown and the logs closed.
 
 What it runs, exactly (nothing else, no command typed in the page):
 

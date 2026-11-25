@@ -9,15 +9,26 @@
   :root { color-scheme: light dark; --bg:#f6f7f9; --card:#fff; --ink:#1b2430; --muted:#5b6675; --line:#d9dee6; --ok:#12805c; --warn:#b26a00; --bad:#c0392b; --accent:#2457d6; --log:#0f1620; --logink:#d6e2f0; }
   @media (prefers-color-scheme: dark) { :root { --bg:#12161c; --card:#1b212a; --ink:#e8edf3; --muted:#9aa6b5; --line:#2c3643; --accent:#7aa2ff; --ok:#43c59e; --warn:#e0a13c; --bad:#ef7c6e; } }
   * { box-sizing: border-box; }
-  body { margin:0; font:15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; background:var(--bg); color:var(--ink); }
-  header { display:flex; align-items:center; gap:12px; padding:14px 20px; border-bottom:1px solid var(--line); background:var(--card); }
-  h1 { font-size:18px; margin:0; flex:1; }
-  #mem { font-size:13px; color:var(--muted); }
+  [hidden] { display:none !important; }
+  /* the page is one column as high as the window: the header is one slim line, the previews take everything else */
+  body { margin:0; min-height:100vh; display:flex; flex-direction:column; font:15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; background:var(--bg); color:var(--ink); }
+  header { display:flex; flex-wrap:wrap; align-items:center; gap:10px; min-height:40px; padding:3px 12px; border-bottom:1px solid var(--line); background:var(--card); }
+  h1 { font-size:15px; margin:0; white-space:nowrap; }
+  .grow { flex:1; }
+  .chips { display:flex; align-items:center; gap:10px; min-width:0; }
+  .chip { display:flex; align-items:center; gap:4px; font-size:13px; white-space:nowrap; }
+  .chip .dot { width:9px; height:9px; border-radius:50%; background:currentColor; }
+  .chip b { font-weight:600; }
+  .chip button { padding:1px 6px; font-size:13px; line-height:1.3; border-radius:6px; }
+  #flash { font-size:12px; color:var(--bad); max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  header button.tog { padding:3px 9px; font-size:13px; white-space:nowrap; }
+  #mem { font-size:13px; color:var(--muted); white-space:nowrap; }
   #mem.tight { color:var(--bad); font-weight:600; }
-  #live { font-size:13px; color:var(--muted); }
+  #live { font-size:13px; color:var(--muted); white-space:nowrap; }
   #live.ok::before, #live.ko::before { content:""; display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px; background:var(--ok); }
   #live.ko::before { background:var(--bad); }
-  main { padding:16px 20px 28px; display:grid; gap:16px; max-width:1500px; margin:0 auto; }
+  main { flex:1; min-height:0; display:flex; flex-direction:column; gap:10px; padding:4px 8px 5px; width:100%; }
+  #services { display:grid; gap:8px; }
   .cards { display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:14px; }
   .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px; display:flex; flex-direction:column; gap:8px; }
   .card h2 { font-size:16px; margin:0; display:flex; align-items:center; gap:8px; }
@@ -31,37 +42,49 @@
   button:hover:not(:disabled), a.link:hover { border-color:var(--accent); color:var(--accent); }
   button:disabled { opacity:.45; cursor:not-allowed; }
   a.link.off { opacity:.45; pointer-events:none; }
-  .previews { display:grid; grid-template-columns:repeat(auto-fit, minmax(380px, 1fr)); gap:14px; }
-  .pane { background:var(--card); border:1px solid var(--line); border-radius:10px; overflow:hidden; display:flex; flex-direction:column; }
-  .pane h3 { margin:0; font-size:14px; padding:8px 12px; border-bottom:1px solid var(--line); display:flex; gap:10px; align-items:center; }
+  /* the previews grow to fill the window (cards and logs hidden: window height minus the slim header); with the cards shown they keep at least 60vh and the page scrolls */
+  .previews { flex:1; min-height:60vh; display:grid; grid-template-columns:repeat(auto-fit, minmax(380px, 1fr)); grid-auto-rows:minmax(0, 1fr); gap:10px; }
+  .pane { min-height:320px; min-width:0; background:var(--card); border:1px solid var(--line); border-radius:10px; overflow:hidden; display:flex; flex-direction:column; }
+  .pane h3 { margin:0; font-size:13px; padding:4px 10px; border-bottom:1px solid var(--line); display:flex; gap:10px; align-items:center; }
   .pane h3 span { flex:1; }
-  iframe { width:100%; height:520px; border:0; background:#fff; }
+  .pane h3 a.link { padding:2px 8px; font-size:12px; }
+  .slot { flex:1; min-height:0; display:flex; flex-direction:column; }
+  iframe { flex:1; width:100%; min-height:0; border:0; background:#fff; }
   .empty { padding:40px 16px; text-align:center; color:var(--muted); font-size:14px; }
-  .logs { background:var(--card); border:1px solid var(--line); border-radius:10px; overflow:hidden; }
-  .tabs { display:flex; gap:6px; padding:8px; border-bottom:1px solid var(--line); align-items:center; }
+  /* the logs are a drawer over the bottom of the page: they never take height from the previews */
+  .logs { position:fixed; left:0; right:0; bottom:0; height:40vh; z-index:10; display:flex; flex-direction:column; background:var(--card); border-top:2px solid var(--accent); box-shadow:0 -6px 20px rgba(0,0,0,.25); }
+  .tabs { display:flex; gap:6px; padding:6px 8px; border-bottom:1px solid var(--line); align-items:center; }
   .tabs button[aria-pressed="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
   .tabs .grow { flex:1; }
-  pre { margin:0; padding:10px 12px; height:300px; overflow:auto; background:var(--log); color:var(--logink); font:12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; white-space:pre-wrap; word-break:break-word; }
+  pre { margin:0; padding:10px 12px; flex:1; min-height:0; overflow:auto; background:var(--log); color:var(--logink); font:12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; white-space:pre-wrap; word-break:break-word; }
 </style>
 </head>
 <body>
 <header>
   <h1>Console du projet</h1>
+  <div class="chips" id="chips" role="group" aria-label="État des trois parties" hidden></div>
+  <span id="flash" role="status"></span>
+  <span class="grow"></span>
   <span id="mem" title="Mémoire du workspace (limite 4 Gio)"></span>
+  <button type="button" class="tog" id="tog-cards" aria-label="Services" aria-controls="services" aria-expanded="true">Masquer les services</button>
+  <button type="button" class="tog" id="tog-logs" aria-label="Journaux" aria-controls="logs" aria-expanded="false" title="Afficher ou masquer les journaux (touche L)">Journaux ▸</button>
+  <button type="button" class="tog" id="tog-full" aria-pressed="false" title="Aperçus plein écran (touche P), Échap pour revenir">Aperçus plein écran</button>
   <span id="live" class="ko">connexion…</span>
 </header>
 <main>
-  <section class="cards" id="cards" aria-label="Les trois parties du projet"></section>
-  <section class="previews" aria-label="Aperçus">
-    <div class="pane"><h3><span>Aperçu de la mini-app</span><a class="link" id="open-miniapp" target="_blank" rel="noopener">Ouvrir seule</a></h3><div id="frame-miniapp" class="empty">La mini-app n'est pas lancée.</div></div>
-    <div class="pane"><h3><span>Aperçu du plugin</span><a class="link" id="open-plugin" target="_blank" rel="noopener">Ouvrir seul</a></h3><div id="frame-plugin" class="empty">Le plugin n'est pas lancé.</div></div>
-  </section>
-  <p class="note">Si un aperçu reste vide, ouvre la partie dans un onglet avec « Ouvrir seule ». Les aperçus et les journaux se mettent à jour tout seuls quand tu modifies un fichier.</p>
-  <section class="logs" aria-label="Journaux">
-    <div class="tabs" id="tabs"></div>
-    <pre id="log" tabindex="0"></pre>
+  <div id="services">
+    <section class="cards" id="cards" aria-label="Les trois parties du projet"></section>
+    <p class="note">Si un aperçu reste vide, ouvre la partie dans un onglet avec « Ouvrir seule ». Les aperçus et les journaux se mettent à jour tout seuls quand tu modifies un fichier. Touches : P aperçus plein écran, L journaux, S services, Échap pour quitter le plein écran, puis fermer les journaux.</p>
+  </div>
+  <section class="previews" id="previews" aria-label="Aperçus">
+    <div class="pane"><h3><span>Aperçu de la mini-app</span><a class="link" id="open-miniapp" target="_blank" rel="noopener">Ouvrir seule</a></h3><div id="frame-miniapp" class="empty slot">La mini-app n'est pas lancée.</div></div>
+    <div class="pane"><h3><span>Aperçu du plugin</span><a class="link" id="open-plugin" target="_blank" rel="noopener">Ouvrir seul</a></h3><div id="frame-plugin" class="empty slot">Le plugin n'est pas lancé.</div></div>
   </section>
 </main>
+<section class="logs" id="logs" aria-label="Journaux" hidden>
+  <div class="tabs" id="tabs"></div>
+  <pre id="log" tabindex="0"></pre>
+</section>
 <script nonce="__NONCE__">
 (() => {
   const token = document.querySelector('meta[name="console-token"]').content;
@@ -74,17 +97,94 @@
   let socket = null;
   let retry = 500;
   let failures = 0;
+  // layout-logic:begin
+  // What the dev sees: the service cards, the log drawer, or the previews alone ("full", never stored).
+  const LAYOUT_KEY = "console.layout";
+  const DEFAULT_LAYOUT = { cards: true, logs: false, full: false };
+  function parseLayout(raw) {
+    try {
+      const v = JSON.parse(raw);
+      return { cards: typeof v.cards === "boolean" ? v.cards : true, logs: typeof v.logs === "boolean" ? v.logs : false, full: false };
+    } catch { return { ...DEFAULT_LAYOUT }; }
+  }
+  function reduceLayout(s, action) {
+    if (action === "cards") return { cards: s.full ? true : !s.cards, logs: s.full ? false : s.logs, full: false };
+    if (action === "logs") return { cards: s.full ? false : s.cards, logs: s.full ? true : !s.logs, full: false };
+    if (action === "full") return { ...s, full: !s.full };
+    if (action === "escape") return s.full ? { ...s, full: false } : s.logs ? { ...s, logs: false } : s;
+    return s;
+  }
+  // layout-logic:end
+  let layout = { ...DEFAULT_LAYOUT };
+  try { layout = parseLayout(localStorage.getItem(LAYOUT_KEY)); } catch { /* storage blocked: default layout */ }
   const $ = (id) => document.getElementById(id);
   const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; };
+
+  // an error of an action stays visible in the header, also when the cards are hidden
+  function flash(text) { const n = $("flash"); n.textContent = text; n.title = text; }
 
   function post(id, action) {
     return fetch(`/api/services/${id}/${action}`, { method: "POST", headers: { "X-Console-Token": token } })
       .then((r) => r.json().catch(() => ({ ok: false, message: `erreur ${r.status}` })))
-      .then((r) => { const m = document.querySelector(`[data-msg="${id}"]`); if (m) m.textContent = r.ok ? "" : r.message; })
-      .catch(() => { const m = document.querySelector(`[data-msg="${id}"]`); if (m) m.textContent = "la console ne répond pas"; });
+      .then((r) => { const m = document.querySelector(`[data-msg="${id}"]`); if (m) m.textContent = r.ok ? "" : r.message; flash(r.ok ? "" : `${id} : ${r.message}`); })
+      .catch(() => { const m = document.querySelector(`[data-msg="${id}"]`); if (m) m.textContent = "la console ne répond pas"; flash("la console ne répond pas"); });
+  }
+
+  function applyLayout() {
+    const showCards = layout.cards && !layout.full;
+    const showLogs = layout.logs && !layout.full;
+    $("services").hidden = !showCards;
+    $("chips").hidden = showCards;
+    $("logs").hidden = !showLogs;
+    const tc = $("tog-cards"); tc.textContent = showCards ? "Masquer les services" : "Afficher les services"; tc.setAttribute("aria-expanded", String(showCards));
+    const tl = $("tog-logs"); tl.textContent = showLogs ? "Journaux ▾" : "Journaux ▸"; tl.setAttribute("aria-expanded", String(showLogs));
+    const tf = $("tog-full"); tf.setAttribute("aria-pressed", String(layout.full));
+    if (showLogs) renderLog();
+  }
+  function act(action) {
+    layout = reduceLayout(layout, action);
+    try { localStorage.setItem(LAYOUT_KEY, JSON.stringify({ cards: layout.cards, logs: layout.logs })); } catch { /* storage blocked */ }
+    applyLayout();
+  }
+  $("tog-cards").addEventListener("click", () => act("cards"));
+  $("tog-logs").addEventListener("click", () => act("logs"));
+  $("tog-full").addEventListener("click", () => act("full"));
+  document.addEventListener("keydown", (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey || e.repeat || typeof e.key !== "string") return;
+    if (e.key === "Escape") { act("escape"); return; }
+    if (e.target instanceof HTMLElement && e.target.closest("input, textarea, select")) return;
+    const k = e.key.toLowerCase();
+    if (k === "p") act("full"); else if (k === "l") act("logs"); else if (k === "s") act("cards");
+  });
+  applyLayout();
+
+  const ICONS = { start: ["▶", "Lancer"], restart: ["↻", "Redémarrer"], stop: ["■", "Arrêter"] };
+  function renderChips() {
+    const box = $("chips");
+    for (const s of services) {
+      let chip = box.querySelector(`[data-chip="${s.id}"]`);
+      if (!chip) {
+        chip = el("span", "chip"); chip.dataset.chip = s.id;
+        chip.append(el("b", "", s.label), el("span", "dot"), el("span", "st"));
+        for (const action of ["start", "restart", "stop"]) {
+          const b = el("button", "", ICONS[action][0]); b.type = "button"; b.dataset.action = action;
+          b.setAttribute("aria-label", `${ICONS[action][1]} : ${s.label}`); b.title = `${ICONS[action][1]} : ${s.label}`;
+          b.addEventListener("click", () => { b.disabled = true; post(s.id, action); }); chip.append(b);
+        }
+        box.append(chip);
+      }
+      chip.className = `chip ${s.state}`;
+      chip.querySelector(".st").textContent = LABEL[s.state] || s.state;
+      const own = s.state === "running" || s.state === "starting";
+      const b = (a) => chip.querySelector(`button[data-action="${a}"]`);
+      b("start").disabled = own || s.state === "external";
+      b("restart").disabled = s.state === "external";
+      b("stop").disabled = !own;
+    }
   }
 
   function renderCards() {
+    renderChips();
     const box = $("cards");
     for (const s of services) {
       let card = box.querySelector(`[data-id="${s.id}"]`);
@@ -124,9 +224,9 @@
       const up = s.state === "running" || s.state === "external";
       if (up && s.links.open) {
         // load once per run: the page then updates itself through Vite's own WebSocket (hot reload)
-        if (!frames[id]) { const f = document.createElement("iframe"); f.title = `Aperçu : ${s.label}`; f.src = s.links.open; f.setAttribute("referrerpolicy", "no-referrer"); holder.replaceChildren(f); holder.className = ""; frames[id] = f; }
+        if (!frames[id]) { const f = document.createElement("iframe"); f.title = `Aperçu : ${s.label}`; f.src = s.links.open; f.setAttribute("referrerpolicy", "no-referrer"); holder.replaceChildren(f); holder.className = "slot"; frames[id] = f; }
       } else if (frames[id]) {
-        delete frames[id]; holder.className = "empty"; holder.textContent = `${s.label} n'est pas lancé${id === "plugin" ? "" : "e"}.`;
+        delete frames[id]; holder.className = "empty slot"; holder.textContent = `${s.label} n'est pas lancé${id === "plugin" ? "" : "e"}.`;
       }
     }
   }
