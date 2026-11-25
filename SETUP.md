@@ -20,6 +20,10 @@ The repository also got `miniapp.yaml` at its root (see "Settings of the mini-ap
 
 Nothing to configure. If a step failed (a warning in the workspace's startup log), run it again from a terminal: `up-project-setup`.
 
+## Start the project from the console (Coder workspace)
+
+In the workspace page of Coder, press **Console du projet** (or type `up-dev` in a terminal). One page starts, stops and restarts the API, the mini-app and the plugin, shows their logs and previews, and reloads them when you save a file. Details: `docs/coder.md`, section "The project console". The workspace has 2 CPU cores and 2 GiB of memory: start only what you need.
+
 ## Start everything in one command
 
 From the root of the project:

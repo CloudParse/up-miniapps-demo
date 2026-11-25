@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="console-token" content="__TOKEN__">
+<title>Console du projet</title>
+<style nonce="__NONCE__">
+  :root { color-scheme: light dark; --bg:#f6f7f9; --card:#fff; --ink:#1b2430; --muted:#5b6675; --line:#d9dee6; --ok:#12805c; --warn:#b26a00; --bad:#c0392b; --accent:#2457d6; --log:#0f1620; --logink:#d6e2f0; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#12161c; --card:#1b212a; --ink:#e8edf3; --muted:#9aa6b5; --line:#2c3643; --accent:#7aa2ff; --ok:#43c59e; --warn:#e0a13c; --bad:#ef7c6e; } }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; background:var(--bg); color:var(--ink); }
+  header { display:flex; align-items:center; gap:12px; padding:14px 20px; border-bottom:1px solid var(--line); background:var(--card); }
+  h1 { font-size:18px; margin:0; flex:1; }
+  #mem { font-size:13px; color:var(--muted); }
+  #mem.tight { color:var(--bad); font-weight:600; }
+  #live { font-size:13px; color:var(--muted); }
+  #live.ok::before, #live.ko::before { content:""; display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:6px; background:var(--ok); }
+  #live.ko::before { background:var(--bad); }
+  main { padding:16px 20px 28px; display:grid; gap:16px; max-width:1500px; margin:0 auto; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit, minmax(300px, 1fr)); gap:14px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px; display:flex; flex-direction:column; gap:8px; }
+  .card h2 { font-size:16px; margin:0; display:flex; align-items:center; gap:8px; }
+  .badge { font-size:12px; font-weight:600; padding:2px 8px; border-radius:99px; border:1px solid currentColor; }
+  .running { color:var(--ok); } .starting, .external { color:var(--warn); } .crashed, .blocked { color:var(--bad); } .stopped { color:var(--muted); }
+  .what, .meta, .note { margin:0; font-size:13px; color:var(--muted); }
+  .meta code { font-size:12px; word-break:break-all; }
+  .msg { margin:0; font-size:13px; color:var(--bad); min-height:1px; }
+  .row { display:flex; flex-wrap:wrap; gap:8px; margin-top:auto; }
+  button, a.link { font:inherit; font-size:14px; padding:6px 12px; border-radius:8px; border:1px solid var(--line); background:var(--card); color:var(--ink); cursor:pointer; text-decoration:none; }
+  button:hover:not(:disabled), a.link:hover { border-color:var(--accent); color:var(--accent); }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+  a.link.off { opacity:.45; pointer-events:none; }
+  .previews { display:grid; grid-template-columns:repeat(auto-fit, minmax(380px, 1fr)); gap:14px; }
+  .pane { background:var(--card); border:1px solid var(--line); border-radius:10px; overflow:hidden; display:flex; flex-direction:column; }
+  .pane h3 { margin:0; font-size:14px; padding:8px 12px; border-bottom:1px solid var(--line); display:flex; gap:10px; align-items:center; }
+  .pane h3 span { flex:1; }
+  iframe { width:100%; height:520px; border:0; background:#fff; }
+  .empty { padding:40px 16px; text-align:center; color:var(--muted); font-size:14px; }
+  .logs { background:var(--card); border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  .tabs { display:flex; gap:6px; padding:8px; border-bottom:1px solid var(--line); align-items:center; }
+  .tabs button[aria-pressed="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+  .tabs .grow { flex:1; }
+  pre { margin:0; padding:10px 12px; height:300px; overflow:auto; background:var(--log); color:var(--logink); font:12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; white-space:pre-wrap; word-break:break-word; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Console du projet</h1>
+  <span id="mem" title="Mémoire du workspace (limite 2 Gio)"></span>
+  <span id="live" class="ko">connexion…</span>
+</header>
+<main>
+  <section class="cards" id="cards" aria-label="Les trois parties du projet"></section>
+  <section class="previews" aria-label="Aperçus">
+    <div class="pane"><h3><span>Aperçu de la mini-app</span><a class="link" id="open-miniapp" target="_blank" rel="noopener">Ouvrir seule</a></h3><div id="frame-miniapp" class="empty">La mini-app n'est pas lancée.</div></div>
+    <div class="pane"><h3><span>Aperçu du plugin</span><a class="link" id="open-plugin" target="_blank" rel="noopener">Ouvrir seul</a></h3><div id="frame-plugin" class="empty">Le plugin n'est pas lancé.</div></div>
+  </section>
+  <p class="note">Si un aperçu reste vide, ouvre la partie dans un onglet avec « Ouvrir seule ». Les aperçus et les journaux se mettent à jour tout seuls quand tu modifies un fichier.</p>
+  <section class="logs" aria-label="Journaux">
+    <div class="tabs" id="tabs"></div>
+    <pre id="log" tabindex="0"></pre>
+  </section>
+</main>
+<script nonce="__NONCE__">
+(() => {
+  const token = document.querySelector('meta[name="console-token"]').content;
+  const ORDER = ["api", "miniapp", "plugin"];
+  const LABEL = { stopped: "arrêtée", starting: "démarrage…", running: "en marche", crashed: "plantée", external: "lancée ailleurs", blocked: "impossible" };
+  const logs = { api: [], miniapp: [], plugin: [] };
+  const MAX = 500;
+  let services = [];
+  let current = "api";
+  let socket = null;
+  let retry = 500;
+  let failures = 0;
+  const $ = (id) => document.getElementById(id);
+  const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text !== undefined) n.textContent = text; return n; };
+
+  function post(id, action) {
+    return fetch(`/api/services/${id}/${action}`, { method: "POST", headers: { "X-Console-Token": token } })
+      .then((r) => r.json().catch(() => ({ ok: false, message: `erreur ${r.status}` })))
+      .then((r) => { const m = document.querySelector(`[data-msg="${id}"]`); if (m) m.textContent = r.ok ? "" : r.message; })
+      .catch(() => { const m = document.querySelector(`[data-msg="${id}"]`); if (m) m.textContent = "la console ne répond pas"; });
+  }
+
+  function renderCards() {
+    const box = $("cards");
+    for (const s of services) {
+      let card = box.querySelector(`[data-id="${s.id}"]`);
+      if (!card) {
+        card = el("div", "card"); card.dataset.id = s.id;
+        const h = el("h2"); h.append(el("span", "", s.label), el("span", "badge")); card.append(h);
+        card.append(el("p", "what", s.what));
+        card.append(el("p", "meta", `Port ${s.port}, dossier ${s.folder} `)); card.lastChild.append(el("code", "", s.command));
+        card.append(el("p", "note", s.reload));
+        const msg = el("p", "msg"); msg.dataset.msg = s.id; card.append(msg);
+        const row = el("div", "row");
+        for (const [action, text] of [["start", "Lancer"], ["restart", "Redémarrer"], ["stop", "Arrêter"]]) {
+          const b = el("button", "", text); b.dataset.action = action; b.addEventListener("click", () => { b.disabled = true; post(s.id, action); }); row.append(b);
+        }
+        const a = el("a", "link", s.open); a.target = "_blank"; a.rel = "noopener"; a.dataset.open = "1"; row.append(a);
+        card.append(row); box.append(card);
+      }
+      const badge = card.querySelector(".badge"); badge.textContent = LABEL[s.state] || s.state; badge.className = `badge ${s.state}`;
+      const msg = card.querySelector(".msg"); if (s.message) msg.textContent = s.message; else if (["running", "stopped", "starting"].includes(s.state)) msg.textContent = "";
+      const own = s.state === "running" || s.state === "starting";
+      const b = (a) => card.querySelector(`button[data-action="${a}"]`);
+      b("start").disabled = own || s.state === "external";
+      b("restart").disabled = s.state === "external";
+      b("stop").disabled = !own;
+      const link = card.querySelector("a[data-open]");
+      const url = s.links.page || s.links.open;
+      if (url) { link.href = url; link.classList.toggle("off", s.state !== "running" && s.state !== "external"); } else { link.removeAttribute("href"); link.classList.add("off"); }
+    }
+  }
+
+  const frames = {};
+  function renderPreviews() {
+    for (const id of ["miniapp", "plugin"]) {
+      const s = services.find((x) => x.id === id); if (!s) continue;
+      const holder = $(`frame-${id}`); const open = $(`open-${id}`);
+      if (s.links.open) open.href = s.links.open; else open.classList.add("off");
+      const up = s.state === "running" || s.state === "external";
+      if (up && s.links.open) {
+        // load once per run: the page then updates itself through Vite's own WebSocket (hot reload)
+        if (!frames[id]) { const f = document.createElement("iframe"); f.title = `Aperçu : ${s.label}`; f.src = s.links.open; f.setAttribute("referrerpolicy", "no-referrer"); holder.replaceChildren(f); holder.className = ""; frames[id] = f; }
+      } else if (frames[id]) {
+        delete frames[id]; holder.className = "empty"; holder.textContent = `${s.label} n'est pas lancé${id === "plugin" ? "" : "e"}.`;
+      }
+    }
+  }
+
+  function renderTabs() {
+    const tabs = $("tabs"); tabs.replaceChildren();
+    for (const id of ORDER) {
+      const s = services.find((x) => x.id === id); if (!s) continue;
+      const b = el("button", "", `Journal ${s.label}`); b.setAttribute("aria-pressed", String(id === current));
+      b.addEventListener("click", () => { current = id; renderTabs(); renderLog(); }); tabs.append(b);
+    }
+    tabs.append(el("span", "grow"));
+    const clear = el("button", "", "Effacer l'affichage"); clear.addEventListener("click", () => { logs[current] = []; renderLog(); }); tabs.append(clear);
+  }
+  function renderLog() {
+    const pre = $("log"); pre.textContent = logs[current].join("\n"); pre.scrollTop = pre.scrollHeight;
+  }
+  function addLog(id, line) {
+    const arr = logs[id]; if (!arr) return; arr.push(line); if (arr.length > MAX) arr.splice(0, arr.length - MAX);
+    if (id === current) { const pre = $("log"); const stick = pre.scrollTop + pre.clientHeight >= pre.scrollHeight - 30; pre.textContent = arr.join("\n"); if (stick) pre.scrollTop = pre.scrollHeight; }
+  }
+
+  function setLive(ok) { const n = $("live"); n.textContent = ok ? "en direct" : "reconnexion…"; n.className = ok ? "ok" : "ko"; }
+  function connect() {
+    const proto = location.protocol === "https:" ? "wss" : "ws";
+    socket = new WebSocket(`${proto}://${location.host}/ws?t=${encodeURIComponent(token)}`);
+    let opened = false;
+    socket.onopen = () => { opened = true; failures = 0; retry = 500; setLive(true); for (const id of ORDER) logs[id] = []; };
+    socket.onmessage = (event) => {
+      const m = JSON.parse(event.data);
+      if (m.t === "state") { const first = services.length === 0; services = m.services; renderCards(); renderPreviews(); if (first) renderTabs(); }
+      else if (m.t === "logs") { logs[m.id] = m.lines; if (m.id === current) renderLog(); }
+      else if (m.t === "log") addLog(m.id, m.line);
+      else if (m.t === "mem") { const n = $("mem"); const g = (x) => (x / 1024).toFixed(1); n.textContent = `Mémoire ${g(m.memory.usedMiB)} / ${g(m.memory.totalMiB)} Gio`; n.className = m.memory.availableMiB < 250 ? "tight" : ""; }
+    };
+    socket.onclose = () => {
+      setLive(false);
+      // never connected three times in a row: the console restarted with a new token, load the page again
+      if (!opened && ++failures >= 3) { setTimeout(() => location.reload(), retry); return; }
+      setTimeout(connect, retry); retry = Math.min(retry * 2, 8000);
+    };
+    socket.onerror = () => socket.close();
+  }
+  connect();
+})();
+</script>
+</body>
+</html>

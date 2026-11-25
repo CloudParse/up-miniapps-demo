@@ -98,19 +98,67 @@ Coder workspace (dev-<organisation>)
 - Then the startup log runs (about 40 seconds: repository, settings, dependencies, editor). The workspace is ready when the log ends with "Workspace prêt / workspace ready".
 - If the banner stays for more than 3 minutes, open the startup log on the workspace page and restart the workspace.
 
+## The project console
+
+One page starts, stops and restarts the three parts of the project. In the workspace page of Coder, press **Console du projet** (it opens a tab). The console runs from the end of the startup, so the button is ready with the workspace. If it is not (a restart of the console, an older workspace), type `up-dev` in a terminal: it starts the console and prints its address. `up-dev stop` stops it with the three parts, `up-dev status` tells whether it runs.
+
+What the page shows:
+- One card per part, with a short explanation (what it is, its port, its folder, the exact command it runs), its state (arrêtée, démarrage, en marche, plantée) and three buttons: **Lancer**, **Redémarrer**, **Arrêter**.
+- A link per part, opening it alone in a new tab: **Tester l'API** (the API documentation), **Voir la mini-app**, **Voir le plugin**.
+- The mini-app and the plugin side by side, in two previews. Each part updates itself when you save a file: Vite pushes the change to the page through its own WebSocket (hot reload), and the API reloads its code (uvicorn). If a preview stays empty, open the part alone with its link.
+- The live log of each part (the last 500 lines, streamed by WebSocket). The page reconnects by itself.
+- The memory of the workspace (see "Memory and CPU").
+
+What it runs, exactly (nothing else, no command typed in the page):
+
+| Part | Port | Folder | Command |
+| --- | --- | --- | --- |
+| API | 21514 | `api/` | `SERVER_HOST=0.0.0.0 uv run --env-file .env python -m app` |
+| Mini-app | 21515 | `miniapp/` | `node_modules/.bin/vite --host 0.0.0.0` (what `npm run dev` runs, without the npm process) |
+| Plugin | 21516 | `plugin/` | `node_modules/.bin/vite --config vite.dev.config.ts` |
+
+Rules of the console:
+- A part started in a terminal (`up-api`, `dev-tools/up-dev.sh`) shows "lancée ailleurs": the console does not stop what it did not start. Stop it where it runs.
+- A part that cannot start says why (`api/.env` or `node_modules` missing: run `up-project-setup`; port already in use; not enough memory).
+- A part that exits by itself shows "plantée" with its exit code. Read its log. A restart clears it.
+- Stopping the console stops the parts it started. Restarting the workspace stops everything.
+- A secret never appears in the page: the values of `api/.env` that look like secrets, tokens and the password of a connection URL are replaced by `***` in the logs.
+
+Safety of the console:
+- It listens on `127.0.0.1` only. In Coder it is reached by the app **Console du projet**, owner only, behind the Coder sign-in.
+- It checks the `Host` header of every request and WebSocket with the same list as the two Vite servers (`dev-tools/hostGuard.ts`): the Coder button address, `DEV_ALLOWED_HOSTS`, loopback names, never an IP address.
+- An action (`POST`) needs the `Origin` of the console and a random token that only the console page holds. At most one action per part every 2 seconds, 30 per minute.
+- It serves no file and takes no path, command or argument from a request.
+- Code: `dev-tools/console/` (`server.ts`, `supervisor.ts`, `security.ts`, `mask.ts`, `ws.ts`, `memory.ts`, `page.html`), no dependency. Tests: `npm test` in `miniapp/`.
+- Agents (Claude Code) keep using `dev-tools/up-dev.sh` (no browser needed). The console and the script do not share state: use one or the other for a given part.
+
+## Memory and CPU
+
+Every workspace is capped at **2 CPU cores and 2 GiB of memory** in total. The cap is in the template, not in a setting: nobody can raise it from the workspace. The card shows "CPU 0.1/2" and "Mémoire 0.3/2.0 GiB" against that limit.
+
+Measured on a workspace of this template (image 0.5.17, 2026-11-25):
+- the three parts running (API with its reload worker, mini-app, plugin) and the console: about 930 MiB of process memory;
+- Vite alone: about 330 MiB at rest, up to 500 MiB after the page loaded. Each Vite server runs with a cap on its JavaScript heap (384 MiB for the mini-app, 320 MiB for the plugin): a runaway server stops with "JavaScript heap out of memory" instead of filling the workspace;
+- VS Code in the browser (code-server) takes 0.3 GiB idle and up to 1.2 GiB with a window open; Claude Code takes about 0.6 GiB; the Coder agent about 0.2 GiB.
+
+So 2 GiB holds the editor, Claude Code and the three parts only when none of them grows. Advice:
+- Start only the parts you need. The console shows the memory in its header and refuses to start a part when less than 200 MiB is free.
+- Close the VS Code windows and terminals you do not use.
+- When the memory is full the sandbox kills a process. The console starts the parts with a higher kill priority than the workspace agent, so a dev server goes first; start it again from the console.
+
 ## Are the Mini-app, API and Plugin buttons ready?
 
-- The buttons **Mini-app** (port 21515), **API** (21514) and **Plugin** (21516) show an alert icon and the text "Unhealthy" while nothing listens on their port. Coder 2.39 still lets you click them: the page then fails to load. A server that answers a status 500 or more on `/` is also "Unhealthy", while the line says "EN MARCHE". Start the server first.
-- The workspace page has three lines, "Mini-app (bouton)", "API (bouton)" and "Plugin (bouton)". Each is one short line, refreshed every 5 seconds:
-  - "EN MARCHE": the server listens.
-  - "ARRÊTÉE : tape up-api" (or `up-miniapp`, `up-plugin`): type that command in a terminal of the workspace.
-  - "Pas prêt : voir le journal": the project is not ready yet (see the startup log).
-  - "Pas de plugin/ ici": this project has no `plugin/` folder.
-- Three short commands, from any folder. Each runs in the foreground, so its logs stay on screen, and Ctrl+C stops it. Each refuses with a clear message when the project is not ready, `api/.env` or `node_modules` is missing or its port is already in use. `up-status` says which of the three runs.
+- The buttons **Mini-app** (port 21515), **API** (21514) and **Plugin** (21516) show an alert icon and the text "Unhealthy" while nothing listens on their port. Coder 2.39 still lets you click them: the page then fails to load. A server that answers a status 500 or more on `/` is also "Unhealthy", while the card says "en marche". Start the part first, from the console.
+- The workspace page lists one fact per item, each a label and a short value, refreshed every 5 seconds (the value is never cut):
+  - **Projet**: "prêt", or "préparation" while the startup runs (see the startup log).
+  - **Console**: "ouverte", or "tape up-dev".
+  - **API**, **Mini-app**, **Plugin**: "en marche" or "arrêtée". The plugin says "pas de plugin/" when the project has no `plugin/` folder.
+  - **CPU**, **Mémoire**, **Disque**: use against the cap above.
+- From a terminal, three short commands do the same as the console, one part each, from any folder. Each runs in the foreground, so its logs stay on screen, and Ctrl+C stops it. Each refuses with a clear message when the project is not ready, `api/.env` or `node_modules` is missing or its port is already in use. `up-status` says which of the three runs.
   - `up-api` runs `cd api && SERVER_HOST=0.0.0.0 uv run --env-file .env python -m app`
   - `up-miniapp` runs `cd miniapp && npm run dev -- --host 0.0.0.0`
   - `up-plugin` runs `cd plugin && npm run dev`
-- The check reaches `127.0.0.1` inside the workspace. A server that listens on `127.0.0.1` or on `0.0.0.0` is "EN MARCHE". A server that listens only on `::1` (Node's `localhost` can resolve to `::1`) is not: use `--host 0.0.0.0`.
+- The check reaches `127.0.0.1` inside the workspace. A server that listens on `127.0.0.1` or on `0.0.0.0` is "en marche". A server that listens only on `::1` (Node's `localhost` can resolve to `::1`) is not: use `--host 0.0.0.0`.
 
 ## Your shell and the project settings
 

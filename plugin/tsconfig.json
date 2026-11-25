@@ -20,6 +20,7 @@
     "dev",
     "vite.config.ts",
     "vite.dev.config.ts",
-    "../dev-tools/hostGuard.ts"
+    "../dev-tools/hostGuard.ts",
+    "../dev-tools/console/*.ts"
   ]
 }

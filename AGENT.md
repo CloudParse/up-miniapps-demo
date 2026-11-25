@@ -143,8 +143,9 @@ Ports:
 
 - Every path in the `AGENT.md` files is relative to the repository root.
 - The absolute paths of this workspace are in `CLAUDE.local.md` (the repository root, `api/` and `miniapp/`). The workspace setup script `up-project-setup` writes them. They are git-ignored (`CLAUDE.local.md`, `AGENTS.local.md`): never commit them, never copy an absolute path into a file of the repository.
-- Dev servers: `dev-tools/up-dev.sh` (start, stop, status and logs of the three parts; check it with `shellcheck`).
-- Dev helper: `dev-tools/hostGuard.ts` (Host check of the two Vite dev servers), tested by `npm test` in `miniapp/`.
+- Dev servers: `dev-tools/up-dev.sh` (start, stop, status and logs of the three parts; check it with `shellcheck`). In a Coder workspace, a person starts them from the project console (`dev-tools/console/`, command `up-dev`, `docs/coder.md`, "The project console"): a small Node supervisor with a web page, no dependency, tested by `npm test` in `miniapp/`. It runs the same three fixed commands. Do not add a way to run another command in it.
+- Dev helper: `dev-tools/hostGuard.ts` (Host check of the two Vite dev servers and of the console), tested by `npm test` in `miniapp/`.
+- A Coder workspace is capped at 2 CPU cores and 2 GiB of memory in total (`docs/coder.md`, "Memory and CPU"): do not start more than the task needs, and never add a dev server that stays idle at hundreds of MiB.
 - Code: `api/app/` (routes, services, schemas), `miniapp/src/`, `plugin/src/`. Docs: `docs/`. Deployment settings: `miniapp.yaml`.
 
 ## 4. General conventions
