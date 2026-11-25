@@ -37,9 +37,10 @@ export default defineConfig({
     // 0.0.0.0 so Coder lists the port in "Open ports".
     host: true,
     port: DEV_PORT,
-    // Same origin as the page: no CORS.
+    // Same origin as the page: no CORS. `ws: true` also proxies the WebSocket of the API (/api/v1/ws),
+    // which the page uses for its live figures.
     proxy: {
-      "/api/": BACKEND_ORIGIN,
+      "/api/": { target: BACKEND_ORIGIN, ws: true },
       "/hub/": {
         changeOrigin: true,
         rewrite: (url) => url.replace(/^\/hub/, ""),

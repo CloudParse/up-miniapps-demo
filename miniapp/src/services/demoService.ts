@@ -1,4 +1,5 @@
 import { APP_CONFIG } from "@app/config/env";
+import type { DemoCounters } from "@app/lib/demoEvents";
 import { apiService } from "@app/services/backend";
 
 /** Why the demo is off: its routes exist in development only (the API answers 404 in production). */
@@ -13,6 +14,7 @@ export function isDemoAvailable(): boolean {
 // Routes of the demo API (api/app/api/routes/demo.py), served under /api/v1 outside production only.
 export const DEMO_PATH = "demo";
 export const DEMO_VISIT_PATH = "demo/visit";
+export const DEMO_COUNTERS_PATH = "demo/counters";
 export const DEMO_BROADCAST_PATH = "demo/broadcast";
 
 /** Wire shape returned by `POST /api/v1/demo/visit` (api/app/schemas/demo.py). */
@@ -67,4 +69,16 @@ export async function broadcastDemoMessage(text: string): Promise<number> {
     { text },
   );
   return result.delivered;
+}
+
+/**
+ * Reads the two visit counters (`GET /api/v1/demo/counters`). The card calls it at start and
+ * after each reconnection of its WebSocket, so a push missed while offline never leaves a stale figure.
+ */
+export async function readDemoCounters(): Promise<DemoCounters> {
+  const counters = await apiService.get<DemoCounters>(DEMO_COUNTERS_PATH);
+  return {
+    cacheVisits: counters.cacheVisits,
+    databaseVisits: counters.databaseVisits,
+  };
 }

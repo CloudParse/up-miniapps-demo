@@ -58,6 +58,7 @@ A real plugin usually also has an edit modal and a delete action per kind of dat
 | --- | --- |
 | `plugin/src/index.tsx` | `definePlugin({ id, name, pages, styles })`: the plugin and its pages. |
 | `plugin/src/features/demo/DemoPage.tsx` | The page "Resources": three figures and one button. |
+| `plugin/src/lib/realtimeClient.ts`, `src/hooks/useRealtime.ts`, `src/features/demo/RealtimeStatus.tsx` | The live figures: a WebSocket to the API with reconnection and a visible state. Events and flow: `docs/realtime.md`, "The plugin". |
 | `plugin/src/features/demo/NotesPage.tsx`, `NoteModal.tsx` | The page "Notes": a table of the notes and the modal that writes one (no `<form>`, `ModalActions submitType="button"`). |
 | `plugin/src/services/demo.ts` | The calls to the API (`miniappApi`). |
 | `plugin/vite.config.ts` | The production build, `vite build` -> `dist/plugin.js`. |

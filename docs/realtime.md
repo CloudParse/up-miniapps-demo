@@ -1,6 +1,6 @@
 # Realtime: the WebSocket of your API
 
-The API pushes, the mini-app listens. Typical use: a person reacts, the API stores it and tells every other open mini-app. Last audited: 2026-11-24.
+The API pushes, the mini-app listens. Typical use: a person reacts, the API stores it and tells every other open mini-app. Last audited: 2026-11-25.
 
 ## The pieces
 
@@ -10,6 +10,10 @@ The API pushes, the mini-app listens. Typical use: a person reacts, the API stor
 | Hub | `api/app/services/realtime_service.py` (`RealtimeHub`) | Holds the open sockets (200 at most, 10 per client address) and broadcasts a message to all of them at once. A socket that fails or does not read within 2 seconds is dropped and closed. |
 | Ticket route | `api/app/api/routes/realtime.py`, `POST /api/v1/ws-ticket`; `api/app/services/ticket_service.py` | Signed in (scoped Hub token). Returns `{ "ticket": "...", "expiresIn": 30 }`. See "Tickets". |
 | Push example | `POST /api/v1/demo/broadcast` (development only, signed-in member) | Body `{ "text": "..." }`. Pushes `{ "event": "demo_message", "text": "..." }` to every open socket. |
+| Bus | `api/app/services/realtime_bus.py` | Carries a message to the other replicas of the API through the cache (Valkey publish and subscribe). See "Several replicas". |
+| Demo events | `visit_recorded`, `counter_reset` (`api/app/api/routes/demo.py`) | Pushed by `POST /demo/visit` and `POST /admin/demo/reset-cache`. See "Events of the demo". |
+| Live card | `miniapp/src/features/home/DemoDataCard.tsx`, `miniapp/src/hooks/useDemoLive.ts` | The counters of the home screen. They follow the events, with a status chip "Temps réel : connecté". |
+| Plugin client | `plugin/src/lib/realtimeClient.ts`, `plugin/src/hooks/useRealtime.ts`, `plugin/src/features/demo/RealtimeStatus.tsx` | The Studio page opens its own socket and shows its state. See "The plugin". |
 | Client | `miniapp/src/features/tools/RealtimeDemo.tsx` | `createWsService` in broadcast mode. Shows the status and the messages received. |
 | Ping client | `miniapp/src/lib/pingClient.ts` | A small socket to the same address that sends `ping` and shows the `pong` with the round trip. |
 
@@ -23,6 +27,52 @@ Press **Ping** to see the socket work in both directions:
 
 The round trip is measured by the mini-app with its own clock. The `id` is a small integer chosen by the client to match the pong. A socket may ping 5 times per second: more are dropped without an answer.
 
+## Events of the demo
+
+Every message is a JSON object with an `event` name. Counters only: it goes to every socket.
+
+| Event | Pushed by | Fields |
+| --- | --- | --- |
+| `visit_recorded` | `POST /api/v1/demo/visit` (the button "Enregistrer une visite" of the mini-app), after the write succeeded | `databaseVisits` (int or null), `cacheVisits` (int or null), `at` (ISO 8601) |
+| `counter_reset` | `POST /api/v1/admin/demo/reset-cache` (the button "Reset the cache counter" of the plugin), after the reset | `cacheVisits` (always 0), `at` (ISO 8601) |
+| `demo_message` | `POST /api/v1/demo/broadcast` | `text` |
+
+Both screens update at once:
+- the mini-app card "Données de la mini-app" and the plugin page "Resources" both listen;
+- a visit made in the mini-app moves the figures of the plugin, and a reset made in the plugin moves the figures of the mini-app;
+- a route that fails (4xx, 5xx) pushes nothing.
+
+Both screens also read the counters again from the API each time their socket opens (`GET /api/v1/demo/counters` for the mini-app, `GET /api/v1/admin/demo/overview` for the plugin). A push sent while a screen was offline is therefore never lost.
+
+To add your own event: build the dict in `realtime_service.py` (like `visit_recorded`), call `await hub.publish(event)` after the change (not `broadcast`: `publish` also reaches the other replicas), and handle the `event` name on both sides. Routes that push are `async def`, and call the blocking service with `run_in_threadpool`.
+
+## The plugin
+
+The Studio plugin is a second client of the same socket. The SDK of the Studio has no WebSocket helper, so the plugin owns a small client (`plugin/src/lib/realtimeClient.ts`):
+
+1. The address is `application.wsBackendUrl` from `usePluginHost()`. The Studio registers it with the mini-app. If it is empty, the client derives it from `miniappApi.baseUrl` (`https://host/api/v1` gives `wss://host/api/v1/ws`).
+2. The ticket comes from `miniappApi.post("/ws-ticket")`, asked with the admin token. The socket is opened with `?ticket=`.
+3. The Studio frame is sandboxed: the browser sends `Origin: null`, which the API accepts. The frame may connect to `wsBackendUrl` (the Studio adds its origin to the `connect-src` of the frame).
+4. The client reconnects by itself: 1 s, 2 s, 4 s ... 30 s, with jitter, and asks a new ticket each time.
+5. It sends a ping every 60 s, so the API does not close the socket after 5 minutes of silence.
+6. The page shows the state: a chip "Realtime: connected / connecting / reconnecting / offline", the number of events, the time of the last one and the last lines of a log. If you see "connected" but the figures do not move, the log shows whether events arrive.
+
+The development page (`npm run dev` in `plugin/`) gives the same host: `wsBackendUrl` is the page origin with `/api/v1/ws`, and the Vite proxy forwards the WebSocket (`ws: true` in `vite.dev.config.ts`).
+
+## Several replicas
+
+`RealtimeHub.publish(message)` sends to the sockets of the process and publishes the message on the cache channel `<CACHE_KEY_PREFIX>realtime`. Each process listens to that channel (started in the lifespan of `app/main.py`) and sends what it receives to its own sockets. A message carries the id of the process that published it, so nobody gets it twice.
+- Without `CACHE_URL` there is no bus: one process, the hub is enough.
+- A cache that fails never fails a request. The publisher logs a warning. The listener retries with a growing pause (1 s to 30 s).
+- If the cache user has no right on pub/sub channels, publishing fails with a warning in the API log and the replicas no longer hear each other. Ask for the right on the channels that start with your prefix.
+
+## An existing project takes the live counters
+
+A project made before 2026-11-25 keeps its own copy of the template. To get the live counters, copy these files from the template (`git show <template commit>:<path>`, or the template repository) and merge the changed ones by hand:
+- New: `api/app/services/realtime_bus.py`, `api/tests/test_realtime_events.py`, `miniapp/src/lib/demoEvents.ts`, `miniapp/src/hooks/useDemoLive.ts`, `dev-tools/demoEvents.test.ts`, `plugin/src/lib/realtimeClient.ts`, `plugin/src/hooks/useRealtime.ts`, `plugin/src/features/demo/RealtimeStatus.tsx`, `plugin/src/features/demo/realtimeEvents.ts`, `plugin/dev/realtime.test.ts`.
+- Changed: `api/app/services/realtime_service.py` (bus, `publish`, event builders), `api/app/main.py` (bus and its listener in the lifespan), `api/app/api/routes/demo.py` (`async def`, push, `GET /demo/counters`), `api/app/schemas/demo.py` (`DemoCounters`), `miniapp/src/services/demoService.ts` (`readDemoCounters`), `miniapp/src/features/home/DemoDataCard.tsx`, `plugin/src/features/demo/DemoPage.tsx`, `plugin/dev/main.tsx` and `plugin/dev/devHost.ts` (`wsBackendUrl`), `plugin/vite.dev.config.ts` (`ws: true`), and the `test` scripts of `miniapp/package.json` and `plugin/package.json`.
+- Then run `cd api && uv run pytest`, `cd miniapp && npm test`, `cd plugin && npm test`.
+
 ## Rules
 
 - The SDK client only listens: it has no `send`. A mini-app talks to its API with HTTP (`createApiService`). The ping demo opens its own small socket (`pingClient.ts`) because it must send.
@@ -31,7 +81,9 @@ The round trip is measured by the mini-app with its own clock. The `id` is a sma
 - The upgrade checks the `Origin` header, because browsers do not apply CORS to a WebSocket. Accepted: no `Origin` (a script or a native app), `null` (the sandboxed frame of the web launcher, on purpose), an origin of `cors.allowed_origins`, the site that serves the API (its `Origin` host equals the `Host` header, as behind a Coder URL), and a local host in development. Any other website is refused. This keeps casual pages out. It is not authentication.
 - The route answers a ping and drops everything else a client sends. A frame over 1024 bytes (counted in bytes, text or binary) closes the socket with code 1009. A socket that sends nothing for 5 minutes is closed: send a ping from time to time to stay. One client address may hold 10 sockets.
 - Keep messages small and JSON. Let the mini-app reload data with an HTTP call after a ping: the call is authenticated, the ping is not.
-- The hub lives in the memory of one process. With several replicas of the API, each replica only reaches its own sockets. Use the cache (Valkey publish and subscribe, keys and channels start with `CACHE_KEY_PREFIX`) to fan out between replicas.
+- The hub lives in the memory of one process. Push with `hub.publish`, not `hub.broadcast`: `publish` also reaches the other replicas through the cache ("Several replicas").
+- A socket that sends nothing for 5 minutes is closed. The SDK client of the mini-app sends nothing, so it reconnects now and then: read the data again when the socket opens (`onStatusChange`).
+- Outside the Up shell (a browser tab in development), `createWsService` refuses to connect without a token unless you pass `requireAuth: false`. The demo does. Inside the shell it asks a ticket either way.
 - `POST /demo/broadcast` is an example, served outside production only. Delete it with the rest of the demo before you ship.
 
 ## In development (Coder workspace)
@@ -65,4 +117,4 @@ For a room or a group, create the service with `channelField` (for example `grou
 
 ## Tests
 
-`api/tests/test_ws_ticket.py` covers the ticket route (signed in, 401), a ticket that opens the socket once, an unknown ticket (1008), the in-memory store (single use, expiry, the cap of 1000 tickets), the Redis store with a fake client (prefix, lifetime, `GETDEL`), the service (round trip, corrupt payloads), a cache failure (503 on the route, 1013 on the socket) and `REALTIME_REQUIRE_TICKET`. `api/tests/test_realtime.py` covers the broadcast to several sockets, the pong to the sender only, the ping id rules and the ping rate limit, no listener, a socket that leaves, an oversized client message (closed with 1009) and the limits of the hub. Run `cd api && uv run pytest`. The ping client is tested in `dev-tools/pingClient.test.ts` (`cd miniapp && npm test`).
+`api/tests/test_ws_ticket.py` covers the ticket route (signed in, 401), a ticket that opens the socket once, an unknown ticket (1008), the in-memory store (single use, expiry, the cap of 1000 tickets), the Redis store with a fake client (prefix, lifetime, `GETDEL`), the service (round trip, corrupt payloads), a cache failure (503 on the route, 1013 on the socket) and `REALTIME_REQUIRE_TICKET`. `api/tests/test_realtime_events.py` covers the two events (every socket gets them, a failed or refused call pushes nothing), `GET /demo/counters`, `hub.publish`, a failing bus and the Redis bus with a fake client. The plugin client (backoff, ticket, ping, stop, parsing) is tested in `plugin/dev/realtime.test.ts` (`cd plugin && npm test`, 22 tests) and the mini-app counters in `dev-tools/demoEvents.test.ts` (`cd miniapp && npm test`). `api/tests/test_realtime.py` covers the broadcast to several sockets, the pong to the sender only, the ping id rules and the ping rate limit, no listener, a socket that leaves, an oversized client message (closed with 1009) and the limits of the hub. Run `cd api && uv run pytest`. The ping client is tested in `dev-tools/pingClient.test.ts` (`cd miniapp && npm test`).

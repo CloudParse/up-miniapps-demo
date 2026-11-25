@@ -58,3 +58,11 @@ export async function apiProblem(
     return `The development server does not answer. Check that "npm run dev" still runs. ${start}`;
   }
 }
+
+/**
+ * The WebSocket address of the demo API for the development host: the API base URL with a
+ * `ws` or `wss` scheme and `/ws`. The Studio gives the real one (`application.wsBackendUrl`).
+ */
+export function devWsUrl(apiBase: string): string {
+  return `${apiBase.replace(/^http/, "ws")}/ws`;
+}

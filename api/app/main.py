@@ -1,3 +1,5 @@
+import asyncio
+import contextlib
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -12,6 +14,7 @@ from app.core.errors import register_error_handlers
 from app.core.security import build_token_verifier
 from app.services.demo_admin_service import DemoAdminActions
 from app.services.demo_service import DemoActions, prepare
+from app.services.realtime_bus import build_realtime_bus
 from app.services.realtime_service import RealtimeHub
 from app.services.resource_service import ResourceProbes
 from app.services.ticket_service import TicketService, build_ticket_store
@@ -30,7 +33,18 @@ def create_app(config: Config | None = None) -> FastAPI:
         # The demo table is created once here, not on each request (blocking: a thread).
         if not config.is_production:
             await run_in_threadpool(prepare, app.state.demo_actions)
+        # Listen to the other replicas: what they push reaches the sockets held here.
+        bus = app.state.realtime_bus
+        listener = (
+            asyncio.create_task(bus.run(app.state.realtime_hub.broadcast))
+            if bus is not None
+            else None
+        )
         yield
+        if listener is not None:
+            listener.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await listener
 
     app = FastAPI(
         lifespan=lifespan,
@@ -47,7 +61,8 @@ def create_app(config: Config | None = None) -> FastAPI:
     app.state.resource_probes = ResourceProbes.from_config(config)
     app.state.demo_actions = DemoActions.from_config(config)
     app.state.demo_admin_actions = DemoAdminActions.from_config(config)
-    app.state.realtime_hub = RealtimeHub()
+    app.state.realtime_bus = build_realtime_bus(config)
+    app.state.realtime_hub = RealtimeHub(bus=app.state.realtime_bus)
     app.state.ticket_service = TicketService(build_ticket_store(config))
 
     _add_cors(app, config)

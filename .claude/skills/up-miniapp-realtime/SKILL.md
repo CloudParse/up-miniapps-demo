@@ -5,7 +5,7 @@ description: Realtime in an Up mini-app. The API pushes over a WebSocket, the mi
 
 # Up realtime
 
-Status: draft. Source of truth: `docs/realtime.md`. Last audited 2026-11-23.
+Status: draft. Source of truth: `docs/realtime.md`. Last audited 2026-11-25.
 
 ## Shape
 
@@ -17,18 +17,29 @@ Status: draft. Source of truth: `docs/realtime.md`. Last audited 2026-11-23.
 ## Steps to add a live feature
 
 1. Add the HTTP route that changes the data (service first, route second, see `up-miniapp-api`).
-2. In the service, after the change, push a small message: `await hub.broadcast({"event": "thing_changed", "id": "..."})`. Get the hub with `RealtimeHubDep`.
-3. In the mini-app, `ws.onMessage` receives it and reloads the data with an HTTP call.
-4. Unsubscribe and `ws.disconnect()` when the component unmounts.
-5. Add a test in `api/tests/test_realtime.py` style: connect a socket with `client.websocket_connect`, call the route, assert what the socket receives.
+2. In the route (`async def`, blocking service through `run_in_threadpool`), after the change succeeded, push a small message: `await hub.publish({"event": "thing_changed", "id": "..."})`. Get the hub with `RealtimeHubDep`. Use `publish`, not `broadcast`: it also reaches the other replicas through the cache.
+3. In the mini-app, `ws.onMessage` receives it and updates the screen or reloads the data with an HTTP call. Also reload when the socket (re)opens (`onStatusChange`): a push sent while offline is lost. Create the service with `requireAuth: false` if the screen must also work in a browser tab.
+4. In the Studio plugin, use `useRealtime` (`plugin/src/hooks/useRealtime.ts`): same events, and a visible chip with the state.
+5. Unsubscribe and `ws.disconnect()` when the component unmounts.
+6. Add a test in `api/tests/test_realtime.py` style: connect a socket with `client.websocket_connect`, call the route, assert what the socket receives.
+
+## The demo events
+
+`visit_recorded` (`databaseVisits`, `cacheVisits`, `at`) after `POST /demo/visit`, `counter_reset` (`cacheVisits: 0`, `at`) after `POST /admin/demo/reset-cache`. The mini-app card and the plugin page both listen, so a visit moves the plugin and a reset moves the mini-app. Table of the contract: `docs/realtime.md`, "Events of the demo".
 
 ## Rules
 
 - Never write the socket address in the code. The platform registers `wss://api.<mini-app>.app.<domain>/api/v1/ws` and gives it to the app.
 - The socket is a public broadcast channel (no cookie or token; the `Origin` is checked, `null` is the web launcher). Push no secret and no personal data. Client frames over 1024 bytes close it, 5 minutes of silence close it, 10 sockets per address. Push a ping, then let the mini-app fetch with its token.
 - Limit the size and the rate of what you push.
-- One process holds the sockets in memory. For several replicas, fan out through the cache (keys and channels start with `CACHE_KEY_PREFIX`).
+- One process holds the sockets in memory. `hub.publish` fans out to the other replicas through the cache channel `<CACHE_KEY_PREFIX>realtime` (`services/realtime_bus.py`).
 - A private channel needs a ticket checked when the socket opens. `POST /api/v1/ws-ticket` (signed in) issues a 30-second single-use ticket, the socket accepts it as `?ticket=` (`docs/realtime.md`, "Tickets"). Make it mandatory for a private channel. Do not trust a room id sent by the client alone.
+
+## When it is connected but nothing moves
+
+1. Open the page of the plugin: the chip shows the state and the log shows each event. No event line: the API did not push (the route failed, or it calls nothing: check `hub.publish`).
+2. Events arrive but the figures stay: the page ignores the `event` name or the field (`realtimeEvents.ts`, `demoEvents.ts`).
+3. Several replicas and only some screens move: the cache cannot publish (look for "realtime bus: publish failed" in the API log).
 
 ## When it does not connect
 

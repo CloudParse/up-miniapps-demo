@@ -13,7 +13,18 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-from typing import Protocol
+import logging
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Protocol
+
+if TYPE_CHECKING:
+    from app.services.realtime_bus import RealtimeBus
+
+logger = logging.getLogger(__name__)
+
+# The event contract of the demo (docs/realtime.md, "Events of the demo").
+VISIT_RECORDED = "visit_recorded"
+COUNTER_RESET = "counter_reset"
 
 # One API process keeps every connection in memory. A limit stops a flood of sockets.
 MAX_CONNECTIONS = 200
@@ -37,7 +48,9 @@ class RealtimeHub:
         max_connections: int = MAX_CONNECTIONS,
         max_per_client: int = MAX_CONNECTIONS_PER_CLIENT,
         send_timeout: float = SEND_TIMEOUT_SECONDS,
+        bus: RealtimeBus | None = None,
     ) -> None:
+        self._bus = bus
         self._sockets: list[Socket] = []
         self._clients: dict[int, str] = {}
         self._max = max_connections
@@ -79,6 +92,23 @@ class RealtimeHub:
         )
         return sum(results)
 
+    async def publish(self, message: dict[str, object]) -> int:
+        """Push ``message`` to the sockets of this process AND of every other replica.
+
+        Returns how many sockets of THIS process got it. The shared bus (the cache)
+        carries it to the other replicas. A bus that fails is logged, never raised:
+        the request that pushed must not fail because of it.
+        """
+        delivered = await self.broadcast(message)
+        if self._bus is not None:
+            try:
+                await asyncio.wait_for(
+                    self._bus.publish(message), self._send_timeout * 2
+                )
+            except Exception:  # noqa: BLE001 - cache down, ACL without channels, timeout
+                logger.warning("realtime bus: publish failed", exc_info=True)
+        return delivered
+
     async def _send(self, socket: Socket, message: dict[str, object]) -> bool:
         try:
             await asyncio.wait_for(socket.send_json(message), self._send_timeout)
@@ -88,3 +118,24 @@ class RealtimeHub:
                 await asyncio.wait_for(socket.close(), self._send_timeout)
             return False
         return True
+
+
+def now_iso() -> str:
+    return datetime.now(UTC).isoformat()
+
+
+def visit_recorded(
+    database_visits: int | None, cache_visits: int | None
+) -> dict[str, object]:
+    """Pushed after ``POST /demo/visit``. Counters only: it goes to every socket."""
+    return {
+        "event": VISIT_RECORDED,
+        "databaseVisits": database_visits,
+        "cacheVisits": cache_visits,
+        "at": now_iso(),
+    }
+
+
+def counter_reset() -> dict[str, object]:
+    """Pushed after ``POST /admin/demo/reset-cache``: the cache counter is back to 0."""
+    return {"event": COUNTER_RESET, "cacheVisits": 0, "at": now_iso()}

@@ -21,7 +21,7 @@ import "@fontsource/bricolage-grotesque/latin-700.css";
 import "@fontsource/bricolage-grotesque/latin-800.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { apiProblem, devBaseUrls } from "./devHost";
+import { apiProblem, devBaseUrls, devWsUrl } from "./devHost";
 
 // The Hub's shared DEV registration of every mini-app (../miniapp/src/dev/devHub.ts).
 const MOCK_APP_UUID = "0d0d0d0d-0000-4000-8000-000000000001";
@@ -85,7 +85,8 @@ const host: PluginHost = {
     iconUrl: null,
     name: "Demo mini-app (development)",
     uuid: MOCK_APP_UUID,
-    wsBackendUrl: null,
+    // Like the Studio: the registered WebSocket address of the mini-app (here the same origin, through the Vite proxy).
+    wsBackendUrl: devWsUrl(urls.api),
   },
   basePath: "/",
   contractVersion: 1,

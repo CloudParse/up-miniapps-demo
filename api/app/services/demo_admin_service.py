@@ -84,6 +84,11 @@ class DemoAdminService:
             storage_objects=_read("bucket", a.storage_objects),
         )
 
+    def counters(self) -> tuple[int | None, int | None]:
+        """The two visit counters, without the bucket read of ``overview``."""
+        a = self._actions
+        return _read("database", a.database_visits), _read("cache", a.cache_visits)
+
     def reset_cache_visits(self) -> DemoOverview:
         if self._actions.reset_cache_visits:
             self._actions.reset_cache_visits()

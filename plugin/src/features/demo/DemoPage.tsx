@@ -6,7 +6,15 @@ import {
   SectionHeader,
   StatTile,
 } from "@cloudparse/up-backoffice-sdk";
+import { RealtimeStatus } from "@plugin/features/demo/RealtimeStatus";
+import {
+  applyDemoEvent,
+  describeEvent,
+  isDemoEvent,
+  VISIT_RECORDED,
+} from "@plugin/features/demo/realtimeEvents";
 import type { DemoOverview } from "@plugin/features/demo/types";
+import { useRealtime } from "@plugin/hooks/useRealtime";
 import { demoService } from "@plugin/services/demo";
 import { Database, FolderArchive, MemoryStick, RotateCcw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
@@ -52,6 +60,29 @@ export function DemoPage() {
     run(demoService.overview);
   }, [run]);
 
+  // Live updates: the API pushes `visit_recorded` and `counter_reset` (docs/realtime.md).
+  // The figures change at once from the event, then the overview is read again from the API:
+  // it holds what the event does not carry (the bucket) and it replaces a missed push.
+  const refresh = useCallback(async () => {
+    try {
+      setOverview(await demoService.overview());
+    } catch {
+      // Not served or unreachable: the page already shows why, the next push tries again.
+    }
+  }, []);
+  const realtime = useRealtime({
+    describe: describeEvent,
+    onEvent: (event) => {
+      if (!isDemoEvent(event)) return;
+      setOverview((current) =>
+        current ? applyDemoEvent(current, event) : current,
+      );
+      // The bucket count is not in `visit_recorded`: read it. A reset carries everything.
+      if (event.event === VISIT_RECORDED) void refresh();
+    },
+    onOpen: () => void refresh(),
+  });
+
   return (
     <div className="space-y-8">
       {notServed && (
@@ -82,6 +113,8 @@ export function DemoPage() {
         description="Each figure is read by the mini-app API, not by the plugin."
         title="Demo resources"
       />
+
+      <RealtimeStatus realtime={realtime} />
 
       {overview === null ? (
         notServed ? null : (

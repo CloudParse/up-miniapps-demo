@@ -8,7 +8,7 @@
     "dev": "vite",
     "build": "up-sdk build",
     "preview": "vite preview",
-    "test": "node --test ../dev-tools/hostGuard.test.ts ../dev-tools/errors.test.ts ../dev-tools/pingClient.test.ts ../dev-tools/devWsUrl.test.ts ../dev-tools/maplibreWorker.test.ts ../dev-tools/console/mask.test.ts ../dev-tools/console/security.test.ts ../dev-tools/console/ws.test.ts ../dev-tools/console/memory.test.ts ../dev-tools/console/supervisor.test.ts ../dev-tools/console/server.test.ts ../dev-tools/console/layout.test.ts",
+    "test": "node --test ../dev-tools/hostGuard.test.ts ../dev-tools/errors.test.ts ../dev-tools/pingClient.test.ts ../dev-tools/demoEvents.test.ts ../dev-tools/devWsUrl.test.ts ../dev-tools/maplibreWorker.test.ts ../dev-tools/console/mask.test.ts ../dev-tools/console/security.test.ts ../dev-tools/console/ws.test.ts ../dev-tools/console/memory.test.ts ../dev-tools/console/supervisor.test.ts ../dev-tools/console/server.test.ts ../dev-tools/console/layout.test.ts",
     "typecheck": "tsc --noEmit",
     "lint": "biome lint . --max-diagnostics 10000 --diagnostic-level error",
     "check": "biome check . --max-diagnostics 10000 --diagnostic-level error",

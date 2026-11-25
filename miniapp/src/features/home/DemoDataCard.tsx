@@ -1,5 +1,8 @@
+import { Badge } from "@app/components/ui/badge";
 import { Button } from "@app/components/ui/button";
 import { Card } from "@app/components/ui/card";
+import { useDemoLive } from "@app/hooks/useDemoLive";
+import { liveStatusLabel } from "@app/lib/demoEvents";
 import { getErrorMessage } from "@app/lib/errors";
 import {
   DEMO_DEV_ONLY_MESSAGE,
@@ -10,9 +13,17 @@ import {
 } from "@app/services/demoService";
 import { useEffect, useState } from "react";
 
-function describe(value: number | string | null): string {
-  return value === null ? "non configuré" : String(value);
+// `null` is "not known yet" before the first read, "not configured" once the API answered.
+function describeCount(value: number | null, loaded: boolean): string {
+  if (value !== null) return String(value);
+  return loaded ? "non configuré" : "—";
 }
+
+const STATUS_TONE = {
+  closed: "neutral",
+  connecting: "warning",
+  open: "success",
+} as const;
 
 // The demo's own resources: POST /api/v1/demo/visit writes a row in PostgreSQL, a counter in
 // the cache and an object in the bucket, then reads them back. Not served in production (the
@@ -22,6 +33,9 @@ export function DemoDataCard() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [served, setServed] = useState(false);
+  // The counters are live: a visit recorded here or a reset made in the Studio plugin
+  // reaches this card through the WebSocket (docs/realtime.md, "Events of the demo").
+  const live = useDemoLive(isDemoAvailable() && served);
 
   useEffect(() => {
     void isDemoServed().then(setServed);
@@ -31,7 +45,12 @@ export function DemoDataCard() {
     setBusy(true);
     setError(null);
     try {
-      setVisit(await recordDemoVisit());
+      const next = await recordDemoVisit();
+      setVisit(next);
+      live.set({
+        cacheVisits: next.cacheVisits,
+        databaseVisits: next.databaseVisits,
+      });
     } catch (caught) {
       setError(getErrorMessage(caught));
     } finally {
@@ -50,20 +69,37 @@ export function DemoDataCard() {
 
   return (
     <Card className="flex flex-col gap-2">
-      <p className="text-xs-plus font-medium uppercase text-ink-faint">
-        Données de la mini-app
-      </p>
-      {visit ? (
-        <ul className="flex flex-col gap-1 text-xs-plus text-ink-bright">
-          <li>Base de données : {describe(visit.databaseVisits)} visite(s)</li>
-          <li>Cache : {describe(visit.cacheVisits)} visite(s)</li>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs-plus font-medium uppercase text-ink-faint">
+          Données de la mini-app
+        </p>
+        <Badge data-testid="realtime-status" tone={STATUS_TONE[live.status]}>
+          Temps réel : {liveStatusLabel(live.status, live.everOpened)}
+        </Badge>
+      </div>
+      <ul className="flex flex-col gap-1 text-xs-plus text-ink-bright">
+        <li data-testid="database-visits">
+          Base de données :{" "}
+          {describeCount(live.counters.databaseVisits, live.loaded)} visite(s)
+        </li>
+        <li data-testid="cache-visits">
+          Cache : {describeCount(live.counters.cacheVisits, live.loaded)}{" "}
+          visite(s)
+        </li>
+        {visit ? (
           <li>
             Bucket :{" "}
             {visit.storageObject === null
               ? "non configuré"
               : "objet écrit et relu"}
           </li>
-        </ul>
+        ) : null}
+      </ul>
+      {live.lastEventAt ? (
+        <p className="text-xxs-minus text-ink-faint">
+          Dernière mise à jour en direct à{" "}
+          {live.lastEventAt.toLocaleTimeString("fr-FR")}
+        </p>
       ) : null}
       {error ? (
         <p className="text-xs-plus text-accent-danger">{error}</p>
