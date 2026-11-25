@@ -94,7 +94,11 @@ Claude Code is ready in the workspace:
 - `up-project-setup` installs the SDK's Claude Code plugin (`up-miniapps-sdk`, not the Studio plugin of `plugin/`).
 - The project rules (`CLAUDE.md`, `AGENT.md`, `.claude/`) come with the repository.
 
-The first time, it only asks you to set it up once: pick a theme, sign in with your own Anthropic account (`/login`), and trust the project folder. The sign-in stays in `~/.claude` of your home volume.
+The workspace has already set up Claude Code for you, so it asks no question: the theme is chosen, the project folder is trusted, the update, telemetry and survey prompts are off, and the permissions are ready (reading and editing in the project, `git status/diff/log/add/commit`, `uv sync`, `uv run`, `npm run`, `up-api`, `up-miniapp`, `up-plugin`, `up-dev`, `rg`, `ls` and `cat` run without a question; `git push`, `curl`, `npx`, `WebFetch` and anything outside the project ask; `rm -rf /`, `curl | sh`, `git push --force` and the platform secrets are blocked as guard rails, not as a security boundary).
+
+The one thing you do once is to sign in with your own Anthropic account: run `claude auth login` in a terminal (or `/login` inside Claude Code). The sign-in stays in `~/.claude` of your home volume.
+
+Your own settings in `~/.claude/settings.json` are kept. To stop the workspace from touching them, create the empty file `~/.claude/up-config.off`.
 
 Start it from the root of the project, so it loads `CLAUDE.md` and `AGENT.md`. The workspace setup script (`up-project-setup`) also writes `CLAUDE.local.md` (root, `api/`, `miniapp/`) with the absolute paths of your workspace. Git ignores it.
 

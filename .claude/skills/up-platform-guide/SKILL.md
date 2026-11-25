@@ -100,7 +100,7 @@ At each start, the workspace:
 3. installs the dependencies;
 4. installs the SDK's Claude Code plugin.
 
-Claude Code is then ready. The first time, it asks you to pick a theme, sign in with your own Anthropic account (`/login`) and trust the project folder. Each time you start `claude`, it shows a welcome message about `miniapp/`, `api/` and `plugin/` and asks what you want to build for Up.
+Claude Code is then ready. The workspace has already chosen the theme, trusted the project folder, set the permissions and switched off the update, telemetry and survey prompts (`up-claude-config`). The only thing the developer does once is to sign in with his own Anthropic account: `claude auth login` (or `/login`). Each time you start `claude`, it shows a welcome message about `miniapp/`, `api/` and `plugin/` and asks what you want to build for Up.
 
 A step failed? Run `up-project-setup` in a terminal.
 
