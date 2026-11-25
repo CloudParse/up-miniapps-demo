@@ -23,12 +23,10 @@
       "Bash(printenv:*)"
     ],
     "ask": [
-      "Bash(curl:*)",
       "Bash(wget:*)",
       "Bash(ssh:*)",
       "Bash(scp:*)",
       "Bash(nc:*)",
-      "Bash(git push:*)",
       "WebFetch"
     ]
   },

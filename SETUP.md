@@ -94,9 +94,9 @@ Claude Code is ready in the workspace:
 - `up-project-setup` installs the SDK's Claude Code plugin (`up-miniapps-sdk`, not the Studio plugin of `plugin/`).
 - The project rules (`CLAUDE.md`, `AGENT.md`, `.claude/`) come with the repository.
 
-The workspace has already set up Claude Code for you, so it asks no question: the theme is chosen, the project folder is trusted, the update, telemetry and survey prompts are off, and the permissions are ready (reading and editing in the project, `git status/diff/log/add/commit`, `uv sync`, `uv run`, `npm run`, `up-api`, `up-miniapp`, `up-plugin`, `up-dev`, `rg`, `ls` and `cat` run without a question; `git push`, `curl`, `npx`, `WebFetch` and anything outside the project ask; `rm -rf /`, `curl | sh`, `git push --force` and the platform secrets are blocked as guard rails, not as a security boundary).
+The workspace has already set up Claude Code for you, so it asks no question: the theme is chosen, the project folder is trusted, the update, telemetry and survey prompts are off, and the permissions are ready. It commits, pushes to `origin` (never forced), pulls, runs your tests and the project's commands, and reads the local dev servers with `up-curl` without asking. It still asks before it adds a dependency, deletes history or uses the web. The full list, with the reason of each line, is in `docs/coder.md`, section "Claude Code in the workspace: what it does without asking". These lists are guard rails, not a security boundary.
 
-The one thing you do once is to sign in with your own Anthropic account: run `claude auth login` in a terminal (or `/login` inside Claude Code). The sign-in stays in `~/.claude` of your home volume.
+The one thing you do once is to sign in with your own Anthropic account: run `claude auth login` in a terminal (or `/login` inside Claude Code), choose the account type, open the address it prints in your own browser (the workspace has no browser) and paste the code back. The sign-in stays in `~/.claude` of your home volume.
 
 Your own settings in `~/.claude/settings.json` are kept. To stop the workspace from touching them, create the empty file `~/.claude/up-config.off`.
 

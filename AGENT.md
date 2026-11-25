@@ -197,7 +197,7 @@ Developers and their agents **never**:
 When a task seems to need one of these, stop and ask a maintainer of the project. Details and the checks: `.claude/skills/up-miniapp-ci-contract/SKILL.md`.
 
 Enforcement:
-- `.claude/settings.json` denies the edits of the protected files and the reading of `.env` files. It asks before `curl`, `wget`, `ssh`, `git push` and web fetches.
+- `.claude/settings.json` denies the edits of the protected files and the reading of `.env` files. It asks before `wget`, `ssh`, `scp`, `nc` and web fetches. `curl` and `git push` are not in its ask list: the Coder workspace allows `up-curl` (a GET of the local dev servers) and `git push origin` (never a force push) in the member's own Claude Code settings, and the hook below blocks force pushes, branch and tag deletion and history rewrites.
 - `.claude/hooks/guard.py` blocks the common forms of the same actions when an agent tries them through the shell or the file tools. It parses each shell command (quotes, `$(...)`, heredocs, `;`, `&&`, `|`) before checking it. Its tests: `python3 .claude/hooks/guard_test.py`.
 - Known limits: variable indirection (`X=api/.env; cat $X`), `xargs`, brace expansion, recursive searches (`grep -r`, `rg -uu`) that also read `.env` files, dotenv loaders (`npx dotenv`, `dotenv_values()`) and indirect imports in inline code (`from os import remove`) are not caught.
 - These are guard rails for agents, not a security boundary: a person can still edit any file, and a determined command can get around a pattern. The review (section 7.4) is the check that counts.
@@ -217,7 +217,7 @@ Enforcement:
    - Commit after every small change that passes the checks of step 3.
    - Push each time the review of step 4 passes on what you push. Push small, reviewed pieces often, not one big change at the end.
    - Small commits are easy to review and to undo, and your teammates get your work at once.
-   - Claude Code asks you before every `git push`. Never force push (section 5.1).
+   - In a Coder workspace Claude Code pushes without a question (the hook blocks force pushes). Outside Coder it asks, as for any command that is not allowed. Never force push (section 5.1).
 6. Only then call the task done.
 
 ## 7. Mandatory final review

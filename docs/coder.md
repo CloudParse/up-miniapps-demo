@@ -47,7 +47,7 @@ Coder workspace (dev-<organisation>)
 ## What the workspace gives you
 
 - Python 3.14 and `uv`, Node.js 26 LTS, Go, git, Claude Code (`claude`) and VS Code in the browser.
-- Claude Code is ready. The image ships it, `up-project-setup` installs the SDK's Claude Code plugin, and the project rules come with the repository. The workspace has already set it up (`up-claude-config`, at every start): theme, trust of the project folder, permissions (edits in the project and the daily commands without a question; `git push`, `curl`, anything outside the project still asks; destructive commands and the platform secrets are blocked as guard rails, not as a security boundary), no auto-update, no telemetry and no survey. The only thing you do once is to sign in with your own Anthropic account: `claude auth login` (or `/login`). Your own settings are kept: the script only adds; an empty file `~/.claude/up-config.off` stops it. Each time you start `claude`, it shows a welcome message about `miniapp/`, `api/` and `plugin/` and asks what you want to build for Up (`SETUP.md`, section 6).
+- Claude Code is ready. The image ships it, `up-project-setup` installs the SDK's Claude Code plugin, and the project rules come with the repository. The workspace has already set it up (`up-claude-config`, at every start): theme, trust of the project folder, permissions (the daily loop without a question, see "Claude Code in the workspace: what it does without asking" below), no auto-update, no telemetry and no survey. The only thing you do once is to sign in with your own Anthropic account: `claude auth login` (or `/login`). Your own settings are kept: the script only adds; an empty file `~/.claude/up-config.off` stops it. Each time you start `claude`, it shows a welcome message about `miniapp/`, `api/` and `plugin/` and asks what you want to build for Up (`SETUP.md`, section 6).
 - No Docker daemon. No root: you are `uid 1000`.
 - Over the network: the organisation's coderd, its DEV backend, DEV PostgreSQL, DEV cache and DEV bucket, its Gitea and Vault, plus DNS and the internet. No Kubernetes API.
 - Only `/home/coder` survives a restart. Keep the project and every tool you install there.
@@ -162,6 +162,39 @@ So 4 GiB holds the editor, Claude Code and the three parts together with room to
   - `up-miniapp` runs `cd miniapp && npm run dev -- --host 0.0.0.0`
   - `up-plugin` runs `cd plugin && npm run dev`
 - The check reaches `127.0.0.1` inside the workspace. A server that listens on `127.0.0.1` or on `0.0.0.0` is "en marche". A server that listens only on `::1` (Node's `localhost` can resolve to `::1`) is not: use `--host 0.0.0.0`.
+
+## Claude Code in the workspace: what it does without asking (2026-11-25)
+
+The workspace writes `~/.claude/settings.json` and `~/.claude.json` at every start (`up-claude-config`). The one thing you do once is `claude auth login`. These lists are guard rails, not a security boundary: a shell pattern can be evaded, and the pod is the sandbox. The pod holds your own DEV credentials (`api/.env`, `~/.config/up`, your sign-in token), so the lists protect those first.
+
+| Claude peut faire sans demander | Why |
+|---|---|
+| `git status`, `diff`, `log`, `show`, `blame`, `rev-parse`, `remote -v`, `config --get` | Read only. |
+| `git add`, `commit`, `push` (only `git push`, `git push origin ...`, `git push -u origin ...`; never forced), `pull` (bare, from `origin`, `--rebase`) and `fetch` (bare, from `origin`, `--all`, `--prune`), `checkout`, `switch`, `branch`, `merge`, `rebase`, `stash`, `reset` (soft and mixed), `tag`, `restore --staged` | The daily loop. A push goes to the project's own Gitea, whose branch protection applies. |
+| `npm install` and `npm i` with no package name, `npm ci`, `npm run`, `npm test`, `npm ls`, `npm outdated`, `npx --no-install` | They install what `package.json` and the lock file already say. `--no-install` stops `npx` from downloading a package. |
+| `node`, `tsc`, `biome`, `vitest`, `python`, `python3`, `pytest`, `ruff`, `mypy`, `make` | They run the project's own code: that is development. They also run any code Claude just wrote, and no string rule can stop an interpreter. Accepted. |
+| `uv sync`, `uv lock`, `uv run`, `uv tree`, `uv pip list`, `uv pip show` | Same as npm: what `pyproject.toml` and `uv.lock` already say. |
+| `ls`, `cat`, `head`, `tail`, `wc`, `pwd`, `rg`, `grep`, `jq`, `diff`, `tree`, `which`, `ps` (plain, `aux`, `-ef`), `date`, `du`, `df`, `free`; Read, Glob, Grep | Read only or harmless. The secret paths below are refused first. |
+| `mkdir`, `cp`, `mv`, `touch`, `sed`; Edit and Write | Claude Code's own `acceptEdits` mode, inside the project (and `~/<repo>`) only. A path outside still asks. |
+| `up-curl http://localhost:21513-21516/...` (the dev servers) | A GET of the API, Vite or the console, and nothing else: one address, no other option. Plain `curl` asks. |
+| `up-api`, `up-miniapp`, `up-plugin`, `up-dev`, `up-status` | The workspace's own start commands. |
+
+| Demande | Why |
+|---|---|
+| `git reset --hard`, `--merge` or `--keep`, `git clean`, `git checkout -f`, `git checkout -- <path>`, `git checkout <ref> .`, `git switch -f`, `git restore <path>` or `--worktree`, `git stash drop` or `clear`, `rm`, `rmdir` | They throw work away. |
+| `git branch -D`, `-d`, `-m`, `-f`, `git tag -d`, `-f`, `git push --delete` or `-d`, `git rebase -i` | They delete or rewrite history. The project hook blocks most of them anyway (it also blocks a delete by `git push origin :branch`). |
+| `npm install <package>`, `npm update`, `npx` without `--no-install`, `uv add`, `uv lock` or `uv sync` with `--upgrade`, `-U`, `-P`, `uv run --with` | A new or changed dependency is where a supply-chain attack enters: its install scripts run with your DEV credentials in reach. It asks when a command names the package. Editing `package.json` or `pyproject.toml` and then running `npm install` or `uv sync` does not ask. |
+| `WebFetch`, `WebSearch`, `curl`, `wget`, `ssh`, `scp`, `nc` | They send what Claude knows to the network, or fetch text that can carry a prompt injection. |
+| `kill`, `pkill`, `docker`, `psql`, `git clone`, any command not listed | Not in the loop above. Anything outside the project folder asks too. |
+
+| Interdit | Why |
+|---|---|
+| `git push --force`, `-f`, `-uf`, `--force-with-lease`, `+branch`, `:+branch`, `--mirror`; `git push` to a URL or with `@`; `git --receive-pack`, `--upload-pack`, `--exec`, `--output` | Rewrites the shared history, or sends the code or runs a command elsewhere. |
+| `rm -rf` of `/`, `~`, `$HOME`; `curl` or `wget` piped to `sh` or `bash` | Destroys the workspace, or runs unknown code. |
+| `env`, `printenv`, `set`, `export -p`, `declare -p`; any command or Read naming `~/.config/up`, `api/.env`, `~/.claude/.credentials.json`, `.git-credentials`, `.ssh/`, `/proc/*/environ`; `cat`, `head`, `tail`, `grep`, `rg` of a `.env` file | They print secrets (database and cache passwords, your sign-in token, your Anthropic login, your keys). |
+| Any command naming `.claude/settings`, `.claude.json`, `.bashrc`, `.zshrc`, `.profile`; Edit of those files | A prompt injection could widen its own permissions or persist. Read of the project's own `.claude/settings.json` still works through the Read tool. |
+
+The project's own `.claude/settings.json` and its hook (`.claude/hooks/guard.py`) add their own blocks (protected files, force pushes, branch and tag deletion, history rewrites, deleting outside the project). Rules from three places add up and a deny always wins. Your own entries in `~/.claude/settings.json` are kept; the script only adds. An existing project created before 2026-11-25 still has `git push` and `curl` in its own ask list (`.claude/settings.json`): they ask there until a maintainer removes those two lines. Claude Code does not enable `bypassPermissions` or auto mode here. Your home folder is not marked as trusted (trust is inherited by every repository below it): start `claude` in the project, as the terminals do.
 
 ## Your shell and the project settings
 
