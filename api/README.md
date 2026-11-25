@@ -2,7 +2,7 @@
 
 A FastAPI (Python 3.14) backend. The mini-app (`../miniapp`) and the Studio plugin (`../plugin`) call it. It runs in your Coder workspace in development and as a Docker image in production.
 
-The architecture and the coding rules are in [`AGENT.md`](AGENT.md). This file is the beginner guide.
+The architecture and the coding rules are in [`AGENTS.md`](AGENTS.md). This file is the beginner guide.
 
 ## Prerequisites
 

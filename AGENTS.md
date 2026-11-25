@@ -1,6 +1,6 @@
-# AGENT.md: Up Mini-App Demo
+# AGENTS.md: Up Mini-App Demo
 
-Entry point for every agent and student working in this repository. Read it fully before changing anything, then read the `AGENT.md` of the sub-project you are touching.
+Entry point for every agent and student working in this repository. Read it fully before changing anything, then read the `AGENTS.md` of the sub-project you are touching.
 
 Code, comments, docs and commit messages are written in English. The UI text of `miniapp/` is French.
 
@@ -53,9 +53,9 @@ In development `VITE_BACKEND_URL` is `/api/v1`. The Vite dev server forwards `/a
 
 | Path | Role |
 | --- | --- |
-| `miniapp/` | Mini-app, `up-miniapps-demo-miniapp`. React + Jotai + Tailwind + MapLibre on top of `@cloudparse/up-miniapps-sdk`. Instructions: `miniapp/AGENT.md`. |
-| `api/` | Mini-app API, `up-miniapps-demo-api`. Python + FastAPI. Verifies the Hub's user tokens and serves your own data. Instructions: `api/AGENT.md`. |
-| `plugin/` | Studio plugin, `up-miniapps-demo-plugin`. React + `@cloudparse/up-backoffice-sdk`, built into one ES module. Instructions: `plugin/AGENT.md`, guide: `docs/plugin.md`. |
+| `miniapp/` | Mini-app, `up-miniapps-demo-miniapp`. React + Jotai + Tailwind + MapLibre on top of `@cloudparse/up-miniapps-sdk`. Instructions: `miniapp/AGENTS.md`. |
+| `api/` | Mini-app API, `up-miniapps-demo-api`. Python + FastAPI. Verifies the Hub's user tokens and serves your own data. Instructions: `api/AGENTS.md`. |
+| `plugin/` | Studio plugin, `up-miniapps-demo-plugin`. React + `@cloudparse/up-backoffice-sdk`, built into one ES module. Instructions: `plugin/AGENTS.md`, guide: `docs/plugin.md`. |
 | `docs/plugin.md` | The plugin: calling the API, PostgreSQL, cache and bucket through the API, publishing, running it in Coder. |
 | `docs/coder.md` | How the demo runs in a Coder workspace: the services it uses, the settings, the limits. |
 | `SETUP.md` | The commands, in order. |
@@ -92,7 +92,7 @@ The SDK's own Claude Code plugin adds the skill `up-miniapp-builder` (SDK signat
 
 Each time `claude` starts, the hook `.claude/hooks/welcome.py` (SessionStart, `startup` only) shows a welcome message. It explains `miniapp/`, `api/` and `plugin/` and asks "What do you want to build for Up?". Claude gets the same text. It plans a first message that describes something to build, and does a concrete task or question directly. Its test: `python3 .claude/hooks/welcome_test.py`.
 
-Sub-project specifics live in `miniapp/AGENT.md` and `api/AGENT.md`. When they conflict with this file, the sub-project file wins for its own folder.
+Sub-project specifics live in `miniapp/AGENTS.md` and `api/AGENTS.md`. When they conflict with this file, the sub-project file wins for its own folder.
 
 ## 3. Quick start
 
@@ -141,8 +141,8 @@ Ports:
 
 ### Where things are
 
-- Every path in the `AGENT.md` files is relative to the repository root.
-- The absolute paths of this workspace are in `CLAUDE.local.md` (the repository root, `api/` and `miniapp/`). The workspace setup script `up-project-setup` writes them. They are git-ignored (`CLAUDE.local.md`, `AGENTS.local.md`): never commit them, never copy an absolute path into a file of the repository.
+- Every path in the `AGENTS.md` files is relative to the repository root.
+- The absolute paths of this workspace are in `AGENTS.local.md` (the repository root, `api/`, `miniapp/` and `plugin/`; `CLAUDE.local.md` only points to it, so every agent reads the same notes). The workspace setup script `up-project-setup` writes them. They are git-ignored (`AGENTS.local.md`, `CLAUDE.local.md`): never commit them, never copy an absolute path into a file of the repository.
 - Dev servers: `dev-tools/up-dev.sh` (start, stop, status and logs of the three parts; check it with `shellcheck`). In a Coder workspace, a person starts them from the project console (`dev-tools/console/`, command `up-dev`, `docs/coder.md`, "The project console"): a small Node supervisor with a web page, no dependency, tested by `npm test` in `miniapp/`. It runs the same three fixed commands. Do not add a way to run another command in it.
 - Dev helper: `dev-tools/hostGuard.ts` (Host check of the two Vite dev servers and of the console), tested by `npm test` in `miniapp/`.
 - A Coder workspace is capped at 2 CPU cores and 4 GiB of memory in total (`docs/coder.md`, "Memory and CPU"): do not start more than the task needs, and never add a dev server that stays idle at hundreds of MiB.
@@ -165,7 +165,7 @@ Ports:
 - **No secret in the repository**, ever: not in code, config, scripts, logs or test names. Secrets come from the environment (`api/.env`, gitignored). Mark them `SecretStr` so they never print.
 - **Anything in `miniapp/` is public.** `VITE_*` variables are inlined into the bundle: never put a key, token or secret there. Dev-only values are blanked in production builds.
 - **Validate every input** at the edge (Pydantic models, `Query(...)` constraints). Never trust a client-supplied id, name or role.
-- **Authenticate and authorise.** Choose the access level of every route up front: public, authenticated, or admin (admin = `profile:miniapp:admin` scope in the Hub-signed token, enforced by `require_admin`, see `api/AGENT.md`). Routes that return or change user data depend on `get_current_user`. A token minted for another mini-app (`aud`) must be rejected. Never weaken a check to "make it work".
+- **Authenticate and authorise.** Choose the access level of every route up front: public, authenticated, or admin (admin = `profile:miniapp:admin` scope in the Hub-signed token, enforced by `require_admin`, see `api/AGENTS.md`). Routes that return or change user data depend on `get_current_user`. A token minted for another mini-app (`aud`) must be rejected. Never weaken a check to "make it work".
 - **An admin route usually comes with a plugin page.**
   - Admin routes (`/api/v1/admin/...`, `require_admin`) let the mini-app's administrators put data in: content, settings, moderation.
   - The administrators call them from the Studio plugin (`plugin/`, `docs/plugin.md`), not from the mini-app's screens.
@@ -184,7 +184,7 @@ Ports:
 Developers and their agents **never modify, create, rename or delete** these files:
 - `.gitea/` (the deployment workflows, scripts and tests), `.gitlab-ci.yml`, `miniapp.schema.json`: the platform relies on them. A change can make the mini-app impossible to deploy.
 - `.claude/` (skills, agents, hooks, `settings.json`): the agent rules and their guard rails.
-- `AGENT.md` and `CLAUDE.md` in every folder: the project rules.
+- `AGENTS.md` and `CLAUDE.md` in every folder: the project rules. `AGENTS.md` is the cross-agent standard (Codex, Gemini CLI, Cursor, Copilot, Aider and Claude Code read it); `CLAUDE.md` holds only the pointer `@AGENTS.md`, so Claude Code reads the same file. Never name the file in the singular, and never put rules in `CLAUDE.md`: `python3 .claude/hooks/guard_test.py` fails on both.
 
 Developers and their agents **never**:
 - read, print, copy or send a secret (`.env` files except `*.env.template` and `*.env.example`, the environment, tokens);
@@ -205,7 +205,7 @@ Enforcement:
 
 ## 6. Workflow
 
-1. Read this file, the `AGENT.md` of the sub-project and the skill `up-miniapp-ci-contract`.
+1. Read this file, the `AGENTS.md` of the sub-project and the skill `up-miniapp-ci-contract`.
 2. Make the smallest change that does the job. One concern per change. Never touch a protected file (section 5.1).
 3. Run the checks of every sub-project you touched:
    - `api/`: `uv lock --check && uv run ruff format . && uv run ruff check . && uv run mypy app tests && uv run pytest`

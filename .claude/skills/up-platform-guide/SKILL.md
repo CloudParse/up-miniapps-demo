@@ -8,7 +8,7 @@ description: Answers questions about Up and this project. What Up is. Roles and 
 How to use this skill:
 - Answer in the user's language (French or English).
 - Give the short answer first, then the file that holds the detail.
-- Never guess a value. When this skill and the repository disagree, the repository wins: `AGENT.md`, `SETUP.md`, `docs/coder.md`, `docs/deploy.md`.
+- Never guess a value. When this skill and the repository disagree, the repository wins: `AGENTS.md`, `SETUP.md`, `docs/coder.md`, `docs/deploy.md`.
 
 ## 1. What Up is
 
@@ -203,7 +203,7 @@ The Studio value is the one the platform uses. The display settings of `miniapp.
 
 ## 7. Where to go next
 
-- Mini-app code: skill `up-miniapp-frontend`, then `miniapp/AGENT.md`.
-- API code: skill `up-miniapp-api`, then `api/AGENT.md`.
-- Project workflow and checks: skill `up-miniapp-project`, then `AGENT.md`.
+- Mini-app code: skill `up-miniapp-frontend`, then `miniapp/AGENTS.md`.
+- API code: skill `up-miniapp-api`, then `api/AGENTS.md`.
+- Project workflow and checks: skill `up-miniapp-project`, then `AGENTS.md`.
 - Support: `support@cloudparse.fr`.

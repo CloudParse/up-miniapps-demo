@@ -1,8 +1,8 @@
-# miniapp/AGENT.md: mini-app (`up-miniapps-demo-miniapp`)
+# miniapp/AGENTS.md: mini-app (`up-miniapps-demo-miniapp`)
 
-Read the root `AGENT.md` first (architecture, security rules, mandatory final review). This file covers the mini-app only.
+Read the root `AGENTS.md` first (architecture, security rules, mandatory final review). This file covers the mini-app only.
 
-Paths in this file are relative to the repository root. The absolute paths of this workspace are in `CLAUDE.local.md`, written by `up-project-setup` (git-ignored).
+Paths in this file are relative to the repository root. The absolute paths of this workspace are in `AGENTS.local.md` (`CLAUDE.local.md` points to it), written by `up-project-setup` (git-ignored).
 
 ## Stack
 
@@ -105,4 +105,4 @@ scripts/generate-map-style.js   regenerates the two map styles from the CloudPar
 
 ## Definition of done
 
-`npm run check`, `npm run typecheck` and `npm run build` pass, then the **mandatory final review** of the root `AGENT.md` (section 7) is done, with the frontend points in mind: no secret in the bundle, no monolithic component, reusable pieces extracted, no dead code.
+`npm run check`, `npm run typecheck` and `npm run build` pass, then the **mandatory final review** of the root `AGENTS.md` (section 7) is done, with the frontend points in mind: no secret in the bundle, no monolithic component, reusable pieces extracted, no dead code.

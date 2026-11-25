@@ -28,7 +28,7 @@ How it works, for each kind of data:
 
 The demo plugin has two pages:
 - "Resources": figures and one button (`DemoPage.tsx`).
-- "Notes": the usual job of a plugin. A `Table` lists the rows of the table `demo_notes`. The modal "New note" writes one row through `POST /api/v1/admin/demo/notes` (`NotesPage.tsx`, `NoteModal.tsx`). Copy its plugin side (page, modal, service) for your own data. On the API side, store your own data through `models/` and `repositories/` (`api/AGENT.md`), not with raw SQL in a service like the demo.
+- "Notes": the usual job of a plugin. A `Table` lists the rows of the table `demo_notes`. The modal "New note" writes one row through `POST /api/v1/admin/demo/notes` (`NotesPage.tsx`, `NoteModal.tsx`). Copy its plugin side (page, modal, service) for your own data. On the API side, store your own data through `models/` and `repositories/` (`api/AGENTS.md`), not with raw SQL in a service like the demo.
 
 A real plugin usually also has an edit modal and a delete action per kind of data. The plugin never writes to the database itself: the API does.
 
@@ -128,7 +128,7 @@ plugin:
   file: plugin.js
 ```
 
-Never change the workflow or the scripts (`AGENT.md`, section 5.1).
+Never change the workflow or the scripts (`AGENTS.md`, section 5.1).
 
 ## 4. Run the plugin in development
 

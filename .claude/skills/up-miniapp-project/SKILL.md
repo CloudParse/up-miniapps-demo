@@ -6,8 +6,8 @@ description: Start here for any change in this Up mini-app project. Where things
 # Up mini-app project
 
 Read first:
-1. `AGENT.md` at the root.
-2. The `AGENT.md` of the folder you change: `api/`, `miniapp/` or `plugin/`.
+1. `AGENTS.md` at the root.
+2. The `AGENTS.md` of the folder you change: `api/`, `miniapp/` or `plugin/`.
 
 Those files are the rules. This skill is the short path through them.
 
@@ -54,7 +54,7 @@ Start:
 - The backend workflow builds `api/Dockerfile` with the port `api.port`.
 - The frontend workflow publishes the `index.base64.gz` of `up-sdk build` as `miniapp-<version>.base64.gz`.
 - The plugin workflow publishes the plugin module.
-- A workflow whose section is missing from `miniapp.yaml` does nothing and ends green. Never change or delete a workflow (`AGENT.md` section 5.1).
+- A workflow whose section is missing from `miniapp.yaml` does nothing and ends green. Never change or delete a workflow (`AGENTS.md` section 5.1).
 - The platform picks the version: patch + 1.
 - Never change `.gitea/`: only the maintainers of the template do.
 - Details: `docs/deploy.md`.
@@ -84,7 +84,7 @@ Start:
    - state in `miniapp/src/atoms/`;
    - screens in `miniapp/src/features/`.
 4. A new setting: key in `api/configs/config.toml`, field in `api/app/core/config.py`, test in `api/tests/test_config.py`.
-5. Studio plugin (the admin page, see `plugin/AGENT.md` and `docs/plugin.md`). Admins use it to put data into the database: content, settings, moderation. An admin route usually comes with a plugin page. Then:
+5. Studio plugin (the admin page, see `plugin/AGENTS.md` and `docs/plugin.md`). Admins use it to put data into the database: content, settings, moderation. An admin route usually comes with a plugin page. Then:
    - one service per resource in `plugin/src/services/`, through `miniappApi`, never `fetch`;
    - pages in `plugin/src/features/`, built with the SDK UI kit: a `Table` of the rows, a create/edit `Modal`, a delete action;
    - light Studio theme and Studio fonts (the SDK sets the tokens, the Studio gives the fonts): never a dark theme, never another font;
@@ -100,7 +100,7 @@ Start:
 ```
 
 Then:
-1. Run the mandatory final review of `AGENT.md` section 7 on the whole diff.
+1. Run the mandatory final review of `AGENTS.md` section 7 on the whole diff.
 2. Check the frozen items of `up-miniapp-ci-contract`.
 3. Launch the subagent `up-security-reviewer` on the whole diff (security double check).
 4. Fix every finding. Report both reviews.

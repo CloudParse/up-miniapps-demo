@@ -199,7 +199,7 @@ The project's own `.claude/settings.json` and its hook (`.claude/hooks/guard.py`
 ## Your shell and the project settings
 
 - The terminal of the workspace already has the project variables (`DATABASE_URL`, `CACHE_URL`, `STORAGE_*` and the others of the table above), the same names as in `api/.env`. `psql "$DATABASE_URL"` works in a new terminal.
-- The workspace writes `CLAUDE.local.md` (and one per folder) at each start: the absolute paths, the commands and the ports of this workspace. Claude Code reads them. Git ignores them.
+- The workspace writes `AGENTS.local.md` (and one per folder, plus `CLAUDE.local.md` = `@AGENTS.local.md`) at each start: the absolute paths, the commands and the ports of this workspace. Every agent reads them. Git ignores them.
 - The Coder buttons **Mini-app**, **API** and **Plugin** open in a new browser tab, so you can refresh the page.
 - The DEV backend has no sign-in rate limit, because all the workspaces of an organisation share one address. A `429 Too Many Requests` on `/hub/api/v1/auth/login` in DEV means the organisation was deployed before this change: redeploy it from the super console.
 

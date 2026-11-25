@@ -6,7 +6,7 @@ description: Frontend guide for miniapp/. Stack, folders, Jotai state (atoms, Lo
 # Up mini-app frontend
 
 How to use this skill:
-- `miniapp/AGENT.md` holds the rules. This skill shows how to apply them.
+- `miniapp/AGENTS.md` holds the rules. This skill shows how to apply them.
 - Copy the patterns of this repository. Do not invent a new one.
 - SDK signatures: the SDK README, its `.d.ts`, or the skill `up-miniapp-builder` of the SDK plugin. Never guess a method name.
 
@@ -184,4 +184,4 @@ Adding a feature:
 
 1. `npm run check:write`, `npm run typecheck`, `npm run build` pass.
 2. The golden path works in the simulator, in dark and light.
-3. The mandatory final review of the root `AGENT.md` (section 7) is done and its findings fixed.
+3. The mandatory final review of the root `AGENTS.md` (section 7) is done and its findings fixed.

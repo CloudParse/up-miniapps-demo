@@ -1,6 +1,6 @@
-# plugin/AGENT.md: Studio plugin (`up-miniapps-demo-plugin`)
+# plugin/AGENTS.md: Studio plugin (`up-miniapps-demo-plugin`)
 
-Read the root `AGENT.md` first (security rules, review). Guide with the commands, the dev page and the publishing: `docs/plugin.md`. This file covers the plugin only.
+Read the root `AGENTS.md` first (security rules, review). Guide with the commands, the dev page and the publishing: `docs/plugin.md`. This file covers the plugin only.
 
 ## What the plugin is for
 
@@ -27,4 +27,4 @@ npm run check:write && npm run typecheck && npm run build   # dist/plugin.js
 - The plugin never holds a database, cache or bucket credential, and nothing secret: everything goes through an admin route of `api/`.
 - Production output: ONE ES module, `dist/plugin.js` (`plugin` section of `miniapp.yaml`). No code splitting, no dynamic `import()`. `grep -c __UP_BACKOFFICE_SHARED__ dist/plugin.js` must print 3.
 - `dev/`, `index.html` and `vite.dev.config.ts` are the development page only. Never import them from `src/`.
-- `src/features/demo/`, `src/services/demo.ts` and the API routes `admin/demo/*` are the example: replace them with your own pages and routes. The page "Notes" (`NotesPage.tsx`, `NoteModal.tsx`, `POST /api/v1/admin/demo/notes`) is the plugin pattern to copy when admins put data into the database. On the API side, use `models/` and `repositories/` (`api/AGENT.md`), not raw SQL in a service like the demo.
+- `src/features/demo/`, `src/services/demo.ts` and the API routes `admin/demo/*` are the example: replace them with your own pages and routes. The page "Notes" (`NotesPage.tsx`, `NoteModal.tsx`, `POST /api/v1/admin/demo/notes`) is the plugin pattern to copy when admins put data into the database. On the API side, use `models/` and `repositories/` (`api/AGENTS.md`), not raw SQL in a service like the demo.

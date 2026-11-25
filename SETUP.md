@@ -85,14 +85,14 @@ The button opens `https://miniapp--<workspace>--<owner>--<organisation>.cloudpar
 
 ## 5. Deploy to production
 
-`miniapp.yaml` is already a deployable `version: 2` file with the `api`, `services` and `miniapp` sections: adjust them, delete the ones you do not use, the `plugin` section builds the demo plugin of `plugin/` (delete it and the folder if you have none). Commit, push, then press **Déployer le backend**, **Déployer le frontend** and/or **Déployer le plugin** in the platform. A part with no section in `miniapp.yaml` has nothing to deploy: keep its workflow, it ends green and builds nothing (`AGENT.md` section 5.1). Details and the CI contract: `docs/deploy.md`.
+`miniapp.yaml` is already a deployable `version: 2` file with the `api`, `services` and `miniapp` sections: adjust them, delete the ones you do not use, the `plugin` section builds the demo plugin of `plugin/` (delete it and the folder if you have none). Commit, push, then press **Déployer le backend**, **Déployer le frontend** and/or **Déployer le plugin** in the platform. A part with no section in `miniapp.yaml` has nothing to deploy: keep its workflow, it ends green and builds nothing (`AGENTS.md` section 5.1). Details and the CI contract: `docs/deploy.md`.
 
 ## 6. Start Claude Code
 
 Claude Code is ready in the workspace:
 - The workspace image ships Claude Code.
 - `up-project-setup` installs the SDK's Claude Code plugin (`up-miniapps-sdk`, not the Studio plugin of `plugin/`).
-- The project rules (`CLAUDE.md`, `AGENT.md`, `.claude/`) come with the repository.
+- The project rules (`CLAUDE.md`, `AGENTS.md`, `.claude/`) come with the repository.
 
 The workspace has already set up Claude Code for you, so it asks no question: the theme is chosen, the project folder is trusted, the update, telemetry and survey prompts are off, and the permissions are ready. It commits, pushes to `origin` (never forced), pulls, runs your tests and the project's commands, and reads the local dev servers with `up-curl` without asking. It still asks before it adds a dependency, deletes history or uses the web. The full list, with the reason of each line, is in `docs/coder.md`, section "Claude Code in the workspace: what it does without asking". These lists are guard rails, not a security boundary.
 
@@ -100,7 +100,7 @@ The one thing you do once is to sign in with your own Anthropic account: run `cl
 
 Your own settings in `~/.claude/settings.json` are kept. To stop the workspace from touching them, create the empty file `~/.claude/up-config.off`.
 
-Start it from the root of the project, so it loads `CLAUDE.md` and `AGENT.md`. The workspace setup script (`up-project-setup`) also writes `CLAUDE.local.md` (root, `api/`, `miniapp/`) with the absolute paths of your workspace. Git ignores it.
+Start it from the root of the project, so it loads `CLAUDE.md`, which holds only the pointer `@AGENTS.md`. `AGENTS.md` is the instructions file of the project, read natively by other agents too (Codex, Gemini CLI, Cursor, Copilot, Aider). The workspace setup script (`up-project-setup`) also writes `AGENTS.local.md` (root, `api/`, `miniapp/`, plus a `CLAUDE.local.md` that points to it) with the absolute paths of your workspace. Git ignores them.
 
 ```bash
 cd ~/<repository>

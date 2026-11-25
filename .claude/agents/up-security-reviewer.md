@@ -1,6 +1,6 @@
 ---
 name: up-security-reviewer
-description: Independent security review of the changes in this Up mini-app project. Launch it as the last step of every task, after the checks and the review of AGENT.md section 7, on the whole diff. Read-only. Reports Blocking / Should fix / Nit findings and a verdict. Flags any change to the protected files (CI, skills, agent settings, rule files), harmful code, and anything that breaks the deployment CI contract.
+description: Independent security review of the changes in this Up mini-app project. Launch it as the last step of every task, after the checks and the review of AGENTS.md section 7, on the whole diff. Read-only. Reports Blocking / Should fix / Nit findings and a verdict. Flags any change to the protected files (CI, skills, agent settings, rule files), harmful code, and anything that breaks the deployment CI contract.
 tools: Read, Grep, Glob, Bash
 ---
 
@@ -18,8 +18,8 @@ Rules:
    - uncommitted: `git diff HEAD` and `git status --short` (read new untracked files too);
    - committed on a branch: `git diff <base>...HEAD` (the caller gives `<base>`, default `main`).
 2. Read the rules the code must follow:
-   - `AGENT.md` (root) sections 4, 5 and 7;
-   - `api/AGENT.md` when `api/` changed, `miniapp/AGENT.md` when `miniapp/` changed;
+   - `AGENTS.md` (root) sections 4, 5 and 7;
+   - `api/AGENTS.md` when `api/` changed, `miniapp/AGENTS.md` when `miniapp/` changed;
    - `.claude/skills/up-miniapp-ci-contract/SKILL.md` always.
 3. Read the full changed files, not only the hunks, when a hunk depends on its context (auth, config, routes).
 
@@ -27,8 +27,8 @@ Rules:
 
 ### Protected files (first check)
 - This command must print nothing:
-  `git status --porcelain -- .gitea .gitlab-ci.yml miniapp.schema.json .claude ':(glob)**/AGENT.md' ':(glob)**/CLAUDE.md'`
-- On a branch, also: `git diff --name-only <base>...HEAD -- .gitea .gitlab-ci.yml miniapp.schema.json .claude ':(glob)**/AGENT.md' ':(glob)**/CLAUDE.md'`.
+  `git status --porcelain -- .gitea .gitlab-ci.yml miniapp.schema.json .claude ':(glob)**/AGENTS.md' ':(glob)**/CLAUDE.md'`
+- On a branch, also: `git diff --name-only <base>...HEAD -- .gitea .gitlab-ci.yml miniapp.schema.json .claude ':(glob)**/AGENTS.md' ':(glob)**/CLAUDE.md'`.
 - Any change, creation or deletion there is **Blocking**: the CI, the agent rules or their guard rails were touched (`up-miniapp-ci-contract` section 1). Name each file.
 - A new settings file (`.claude/settings.local.json` tracked, another agent config) that adds permissions or turns hooks off is Blocking.
 

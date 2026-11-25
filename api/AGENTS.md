@@ -1,8 +1,8 @@
-# api/AGENT.md: mini-app backend (`up-miniapps-demo-api`)
+# api/AGENTS.md: mini-app backend (`up-miniapps-demo-api`)
 
-Read the root `AGENT.md` first (architecture, security rules, mandatory final review). This file covers the Python / FastAPI backend only.
+Read the root `AGENTS.md` first (architecture, security rules, mandatory final review). This file covers the Python / FastAPI backend only.
 
-Paths in this file are relative to the repository root. The absolute paths of this workspace are in `CLAUDE.local.md`, written by `up-project-setup` (git-ignored).
+Paths in this file are relative to the repository root. The absolute paths of this workspace are in `AGENTS.local.md` (`CLAUDE.local.md` points to it), written by `up-project-setup` (git-ignored).
 
 ## Stack and commands
 
@@ -240,4 +240,4 @@ Automated tests never need the Hub: `tests/conftest.py` signs tokens with a loca
 
 ## Definition of done
 
-`ruff format`, `ruff check`, `mypy` and `pytest` pass, then the **mandatory final review** of the root `AGENT.md` (section 7) is done, with the backend points in mind: thin routes, logic in services, validated inputs, authenticated routes protected, no secret anywhere, no information leak in errors.
+`ruff format`, `ruff check`, `mypy` and `pytest` pass, then the **mandatory final review** of the root `AGENTS.md` (section 7) is done, with the backend points in mind: thin routes, logic in services, validated inputs, authenticated routes protected, no secret anywhere, no information leak in errors.

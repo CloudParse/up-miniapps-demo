@@ -2,7 +2,7 @@
 
 The mini-app users open in the Up app. React + Vite + `@cloudparse/up-miniapps-sdk`. It calls the API (`../api`).
 
-The architecture and the coding rules are in [`AGENT.md`](AGENT.md). This file is the beginner guide.
+The architecture and the coding rules are in [`AGENTS.md`](AGENTS.md). This file is the beginner guide.
 
 ## How the mini-app is shown
 

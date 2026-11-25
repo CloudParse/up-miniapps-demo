@@ -10,7 +10,7 @@ Why this skill exists:
 - If one of them changes, the next deployment fails. Often nothing fails locally: the break shows only at the deploy click.
 - When a task seems to need a protected file or a forbidden action, stop. Tell the user which rule blocks it. Only a maintainer of the project changes these files.
 
-Details: `AGENT.md` section 5.1 and `docs/deploy.md`. When this skill and the repository disagree, the repository wins: report the difference.
+Details: `AGENTS.md` section 5.1 and `docs/deploy.md`. When this skill and the repository disagree, the repository wins: report the difference.
 
 ## 1. Protected files: never modify, create, rename or delete
 
@@ -20,7 +20,7 @@ Details: `AGENT.md` section 5.1 and `docs/deploy.md`. When this skill and the re
 | `.gitlab-ci.yml` | The mirror job of the template. |
 | `miniapp.schema.json` | The format the CI validates `miniapp.yaml` against. |
 | `.claude/` (skills, agents, hooks, `settings.json`) | The agent rules and their guard rails. |
-| `AGENT.md`, `CLAUDE.md` (every folder) | The project rules. |
+| `AGENTS.md`, `CLAUDE.md` (every folder) | The project rules. |
 
 Also forbidden for these files:
 - Deleting a workflow you do not use. A workflow without its section in `miniapp.yaml` ends green and builds nothing.
@@ -78,7 +78,7 @@ Also forbidden for these files:
 
 ## 4. Checks, then the security review
 
-This list is the reference. `AGENT.md` section 6 points here.
+This list is the reference. `AGENTS.md` section 6 points here.
 
 ```bash
 # from the repository root; the lock check comes first because `uv run` re-locks
@@ -92,11 +92,11 @@ python3 .gitea/scripts/miniapp_config.py validate   # in a mini-app project; the
 Then check that no protected file changed. This command must print nothing:
 
 ```bash
-git status --porcelain -- .gitea .gitlab-ci.yml miniapp.schema.json .claude ':(glob)**/AGENT.md' ':(glob)**/CLAUDE.md'
+git status --porcelain -- .gitea .gitlab-ci.yml miniapp.schema.json .claude ':(glob)**/AGENTS.md' ':(glob)**/CLAUDE.md'
 ```
 
 Last step of every task:
-1. Run the review of `AGENT.md` section 7 on the whole diff.
+1. Run the review of `AGENTS.md` section 7 on the whole diff.
 2. Launch the subagent `up-security-reviewer` (`.claude/agents/up-security-reviewer.md`) on the same diff. It is a second, independent check. Without Claude Code, follow that file yourself as a separate pass.
 3. Fix every Blocking finding. Run the checks again.
 4. Report both reviews before calling the task done.

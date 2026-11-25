@@ -2,7 +2,7 @@
 
 The admin page of your mini-app, shown inside Studio (the backoffice). It is one ES module built with `@cloudparse/up-backoffice-sdk`. It calls the API (`../api`) through the admin routes.
 
-How it is published and how it reaches the API: [`../docs/plugin.md`](../docs/plugin.md). The coding rules are in [`AGENT.md`](AGENT.md). This file is the beginner guide.
+How it is published and how it reaches the API: [`../docs/plugin.md`](../docs/plugin.md). The coding rules are in [`AGENTS.md`](AGENTS.md). This file is the beginner guide.
 
 The plugin is light, like the Studio, and uses the Studio fonts (Figtree for text, Bricolage Grotesque for display titles). The backoffice SDK (0.3.0 and later) carries the palette and the font tokens. The Studio provides the font files. The development page loads them itself (development only). `src/styles.css` only imports the SDK stylesheet. Use the tokens (`bg-card`, `text-foreground`, `border-line`, `bg-soft`, ...) and the SDK components. Never write `bg-white/5`, `text-white` or other opacity colors: they are for a dark page.
 

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Claude Code PreToolUse hook: blocks changes to the protected files and the dangerous commands of AGENT.md section 5.1.
+"""Claude Code PreToolUse hook: blocks changes to the protected files and the dangerous commands of AGENTS.md section 5.1.
 
 Protected: the deployment CI (.gitea/, .gitlab-ci.yml, miniapp.schema.json), the agent setup (.claude/: skills, agents,
-hooks, settings) and the rule files (AGENT.md, CLAUDE.md), inside this project only. Also blocked: reading the .env
+hooks, settings) and the rule files (AGENTS.md, CLAUDE.md), inside this project only. Also blocked: reading the .env
 files, dumping the environment, force pushes, branch and tag deletion, history rewrites, skipped git hooks, deletion
 outside the project, and edits of the Claude Code settings outside the project (they could turn this hook off).
 
@@ -14,7 +14,7 @@ How a shell command is checked:
 - A command that shlex cannot parse is blocked.
 
 This is a guard rail for agents, not a security boundary. A person can still edit these files by hand, and a determined
-command can get around it. The review (AGENT.md section 7.4) and the Gitea branch protection are the checks that count.
+command can get around it. The review (AGENTS.md section 7.4) and the Gitea branch protection are the checks that count.
 Standard library only. Exit code 2 blocks the tool call and shows the reason to the agent. An invalid event is blocked.
 The settings start this file only when python3 exists, and block every call otherwise.
 Tests: `python3 .claude/hooks/guard_test.py`.
@@ -29,15 +29,15 @@ import sys
 from fnmatch import fnmatch
 from pathlib import Path, PurePosixPath
 
-POLICY = "AGENT.md section 5.1"
+POLICY = "AGENTS.md section 5.1"
 
 PROTECTED_PATH = re.compile(
     r"(^|/)(\.gitea|\.claude)(/|$)"
     r"|(^|/)\.gitlab-ci\.yml$"
     r"|(^|/)miniapp\.schema\.json$"
-    r"|(^|/)(AGENT|CLAUDE)\.md$"
+    r"|(^|/)(AGENTS|CLAUDE)\.md$"
 )
-PROTECTED_NAMES = (".gitea", ".claude", ".gitlab-ci.yml", "miniapp.schema.json", "AGENT.md", "CLAUDE.md")
+PROTECTED_NAMES = (".gitea", ".claude", ".gitlab-ci.yml", "miniapp.schema.json", "AGENTS.md", "CLAUDE.md")
 SECRET_PATH = re.compile(r"(^|/)\.env(\.(?!(template|example)$)[^/]+)?$")
 SECRET_NAMES = (".env", ".env.local", ".env.production", ".env.development")
 # Claude Code settings outside the project: an edit there could turn this hook off.

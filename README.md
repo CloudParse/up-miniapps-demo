@@ -4,7 +4,7 @@ A complete Up mini-app with its API: a React mini-app that uses every capability
 
 Guides by folder, for beginners (install, run, ports, tests, Docker, deploy, common errors): [`api/README.md`](api/README.md), [`miniapp/README.md`](miniapp/README.md), [`plugin/README.md`](plugin/README.md).
 
-Run the commands in [`SETUP.md`](SETUP.md) to get started, then read [`AGENT.md`](AGENT.md): it holds the architecture, the quick start, the conventions and the review checklist. Then read `miniapp/AGENT.md` and `api/AGENT.md`.
+Run the commands in [`SETUP.md`](SETUP.md) to get started, then read [`AGENTS.md`](AGENTS.md): it holds the architecture, the quick start, the conventions and the review checklist. Then read `miniapp/AGENTS.md` and `api/AGENTS.md`.
 
 ## Environment variables (the same names in the Coder workspace and in production)
 
@@ -29,7 +29,7 @@ How it goes to production (buttons in the platform for the backend, the frontend
 
 The settings of the mini-app (name, description, logo, card style, theme, devices) live in `miniapp.yaml` at the root of each project repository, written by the platform whenever it is missing (never overwritten); [`miniapp.schema.json`](miniapp.schema.json) describes the format. See `SETUP.md`, "Settings of the mini-app".
 
-Agent skills (Claude Code loads them on its own): `.claude/skills/`. The list is in `AGENT.md`, section "Skills".
+Agent skills (Claude Code loads them on its own): `.claude/skills/`. The list is in `AGENTS.md`, section "Skills".
 
 **Before you ship:** delete the demo of the DEV resources (`api/app/services/demo_service.py`, its route `api/app/api/routes/demo.py`, schema, test, and the card `miniapp/src/features/home/DemoDataCard.tsx`; with `api/app/services/demo_admin_service.py`, the plugin page `plugin/src/features/demo/` and its service). It is an example; the API does not serve it in production.
 
@@ -43,9 +43,9 @@ What this template shows, and where. When the platform or the SDK gets a feature
 | Backend addresses | Given by the platform only: `window.__UP_BACKEND_URLS__`, `env`, `UPDATE_CONTEXT` when the backend is registered later. Never in the code | `docs/web-launcher.md`, `miniapp/src/services/backend.ts` |
 | Web launcher | Phone mock and device picker on a computer, fullscreen on a phone or in a narrow window (with a **Plein écran** button where the browser allows it), install on the home screen, web host limits with a clear message | `docs/web-launcher.md`, `miniapp/src/lib/errors.ts` |
 | Realtime | WebSocket route `/api/v1/ws`, **`POST /api/v1/ws-ticket`** (single-use ticket in the cache, what `createWsService` asks for), hub, push example, listening client, **Ping / pong button with the round trip**, works in development behind a Coder URL (Vite proxy with `ws: true`, same-site Origin), demo routes only in development (a production build calls none), tests | `docs/realtime.md`, `api/app/api/routes/realtime.py` |
-| API | FastAPI, access levels (public, user, admin), Hub tokens and the admin scope, `.env` loader, Host guard, `0.0.0.0` dev servers, database, cache, bucket, tests | `api/`, `api/AGENT.md` |
+| API | FastAPI, access levels (public, user, admin), Hub tokens and the admin scope, `.env` loader, Host guard, `0.0.0.0` dev servers, database, cache, bucket, tests | `api/`, `api/AGENTS.md` |
 | Studio plugin | Boilerplate with the Studio look: palette, fonts and components (backoffice SDK 0.4.0), development page, admin routes, a "Notes" page where admins write rows of the database | `plugin/`, `docs/plugin.md` |
-| Coder | Workspace created by the person's click on "Ouvrir mon workspace" (no pod before), the project console (`up-dev`, button "Console du projet": start, stop, restart, logs and previews of the three parts) and the one-command start `dev-tools/up-dev.sh start` (skill `up-miniapp-start`), 2 CPU / 4 GiB cap, project variables in the shell, `CLAUDE.local.md`, ports, buttons that open a tab, no sign-in rate limit in DEV | `docs/coder.md`, `SETUP.md` |
+| Coder | Workspace created by the person's click on "Ouvrir mon workspace" (no pod before), the project console (`up-dev`, button "Console du projet": start, stop, restart, logs and previews of the three parts) and the one-command start `dev-tools/up-dev.sh start` (skill `up-miniapp-start`), 2 CPU / 4 GiB cap, project variables in the shell, `AGENTS.local.md`, ports, buttons that open a tab, no sign-in rate limit in DEV | `docs/coder.md`, `SETUP.md` |
 | Deploy | `miniapp.yaml`, buttons in the Studio, Gitea CI, addresses registered by the platform, `publicIngress` | `docs/deploy.md`, `miniapp.yaml` |
 | Agent skills | Project, start (`dev-tools/up-dev.sh`), CI contract, platform guide, frontend, API, web launcher, realtime (draft), security reviewer. Welcome message at each `claude` start (`miniapp/`, `api/`, `plugin/`, "What do you want to build for Up?") | `.claude/skills/`, `.claude/agents/` |
 

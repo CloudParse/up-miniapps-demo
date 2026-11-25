@@ -6,7 +6,7 @@ description: Backend guide for api/. MVC by default, Hub token checks, public/au
 # Up mini-app API
 
 How to use this skill:
-- `api/AGENT.md` holds the rules. This skill shows how to apply them.
+- `api/AGENTS.md` holds the rules. This skill shows how to apply them.
 - Copy the patterns of this repository. Do not invent a new one.
 
 ## 1. Stack and commands
@@ -181,4 +181,4 @@ POST {hub.base_url}/partner/auth/login   {"appUuid": "...", "clientSecret": "...
 
 1. `ruff format`, `ruff check`, `mypy`, `pytest` pass.
 2. `uvx pip-audit` is clean when a dependency was added.
-3. The mandatory final review of the root `AGENT.md` (section 7) is done and its findings fixed.
+3. The mandatory final review of the root `AGENTS.md` (section 7) is done and its findings fixed.
